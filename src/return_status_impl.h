@@ -1,21 +1,23 @@
 #ifndef INFINI_CCL_RETURN_STATUS_IMPL_H_
 #define INFINI_CCL_RETURN_STATUS_IMPL_H_
 
+#include <cstdint>
+
 #include "return_status.h"
 
 namespace infini::ccl {
 
-using ReturnStatus = ::infiniResult_t;
-
-constexpr ReturnStatus kSuccess = infiniSuccess;
-constexpr ReturnStatus kUnhandledError = infiniUnhandledError;
-constexpr ReturnStatus kSystemError = infiniSystemError;
-constexpr ReturnStatus kInternalError = infiniInternalError;
-constexpr ReturnStatus kInvalidArgument = infiniInvalidArgument;
-constexpr ReturnStatus kInvalidUsage = infiniInvalidUsage;
-constexpr ReturnStatus kRemoteError = infiniRemoteError;
-constexpr ReturnStatus kInProgress = infiniInProgress;
-constexpr ReturnStatus kNumResults = infiniNumResults;
+enum class ReturnStatus : int8_t {
+  kSuccess = infiniSuccess,
+  kUnhandledError = infiniUnhandledError,
+  kSystemError = infiniSystemError,
+  kInternalError = infiniInternalError,
+  kInvalidArgument = infiniInvalidArgument,
+  kInvalidUsage = infiniInvalidUsage,
+  kRemoteError = infiniRemoteError,
+  kInProgress = infiniInProgress,
+  kNumResults = infiniNumResults,
+};
 
 } // namespace infini::ccl
 
