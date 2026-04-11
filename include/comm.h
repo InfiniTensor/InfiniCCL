@@ -1,0 +1,35 @@
+#ifndef INFINI_CCL_COMM_H_
+#define INFINI_CCL_COMM_H_
+
+#include "return_status.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void *infiniComm_t;
+
+// Initialization
+infiniResult_t infiniInit(int *argc, char ***argv);
+infiniResult_t infiniFinalize(void);
+
+// Rank/Size Query
+infiniResult_t infiniGetRank(int *rank);
+infiniResult_t infiniGetSize(int *size);
+
+// Communicator Management
+infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
+                                 const int *devlist);
+infiniResult_t infiniCommDestroy(infiniComm_t comm);
+
+// Error Handling
+const char *infiniGetErrorString(infiniResult_t result);
+
+// Version Information
+infiniResult_t infiniGetVersion(int *version);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // INFINI_CCL_COMM_H_
