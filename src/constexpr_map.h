@@ -29,4 +29,4 @@ private:
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_CONSTEXPR_MAP_H_

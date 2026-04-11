@@ -116,4 +116,4 @@ template <typename T> using ActiveDevices = typename ActiveDevicesImpl<T>::type;
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_DEVICE_H_

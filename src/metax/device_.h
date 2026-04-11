@@ -9,4 +9,4 @@ template <> struct DeviceEnabled<Device::Type::kMetax> : std::true_type {};
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_METAX_DEVICE__H_

@@ -49,4 +49,4 @@ template <typename Derived> struct DeviceRuntime : RuntimeBase<Derived> {
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_RUNTIME_H_

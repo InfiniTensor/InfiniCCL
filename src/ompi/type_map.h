@@ -28,4 +28,4 @@ inline MPI_Datatype DataTypeToOmpiType(DataType dtype) {
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_OMPI_TYPE_MAPPING_H_

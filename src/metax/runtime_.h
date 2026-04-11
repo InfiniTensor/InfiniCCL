@@ -1,5 +1,5 @@
-#ifndef INFINI_CCL_METAX_RUNTIME_H_
-#define INFINI_CCL_METAX_RUNTIME_H_
+#ifndef INFINI_CCL_METAX_RUNTIME__H_
+#define INFINI_CCL_METAX_RUNTIME__H_
 
 // clang-format off
 #include <mcr/mc_runtime.h>
@@ -34,4 +34,4 @@ static_assert(Runtime<Device::Type::kMetax>::Validate());
 
 } // namespace infini::ccl
 
-#endif
+#endif // INFINI_CCL_METAX_RUNTIME__H_
