@@ -100,6 +100,21 @@ struct Flatten<L1, L2, Rest...> {
   using type = typename Flatten<ConcatType<L1, L2>, Rest...>::type;
 };
 
+// Generic recursion to find the "best" element based on a `PriorityTrait`.
+template <template <auto> class PriorityTrait, auto head>
+constexpr auto ListGetMax(List<head>) {
+  return head;
+}
+
+template <template <auto> class PriorityTrait, auto head, auto next,
+          auto... tail>
+constexpr auto ListGetMax(List<head, next, tail...>) {
+  auto tail_max = ListGetMax<PriorityTrait>(List<next, tail...>{});
+  return (PriorityTrait<head>::value >= PriorityTrait<tail_max>::value)
+             ? head
+             : tail_max;
+}
+
 // -----------------------------------------------------------------------------
 // Invocability Detection (SFINAE)
 // -----------------------------------------------------------------------------
