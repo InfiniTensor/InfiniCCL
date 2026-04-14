@@ -149,11 +149,13 @@ target_include_directories(infiniccl PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 # --- Interface and Export ---
 # =========================================================
 
-target_include_directories(infiniccl PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:include>
+target_include_directories(infiniccl
+    PUBLIC 
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 
 string(REPLACE ";" ", " PRINT_DEVS "${DEVICE_LIST}")
