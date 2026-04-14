@@ -195,22 +195,22 @@ namespace detail {
 
 // Bridges the generic value dispatch layer to the `DataType`-specific type
 // dispatch layer.
-template <typename Functor> struct DataTypeAdapter {
+template <Device::Type kDev, typename Functor> struct DataTypeAdapter {
   Functor &func;
 
   template <auto dtype, typename... Args>
   auto operator()(ValueTag<dtype>, Args &&...args) const {
-    using T = TypeMapType<static_cast<DataType>(dtype)>;
+    using T = TypeMapType<kDev, static_cast<DataType>(dtype)>;
     return func(TypeTag<T>{}, std::forward<Args>(args)...);
   }
 };
 
-template <typename Functor> struct DataTypeMultiAdapter {
+template <Device::Type kDev, typename Functor> struct DataTypeMultiAdapter {
   Functor &func;
 
   template <auto... dtypes, typename... Args>
   auto operator()(List<dtypes...>, Args &&...args) const {
-    return func(TypeTag<TypeMapType<static_cast<DataType>(dtypes)>>{}...,
+    return func(TypeTag<TypeMapType<kDev, static_cast<DataType>(dtypes)>>{}...,
                 std::forward<Args>(args)...);
   }
 };
@@ -236,23 +236,26 @@ template <typename Functor> struct DeviceMultiAdapter {
 } // namespace detail
 
 // `DataType` Dispatch
-template <DataType... allowed_dtypes, typename Functor, typename... Args>
+template <Device::Type kDev, DataType... allowed_dtypes, typename Functor,
+          typename... Args>
 auto DispatchFunc(DataType dtype, Functor &&func,
                   std::string_view context_str = "", Args &&...args) {
-  detail::DataTypeAdapter<std::remove_reference_t<Functor>> adapter{func};
+  detail::DataTypeAdapter<kDev, std::remove_reference_t<Functor>> adapter{func};
   return DispatchFunc<DataType, allowed_dtypes...>(dtype, adapter, context_str,
                                                    std::forward<Args>(args)...);
 }
 
 // `DataType` Multi-Dispatch
-template <typename... Lists, typename Functor, typename... Args>
+template <Device::Type kDev, typename... Lists, typename Functor,
+          typename... Args>
 auto DispatchFunc(std::initializer_list<DataType> dtypes, Functor &&func,
                   std::string_view context_str = "", Args &&...args) {
   std::vector<int64_t> v;
   for (auto d : dtypes)
     v.push_back(static_cast<int64_t>(d));
 
-  detail::DataTypeMultiAdapter<std::remove_reference_t<Functor>> adapter{func};
+  detail::DataTypeMultiAdapter<kDev, std::remove_reference_t<Functor>> adapter{
+      func};
   return DispatchFunc<Lists...>(v, 0, adapter, context_str, List<>{},
                                 std::forward<Args>(args)...);
 }
@@ -289,7 +292,17 @@ auto DispatchFuncListAliasImpl(ValueType value, Functor &&func,
       std::forward<Args>(args)...);
 }
 
-// Interface for Generic `List` Aliases
+template <Device::Type kDev, typename ValueType, typename Functor,
+          typename... Args, auto... items>
+auto DispatchFuncListAliasImpl(ValueType value, Functor &&func,
+                               std::string_view context_str, List<items...>,
+                               Args &&...args) {
+  return DispatchFunc<kDev, static_cast<std::decay_t<ValueType>>(items)...>(
+      value, std::forward<Functor>(func), context_str,
+      std::forward<Args>(args)...);
+}
+
+// Interface for Generic `List` Aliases (for non-DataType dispatch, e.g. Device)
 template <typename ListType, typename ValueType, typename Functor,
           typename... Args,
           typename = std::enable_if_t<IsListType<ListType>::value>>
@@ -298,6 +311,17 @@ auto DispatchFunc(ValueType value, Functor &&func,
   return DispatchFuncListAliasImpl(value, std::forward<Functor>(func),
                                    context_str, ListType{},
                                    std::forward<Args>(args)...);
+}
+
+// Interface for Generic `List` Aliases (for DataType dispatch with device type)
+template <Device::Type kDev, typename ListType, typename ValueType,
+          typename Functor, typename... Args,
+          typename = std::enable_if_t<IsListType<ListType>::value>>
+auto DispatchFunc(ValueType value, Functor &&func,
+                  std::string_view context_str = "", Args &&...args) {
+  return DispatchFuncListAliasImpl<kDev>(value, std::forward<Functor>(func),
+                                         context_str, ListType{},
+                                         std::forward<Args>(args)...);
 }
 
 // Interface for Any `int64_t`-Convertible Types

@@ -117,7 +117,7 @@ template <typename T> using ActiveDevices = typename ActiveDevicesImpl<T>::type;
 /**
  * @brief Priority trait for device selection.
  */
-template <Device::Type D> struct DevicePriority {
+template <Device::Type device_type> struct DevicePriority {
   static constexpr int value = 0;
 };
 
@@ -132,12 +132,6 @@ template <> struct DevicePriority<Device::Type::kNvidia> {
 template <> struct DevicePriority<Device::Type::kMetax> {
   static constexpr int value = 5;
 };
-
-template <typename Key>
-constexpr Device::Type ListGetBestDevice(ActiveDevices<Key>) {
-  static_assert(ListSize<ActiveDevices<Key>>::value > 0, "No devices enabled.");
-  return ListGetMax<DevicePriority>(ActiveDevices<Key>{});
-}
 
 } // namespace infini::ccl
 
