@@ -10,21 +10,6 @@ namespace infini::ccl {
 // A generic container for a sequence of compile-time values.
 template <auto... items> struct List {};
 
-// `ListGet<index>(List<items...>{})` extracts the `i`th value from a `List`
-// tag.
-template <std::size_t index, auto head, auto... tail>
-constexpr auto ListGetImpl(List<head, tail...>) {
-  if constexpr (index == 0)
-    return head;
-  else
-    return ListGetImpl<index - 1>(List<tail...>{});
-}
-
-template <std::size_t index, auto... items>
-constexpr auto ListGet(List<items...> list) {
-  return ListGetImpl<index>(list);
-}
-
 template <typename... Ts> struct TypePack {};
 
 // -----------------------------------------------------------------------------
@@ -77,6 +62,30 @@ template <auto... items> struct IsListType<List<items...>> : std::true_type {};
 // List Operations
 // -----------------------------------------------------------------------------
 
+template <std::size_t index, auto head, auto... tail>
+constexpr auto ListGetImpl(List<head, tail...>) {
+  if constexpr (index == 0)
+    return head;
+  else
+    return ListGetImpl<index - 1>(List<tail...>{});
+}
+
+// `ListGet<index>(List<items...>{})` extracts the `i`th value from a `List`
+// tag.
+// Usage: `ListGet<1>(List<10, 20, 30>{})` is `20`.
+template <std::size_t index, auto... items>
+constexpr auto ListGet(List<items...> list) {
+  return ListGetImpl<index>(list);
+}
+
+// `ListSize` gets the size of a List.
+// Usage: `ListSize<List<1, 2, 3>>::value` is `3`.
+template <typename T> struct ListSize;
+
+template <auto... Args> struct ListSize<List<Args...>> {
+  static constexpr size_t value = sizeof...(Args);
+};
+
 // Concatenates two List types into a single `List`.
 // Example: `ConcatType<List<1, 2>, List<3, 4>>` is `List<1, 2, 3, 4>`.
 template <typename L1, typename L2> struct Concat;
@@ -89,6 +98,8 @@ struct Concat<List<item1...>, List<item2...>> {
 template <typename L1, typename L2>
 using ConcatType = typename Concat<L1, L2>::type;
 
+// Flatten multi-level `List` into a single `List`.
+// Example: `Flatten<List<1>, List<2, 3>, List<4>>::type` is `List<1, 2, 3, 4>`.
 template <typename... Lists> struct Flatten;
 
 template <auto... items> struct Flatten<List<items...>> {
@@ -109,10 +120,22 @@ constexpr auto ListGetMax(List<head>) {
 template <template <auto> class PriorityTrait, auto head, auto next,
           auto... tail>
 constexpr auto ListGetMax(List<head, next, tail...>) {
-  auto tail_max = ListGetMax<PriorityTrait>(List<next, tail...>{});
-  return (PriorityTrait<head>::value >= PriorityTrait<tail_max>::value)
-             ? head
-             : tail_max;
+  constexpr auto tail_max = ListGetMax<PriorityTrait>(List<next, tail...>{});
+  if constexpr (PriorityTrait<head>::value >= PriorityTrait<tail_max>::value) {
+    return head;
+  } else {
+    return tail_max;
+  }
+}
+
+/**
+ * @brief Generic selector to find the highest priority element in a List.
+ * @tparam PriorityTrait A template class that maps an enum value to a priority.
+ */
+template <template <auto> class PriorityTrait, auto... Args>
+constexpr auto ListGetBest(List<Args...>) {
+  static_assert(sizeof...(Args) > 0, "No active elements found");
+  return ListGetMax<PriorityTrait>(List<Args...>{});
 }
 
 // -----------------------------------------------------------------------------

@@ -15,10 +15,10 @@ template <typename Key, BackendType backend_type = BackendType::kCount,
 class Operation {
 public:
   template <typename... Args> static auto Call(Args &&...args) {
-    constexpr Device::Type kBestDev =
-        ListGetBestDevice<Key>(ActiveDevices<Key>{});
     constexpr BackendType kBestBack =
-        ListGetBestBackend<Key>(ActiveBackends<Key>{});
+        ListGetBest<BackendPriority>(ActiveBackends<Key>{});
+    constexpr Device::Type kBestDev =
+        ListGetBest<DevicePriority>(ActiveDevices<Key>{});
 
     return Call(kBestBack, kBestDev, std::forward<Args>(args)...);
   }
