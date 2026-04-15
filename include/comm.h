@@ -17,6 +17,7 @@ infiniResult_t infiniInit(int *argc, char ***argv);
 
 // Rank/Size Query
 infiniResult_t infiniGetRank(int *rank);
+infiniResult_t infiniGetSize(int *size);
 
 #ifdef __cplusplus
 }
