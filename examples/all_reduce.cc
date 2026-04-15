@@ -11,6 +11,9 @@
 // Public API
 #include "infiniccl.h"
 
+// Example-specific utilities
+#include "utils.h"
+
 // Internal Headers (Accessible via example-specific include paths, technically
 // not public APIs)
 #include "backend_manifest.h"
@@ -20,30 +23,15 @@
 
 using namespace infini::ccl;
 
-// Simple check macro for the C-API
-#define CHECK_INFINI(cmd)                                                      \
-  do {                                                                         \
-    infiniResult_t res = (cmd);                                                \
-    if (res != infiniSuccess) {                                                \
-      std::cerr << "InfiniCCL Error at " << __LINE__ << std::endl;             \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
-  } while (0)
-
 int main(int argc, char **argv) {
-  // 1. Initialize the Runtime
-  // Currently, this is the only fully implemented part!
-  // It bootstraps the underlying MPI/OMPI environment.
-  CHECK_INFINI(infiniInit(&argc, &argv));
-
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
 
+  CHECK_INFINI(infiniInit(&argc, &argv));
+
   int rank, size;
-  // Planned API to get global rank info
-  // For now, these would be wrappers around MPI_Comm_rank/size
-  infiniGetRank(&rank);
-  infiniGetSize(&size);
+  CHECK_INFINI(infiniGetRank(&rank));
+  CHECK_INFINI(infiniGetSize(&size));
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -69,9 +57,10 @@ int main(int argc, char **argv) {
   // 3. Setup Communicator (Planned)
   // infiniComm_t comm;
   int *devlist = new int[size];
+  int num_gpus_per_node = (size > 1) ? (size >> 1) : 1;
+
   for (int i = 0; i < size; i++) {
-    int local_rank = i % (size >> 1);
-    devlist[i] = local_rank;
+    devlist[i] = i % num_gpus_per_node;
   }
   // CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
@@ -107,12 +96,16 @@ int main(int argc, char **argv) {
 
   Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
                             Runtime<kDevType>::MemcpyDeviceToHost);
+
   // 6. Cleanup
-  // CHECK_INFINI(infiniCommDestroy(comm));
-  // CHECK_INFINI(infiniFinalize());
   Runtime<kDevType>::Free(d_send);
   Runtime<kDevType>::Free(d_recv);
+  delete[] devlist;
+
+  // CHECK_INFINI(infiniCommDestroy(comm));
+  CHECK_INFINI(infiniFinalize());
 
   std::cout << "InfiniCCL finalized." << std::endl;
+
   return 0;
 }
