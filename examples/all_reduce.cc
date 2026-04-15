@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   // Planned API to get global rank info
   // For now, these would be wrappers around MPI_Comm_rank/size
   infiniGetRank(&rank);
-  // infiniGetSize(&size);
+  infiniGetSize(&size);
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
   int local_rank = 0;
   if (local_rank_str != nullptr) {
     local_rank = std::atoi(local_rank_str);
-  }''
+  }
 
   std::cout << "[Rank " << rank << "] Host: " << hostname
             << " | GPU: " << Device::StringFromType(kDevType) << " "
@@ -68,6 +68,11 @@ int main(int argc, char **argv) {
 
   // 3. Setup Communicator (Planned)
   // infiniComm_t comm;
+  int *devlist = new int[size];
+  for (int i = 0; i < size; i++) {
+    int local_rank = i % (size >> 1);
+    devlist[i] = local_rank;
+  }
   // CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
   // 4. Prepare Data
