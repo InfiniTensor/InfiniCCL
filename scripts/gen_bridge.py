@@ -85,24 +85,44 @@ def generate(project_root, output_dir, devices, backends):
         "#define INFINI_CCL_BACKEND_MANIFEST_H_"
     ]
 
+    found_devices = []
+
     # Process Active Devices
     for dev in devices:
         if not dev: continue
+        
+        device_included = False
         manifest_lines.append(f"\n// --- DEVICE: {dev.upper()} ---")
+
         for trait in DEVICE_TRAIT_HEADERS:
             rel_path = f"{dev}/{trait}"
             if os.path.exists(os.path.join(src_dir, rel_path)):
                 manifest_lines.append(f"#include \"{rel_path}\"")
+                device_included = True
+
+        if device_included:
+            found_devices.append(f"Device::Type::k{dev.capitalize()}")
 
     # Process Active Backends
     for bb in backends:
         if not bb or bb not in BACKEND_PATH_MAP: continue
+
         manifest_lines.append(f"\n// --- BACKEND: {bb.upper()} ---")
         impl_subpath = BACKEND_PATH_MAP[bb]
+
         for op in ops_in_base:
             rel_path = f"{impl_subpath}/{op}.h"
             if os.path.exists(os.path.join(src_dir, rel_path)):
                 manifest_lines.append(f"#include \"{rel_path}\"")
+
+    # Add the Type Alias `EnabledDevices`
+    manifest_lines.append("\nnamespace infini::ccl {\n")
+    if found_devices:
+        dev_list_str = ", ".join(found_devices)
+        manifest_lines.append(f"using EnabledDevices = List<{dev_list_str}>;")
+    else:
+        manifest_lines.append("using EnabledDevices = List<>;")
+    manifest_lines.append("\n} // namespace infini::ccl")
 
     manifest_lines.append("\n#endif // INFINI_CCL_BACKEND_MANIFEST_H_\n")
     
