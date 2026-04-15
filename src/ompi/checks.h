@@ -14,7 +14,7 @@ namespace infini::ccl {
 namespace detail {
 
 inline ReturnStatus CheckMpiImpl(int mpi_result, const char *file, int line) {
-  if (mpi_result != 0) {
+  if (mpi_result != MPI_SUCCESS) {
     std::cerr << "backend(ompi) MPI error code: " << mpi_result << " at line "
               << line << " in " << file << std::endl;
     std::abort();
