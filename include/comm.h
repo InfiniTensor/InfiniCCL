@@ -20,6 +20,11 @@ infiniResult_t infiniFinalize(void);
 infiniResult_t infiniGetRank(int *rank);
 infiniResult_t infiniGetSize(int *size);
 
+// Communicator Management
+infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
+                                 const int *devlist);
+infiniResult_t infiniCommDestroy(infiniComm_t comm);
+
 #ifdef __cplusplus
 }
 #endif

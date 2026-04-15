@@ -16,19 +16,21 @@ public:
     if (!initialized) {
       int provided;
       // Use `MPI_Init_thread` to support multi-threaded GPU streams.
-      INFINI_CHECK_MPI(
-          MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided));
+      INFINI_CHECK_MPI(MPI_Init_thread(argc, argv, required_level_, &provided));
 
-      if (provided < MPI_THREAD_MULTIPLE) {
+      if (provided < required_level_) {
         // TODO(lzm): change to logging with log levels.
         std::cerr
             << "[InfiniCCL Warning] MPI implementation does not fully support "
-            << "MPI_THREAD_MULTIPLE (provided: " << provided << "). "
+            << "`MPI_THREAD_SERIALIZED` (provided: " << provided << "). "
             << "Concurrent collective operations may be unsafe." << std::endl;
       }
     }
     return ReturnStatus::kSuccess;
   }
+
+private:
+  constexpr static auto required_level_ = MPI_THREAD_FUNNELED;
 };
 
 template <> struct BackendEnabled<Init, BackendType::kOmpi> : std::true_type {};

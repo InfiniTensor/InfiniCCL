@@ -28,6 +28,14 @@ public:
 
   auto inter_comm() const { return inter_comm_.get(); }
 
+  void set_intra_comm(std::unique_ptr<BackendCommInstance> inst) {
+    intra_comm_ = std::move(inst);
+  }
+
+  void set_inter_comm(std::unique_ptr<BackendCommInstance> inst) {
+    inter_comm_ = std::move(inst);
+  }
+
   BackendType intra_comm_backend() const {
     return intra_comm_ ? intra_comm_->type : BackendType::kCount;
   }
@@ -41,6 +49,8 @@ public:
   int size() const { return global_size_; }
 
   int device_id() const { return device_id_; }
+
+  void set_device_id(int id) { device_id_ = id; }
 
   Device::Type device_type() const { return device_type_; }
 

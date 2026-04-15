@@ -6,7 +6,8 @@
   do {                                                                         \
     infiniResult_t res = (cmd);                                                \
     if (res != infiniSuccess) {                                                \
-      std::cerr << "InfiniCCL Error at " << __LINE__ << std::endl;             \
+      std::cerr << "[InfiniCCL Error] received error code " << res             \
+                << " at line " << __LINE__ << std::endl;                       \
       exit(EXIT_FAILURE);                                                      \
     }                                                                          \
   } while (0)
