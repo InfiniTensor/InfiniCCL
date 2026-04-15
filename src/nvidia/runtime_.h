@@ -32,6 +32,8 @@ struct Runtime<Device::Type::kNvidia>
   static constexpr auto MemcpyDeviceToHost = cudaMemcpyDeviceToHost;
 
   static constexpr auto Memset = cudaMemset;
+
+  static constexpr auto SetDevice = cudaSetDevice;
 };
 
 static_assert(Runtime<Device::Type::kNvidia>::Validate());

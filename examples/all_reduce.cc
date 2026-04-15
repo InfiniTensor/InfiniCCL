@@ -36,7 +36,8 @@ int main(int argc, char **argv) {
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
 
-  // Map local rank to GPU device
+  // Map local rank to GPU device.
+  // Note: this is just for info printing. In practice, this part is not needed.
   const char *local_rank_str = std::getenv("OMPI_COMM_WORLD_LOCAL_RANK");
   int local_rank = 0;
   if (local_rank_str != nullptr) {
@@ -47,24 +48,11 @@ int main(int argc, char **argv) {
             << " | GPU: " << Device::StringFromType(kDevType) << " "
             << " | Device " << local_rank << std::endl;
 
-  std::cout << "Rank initialized successfully." << std::endl;
+  // Setup Communicator
+  infiniComm_t comm;
+  CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
-  // 2. Setup Device (NVIDIA/MetaX)
-  // In a real scenario, we'd use local_rank to pick a GPU
-  // int local_rank = rank % gpus_per_node;
-  // Runtime::setDevice(local_rank);
-
-  // 3. Setup Communicator (Planned)
-  // infiniComm_t comm;
-  int *devlist = new int[size];
-  int num_gpus_per_node = (size > 1) ? (size >> 1) : 1;
-
-  for (int i = 0; i < size; i++) {
-    devlist[i] = i % num_gpus_per_node;
-  }
-  // CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
-
-  // 4. Prepare Data
+  // Prepare Data
   const int kNumElements = 1024;
   std::vector<float> h_send(kNumElements, 1.0f);
   std::vector<float> h_recv(kNumElements, 0.0f);
@@ -97,12 +85,11 @@ int main(int argc, char **argv) {
   Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
                             Runtime<kDevType>::MemcpyDeviceToHost);
 
-  // 6. Cleanup
+  // Cleanup
   Runtime<kDevType>::Free(d_send);
   Runtime<kDevType>::Free(d_recv);
-  delete[] devlist;
 
-  // CHECK_INFINI(infiniCommDestroy(comm));
+  CHECK_INFINI(infiniCommDestroy(comm));
   CHECK_INFINI(infiniFinalize());
 
   std::cout << "InfiniCCL finalized." << std::endl;
