@@ -5,10 +5,19 @@
  */
 
 #include <iostream>
-#include <numeric>
 #include <vector>
 
+// Public API
 #include "infiniccl.h"
+
+// Internal Headers (Accessible via example-specific include paths, technically
+// not public APIs)
+#include "backend_manifest.h"
+#include "device.h"
+#include "runtime.h"
+#include "traits.h"
+
+using namespace infini::ccl;
 
 // Simple check macro for the C-API
 #define CHECK_INFINI(cmd)                                                      \
@@ -25,6 +34,9 @@ int main(int argc, char **argv) {
   // Currently, this is the only fully implemented part!
   // It bootstraps the underlying MPI/OMPI environment.
   CHECK_INFINI(infiniInit(&argc, &argv));
+
+  constexpr Device::Type kDevType =
+      ListGetBest<DevicePriority>(EnabledDevices{});
 
   int rank, size;
   // Planned API to get global rank info
@@ -44,34 +56,42 @@ int main(int argc, char **argv) {
   // CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
   // 4. Prepare Data
-  const int count = 1024;
-  std::vector<float> h_send(count, 1.0f);
-  std::vector<float> h_recv(count, 0.0f);
+  const int kNumElements = 1024;
+  std::vector<float> h_send(kNumElements, 1.0f);
+  std::vector<float> h_recv(kNumElements, 0.0f);
 
-  /* Note: In a final version, we would allocate GPU memory here:
-     float *d_send, *d_recv;
-     Runtime::malloc(&d_send, count * sizeof(float));
-     Runtime::memcpy(d_send, h_send.data(), ...);
-  */
+  float *d_send, *d_recv;
+  Runtime<kDevType>::Malloc(&d_send, kNumElements * sizeof(*d_send));
+  Runtime<kDevType>::Malloc(&d_recv, kNumElements * sizeof(*d_recv));
+  Runtime<kDevType>::Memcpy(d_send, h_send.data(),
+                            kNumElements * sizeof(*d_send),
+                            Runtime<kDevType>::MemcpyHostToDevice);
+  Runtime<kDevType>::Memcpy(d_recv, h_recv.data(),
+                            kNumElements * sizeof(*d_recv),
+                            Runtime<kDevType>::MemcpyHostToDevice);
 
   // 5. Perform AllReduce (Conceptual API)
   std::cout << "Starting AllReduce operation (Placeholder)..." << std::endl;
 
   /*
   CHECK_INFINI(infiniAllReduce(
-      h_send.data(),  // Input (eventually d_send)
-      h_recv.data(),  // Output (eventually d_recv)
-      count,
+      d_send,
+      d_recv,
+      kNumElements,
       infiniFloat32,
       infiniSum,
       comm,
-      nullptr         // Stream
+      nullptr
   ));
   */
 
+  Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
+                            Runtime<kDevType>::MemcpyDeviceToHost);
   // 6. Cleanup
   // CHECK_INFINI(infiniCommDestroy(comm));
-  //   CHECK_INFINI(infiniFinalize());
+  // CHECK_INFINI(infiniFinalize());
+  Runtime<kDevType>::Free(d_send);
+  Runtime<kDevType>::Free(d_recv);
 
   std::cout << "InfiniCCL finalized." << std::endl;
   return 0;
