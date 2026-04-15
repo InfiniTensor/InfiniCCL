@@ -15,6 +15,9 @@ typedef void *infiniComm_t;
 // Initialization
 infiniResult_t infiniInit(int *argc, char ***argv);
 
+// Rank/Size Query
+infiniResult_t infiniGetRank(int *rank);
+
 #ifdef __cplusplus
 }
 #endif

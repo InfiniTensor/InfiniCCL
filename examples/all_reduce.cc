@@ -5,6 +5,7 @@
  */
 
 #include <iostream>
+#include <unistd.h>
 #include <vector>
 
 // Public API
@@ -41,8 +42,22 @@ int main(int argc, char **argv) {
   int rank, size;
   // Planned API to get global rank info
   // For now, these would be wrappers around MPI_Comm_rank/size
-  // infiniGetRank(&rank);
+  infiniGetRank(&rank);
   // infiniGetSize(&size);
+
+  char hostname[256];
+  gethostname(hostname, sizeof(hostname));
+
+  // Map local rank to GPU device
+  const char *local_rank_str = std::getenv("OMPI_COMM_WORLD_LOCAL_RANK");
+  int local_rank = 0;
+  if (local_rank_str != nullptr) {
+    local_rank = std::atoi(local_rank_str);
+  }''
+
+  std::cout << "[Rank " << rank << "] Host: " << hostname
+            << " | GPU: " << Device::StringFromType(kDevType) << " "
+            << " | Device " << local_rank << std::endl;
 
   std::cout << "Rank initialized successfully." << std::endl;
 
