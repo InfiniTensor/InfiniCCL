@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_BASE_COMM_INIT_ALL_H_
 #define INFINI_CCL_BASE_COMM_INIT_ALL_H_
 
+#include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
 
@@ -17,9 +18,7 @@ public:
     Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
     if (comm) {
       // TODO(lzm): change to logging with log levels.
-      std::cerr << "[InfiniCCL Error] Communicator handle "
-                   "must be null for `CommInitAll`."
-                << std::endl;
+      Logger::PrintMsg("Invalid communicator handle for CommInitAll.");
       return ReturnStatus::kInvalidArgument;
     }
 

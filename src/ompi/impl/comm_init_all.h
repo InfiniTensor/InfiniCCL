@@ -3,6 +3,7 @@
 
 #include "base/comm_init_all.h"
 #include "communicator.h"
+#include "logging.h"
 #include "ompi/checks.h"
 #include "ompi/comm_instance.h"
 
@@ -18,9 +19,8 @@ public:
 
     if (!comm) {
       // TODO(lzm): change to logging with log levels.
-      std::cerr << "[InfiniCCL Error] Failed to initialize OpenMPI "
-                   "communicator: invalid communicator pointer."
-                << std::endl;
+      Logger::PrintMsg("Failed to initialize OpenMPI communicator: invalid "
+                       "communicator pointer.");
       return ReturnStatus::kInternalError;
     }
 
