@@ -19,7 +19,7 @@ public:
       INFINI_CHECK_MPI(MPI_Init_thread(argc, argv, required_level_, &provided));
 
       if (provided < required_level_) {
-        // TODO(lzm): change to logging with log levels.
+        // TODO(lzm): change to use `glog`.
         std::cerr
             << "[InfiniCCL Warning] MPI implementation does not fully support "
             << "`MPI_THREAD_SERIALIZED` (provided: " << provided << "). "

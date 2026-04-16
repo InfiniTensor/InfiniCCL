@@ -17,7 +17,7 @@ template <typename Key, typename Value, std::size_t size> struct ConstexprMap {
       if (pr.first == key)
         return pr.second;
     }
-    // TODO(lzm): change to logging.
+    // TODO(lzm): change to use `glog`.
     assert("the key is not found in the `ConstexprMap`");
     // Unreachable, provided to satisfy the compiler's requirement.
     std::abort();

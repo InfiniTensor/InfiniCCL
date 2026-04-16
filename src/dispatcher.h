@@ -42,7 +42,7 @@ auto DispatchFuncImpl(ValueType value, Functor &&func,
                          : false));
 
     if (!handled) {
-      // TODO(lzm): change to logging.
+      // TODO(lzm): change to use `glog`.
       std::cerr << "dispatch error (void): value " << static_cast<int>(value)
                 << " not supported in the context: " << context_str << "\n";
       std::abort();
@@ -66,7 +66,7 @@ auto DispatchFuncImpl(ValueType value, Functor &&func,
     if (handled) {
       return *result;
     }
-    // TODO(lzm): change to logging.
+    // TODO(lzm): change to use `glog`.
     std::cerr << "dispatch error (non-void): value " << static_cast<int>(value)
               << " not supported in the context: " << context_str << "\n";
     std::abort();
@@ -96,7 +96,7 @@ template <typename ValueType, typename Functor, typename... Args>
 struct DispatchFuncUnwrap<ValueType, Functor, List<>, std::tuple<Args...>> {
   static auto call(ValueType value, Functor &&, std::string_view context_str,
                    Args &&...) {
-    // TODO(lzm): change to logging.
+    // TODO(lzm): change to use `glog`.
     std::cerr << "dispatch error: no allowed values registered for value "
               << static_cast<int64_t>(value)
               << " in the context: " << context_str << "\n";

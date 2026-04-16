@@ -1,13 +1,13 @@
 #ifndef INFINI_CCL_OMPI_CHECKS_H_
 #define INFINI_CCL_OMPI_CHECKS_H_
 
-#define INFINI_CHECK_MPI(result)                                               \
-  ::infini::ccl::detail::CheckMpiImpl((result), __FILE__, __LINE__)
-
 #include <iostream>
 #include <mpi.h>
 
 #include "return_status_impl.h"
+
+#define INFINI_CHECK_MPI(result)                                               \
+  ::infini::ccl::detail::CheckMpiImpl((result), __FILE__, __LINE__)
 
 namespace infini::ccl {
 
