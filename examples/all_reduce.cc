@@ -53,37 +53,57 @@ int main(int argc, char **argv) {
   CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
   // Prepare Data
-  const int kNumElements = 1024;
-  std::vector<float> h_send(kNumElements, 1.0f);
+  const int kNumElements = 1 << 20;
+  std::vector<float> h_send(kNumElements);
   std::vector<float> h_recv(kNumElements, 0.0f);
 
+  // Initialize: each rank provides its (rank + 1) as data
+  for (size_t i = 0; i < kNumElements; i++) {
+    h_send[i] = static_cast<float>(rank + 1);
+  }
+
   float *d_send, *d_recv;
-  Runtime<kDevType>::Malloc(&d_send, kNumElements * sizeof(*d_send));
-  Runtime<kDevType>::Malloc(&d_recv, kNumElements * sizeof(*d_recv));
-  Runtime<kDevType>::Memcpy(d_send, h_send.data(),
-                            kNumElements * sizeof(*d_send),
+  size_t total_bytes = kNumElements * sizeof(*d_send);
+  Runtime<kDevType>::Malloc(&d_send, total_bytes);
+  Runtime<kDevType>::Malloc(&d_recv, total_bytes);
+  Runtime<kDevType>::Memcpy(d_send, h_send.data(), total_bytes,
                             Runtime<kDevType>::MemcpyHostToDevice);
-  Runtime<kDevType>::Memcpy(d_recv, h_recv.data(),
-                            kNumElements * sizeof(*d_recv),
+  Runtime<kDevType>::Memcpy(d_recv, h_recv.data(), total_bytes,
                             Runtime<kDevType>::MemcpyHostToDevice);
 
-  // 5. Perform AllReduce (Conceptual API)
-  std::cout << "Starting AllReduce operation (Placeholder)..." << std::endl;
+  if (rank == 0) {
+    std::cout << "\n=== Performing AllReduce on GPU Memory ===" << std::endl;
+    std::cout << "Data size: " << kNumElements << " floats ("
+              << total_bytes / 1024 / 1024 << " MB)" << std::endl;
+    std::cout << "Operation: Sum" << std::endl;
+  }
 
-  /*
-  CHECK_INFINI(infiniAllReduce(
-      d_send,
-      d_recv,
-      kNumElements,
-      infiniFloat32,
-      infiniSum,
-      comm,
-      nullptr
-  ));
-  */
+  Runtime<kDevType>::StreamSynchronize(nullptr);
+
+  Timer timer;
+
+  CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
+                               infiniSum, comm, nullptr));
+
+  Runtime<kDevType>::StreamSynchronize(nullptr);
+  double elapsed = timer.elapsed_ms();
 
   Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
                             Runtime<kDevType>::MemcpyDeviceToHost);
+
+  // Result Validation
+  float expected = 0.0f;
+  for (int r = 0; r < size; r++) {
+    expected += static_cast<float>(r + 1);
+  }
+
+  Validator::ValidateResult(h_recv.data(), kNumElements, expected, rank);
+
+  // Metrics Reporting (Only from rank 0 for cleaner output)
+  if (rank == 0) {
+    Metrics metrics{elapsed, total_bytes, size};
+    metrics.Print();
+  }
 
   // Cleanup
   Runtime<kDevType>::Free(d_send);
@@ -92,7 +112,9 @@ int main(int argc, char **argv) {
   CHECK_INFINI(infiniCommDestroy(comm));
   CHECK_INFINI(infiniFinalize());
 
-  std::cout << "InfiniCCL finalized." << std::endl;
+  if (rank == 0) {
+    std::cout << "InfiniCCL finalized." << std::endl;
+  }
 
   return 0;
 }

@@ -133,16 +133,42 @@ def generate(project_root, output_dir, devices, backends):
     bridge_lines = [
         AUTOGEN_HEADER,
         '#include "backend_manifest.h"',
-        '#include "operation.h"',
         '#include "comm.h"',
+        '#include "comm_impl.h"',
+        '#include "data_type_impl.h"',
+        '#include "operation.h"',
         '\nnamespace infini::ccl {',
         '\nextern "C" {'
     ]
     
     for s in sigs:
+        # We need to transform the raw args to add casts for specific types
+        args_with_casts = []
+        # Split params to analyze types (simplified approach)
+        params_list = s['params'].split(',')
+        
+        for p in params_list:
+            p = p.strip()
+            if not p or p == "void": continue
+            
+            # Get the type and the name
+            parts = p.split()
+            arg_type = parts[0]
+            arg_name = parts[-1].replace('*', '')
+
+            # Apply static_cast for specialized Infini types
+            if arg_type == "infiniDataType_t":
+                args_with_casts.append(f"static_cast<DataType>({arg_name})")
+            elif arg_type == "infiniRedOp_t":
+                args_with_casts.append(f"static_cast<ReductionOpType>({arg_name})")
+            else:
+                args_with_casts.append(arg_name)
+
+        casted_args_str = ", ".join(args_with_casts)
+
         bridge_lines.append(
             f"\n{s['ret']} {s['name']}({s['params']}) {{\n"
-            f"    return static_cast<{s['ret']}>(Operation<{s['key']}>::Call({s['args']}));\n"
+            f"    return static_cast<{s['ret']}>(Operation<{s['key']}>::Call({casted_args_str}));\n"
             f"}}"
         )
     

@@ -34,6 +34,10 @@ struct Runtime<Device::Type::kNvidia>
   static constexpr auto Memset = cudaMemset;
 
   static constexpr auto SetDevice = cudaSetDevice;
+
+  static constexpr auto DeviceSynchronize = cudaDeviceSynchronize;
+
+  static constexpr auto StreamSynchronize = cudaStreamSynchronize;
 };
 
 static_assert(Runtime<Device::Type::kNvidia>::Validate());
