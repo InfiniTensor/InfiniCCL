@@ -23,7 +23,8 @@
 
 using namespace infini::ccl;
 
-int main(int argc, char **argv) {
+void RunAllReduceExample(int argc, char **argv, int warmup_iter,
+                         int profile_iter, const size_t kNumElements) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
 
@@ -53,7 +54,6 @@ int main(int argc, char **argv) {
   CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
   // Prepare Data
-  const int kNumElements = 1 << 20;
   std::vector<float> h_send(kNumElements);
   std::vector<float> h_recv(kNumElements, 0.0f);
 
@@ -76,20 +76,34 @@ int main(int argc, char **argv) {
     std::cout << "Data size: " << kNumElements << " floats ("
               << total_bytes / 1024 / 1024 << " MB)" << std::endl;
     std::cout << "Operation: Sum" << std::endl;
+    std::cout << "Warm-up iterations: " << warmup_iter << std::endl;
+    std::cout << "Profile iterations: " << profile_iter << std::endl;
   }
 
   Runtime<kDevType>::StreamSynchronize(nullptr);
 
-  Timer timer;
-
+  // warm-up and D2H transfer the answer
   CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
                                infiniSum, comm, nullptr));
-
-  Runtime<kDevType>::StreamSynchronize(nullptr);
-  double elapsed = timer.elapsed_ms();
-
   Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
                             Runtime<kDevType>::MemcpyDeviceToHost);
+
+  for (int i = 1; i < warmup_iter; ++i) {
+    CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
+                                 infiniSum, comm, nullptr));
+  }
+  Runtime<kDevType>::StreamSynchronize(nullptr);
+
+  // Profiling
+  Timer timer;
+
+  for (int i = 0; i < profile_iter; i++) {
+    CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
+                                 infiniSum, comm, nullptr));
+  }
+
+  Runtime<kDevType>::StreamSynchronize(nullptr);
+  double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
 
   // Result Validation
   float expected = 0.0f;
@@ -115,6 +129,14 @@ int main(int argc, char **argv) {
   if (rank == 0) {
     std::cout << "InfiniCCL finalized." << std::endl;
   }
+}
 
-  return 0;
+int main(int argc, char **argv) {
+  int warmup_iters = 2;
+  int profile_iters = 20;
+  size_t num_elements = 1 << 20;
+
+  RunAllReduceExample(argc, argv, warmup_iters, profile_iters, num_elements);
+
+  return EXIT_SUCCESS;
 }
