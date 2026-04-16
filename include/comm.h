@@ -25,6 +25,22 @@ infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
                                  const int *devlist);
 infiniResult_t infiniCommDestroy(infiniComm_t comm);
 
+// --- Reduction Operations ---
+typedef enum {
+  infiniSum = 0,
+  infiniProd = 1,
+  infiniMax = 2,
+  infiniMin = 3,
+  infiniAvg = 4,
+  infiniNumOps
+} infiniRedOp_t;
+
+// Collective Communication Functions
+infiniResult_t infiniAllReduce(const void *sendbuff, void *recvbuff,
+                               size_t count, infiniDataType_t datatype,
+                               infiniRedOp_t op, infiniComm_t comm,
+                               void *stream);
+
 #ifdef __cplusplus
 }
 #endif
