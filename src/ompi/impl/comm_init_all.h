@@ -18,9 +18,9 @@ public:
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
 
     if (!comm) {
-      // TODO(lzm): change to logging with log levels.
-      Logger::PrintMsg("Failed to initialize OpenMPI communicator: invalid "
-                       "communicator pointer.");
+      // TODO(lzm): change to use `glog`.
+      LOG("Failed to initialize OpenMPI communicator: invalid "
+          "communicator pointer.");
       return ReturnStatus::kInternalError;
     }
 

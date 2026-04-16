@@ -4,6 +4,19 @@
 #include "constexpr_map.h"
 #include <iostream>
 
+// Internal helper macros to count arguments
+#define GET_LOG_MACRO(_1, _2, NAME, ...) NAME
+
+#define LOG_1(msg)                                                             \
+  ::infini::ccl::Logger::PrintMsg(                                             \
+      (msg), ::infini::ccl::Logger::LogLevel::kError, __FILE__, __LINE__)
+
+#define LOG_2(msg, level)                                                      \
+  ::infini::ccl::Logger::PrintMsg((msg), (level), __FILE__, __LINE__)
+
+// Temporary logging macro. To be replaced by `glog` in the future.
+#define LOG(...) GET_LOG_MACRO(__VA_ARGS__, LOG_2, LOG_1)(__VA_ARGS__)
+
 namespace infini::ccl {
 
 class Logger {

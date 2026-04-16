@@ -17,8 +17,8 @@ public:
   static ReturnStatus Execute(void **comm_handle, Args &&...args) {
     Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
     if (comm) {
-      // TODO(lzm): change to logging with log levels.
-      Logger::PrintMsg("Invalid communicator handle for CommInitAll.");
+      // TODO(lzm): change to use `glog`.
+      LOG("Invalid communicator handle for CommInitAll.");
       return ReturnStatus::kInvalidArgument;
     }
 
