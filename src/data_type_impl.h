@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <cstdint>
 #include <string_view>
 
 #include "constexpr_map.h"
