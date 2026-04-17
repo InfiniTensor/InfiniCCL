@@ -17,7 +17,9 @@ struct Runtime<Device::Type::kMetax>
 
   static constexpr Device::Type kDeviceType = Device::Type::kMetax;
 
-  static constexpr auto Malloc = mcMalloc;
+  static constexpr auto Malloc = [](auto &&...args) {
+    return mcMalloc(std::forward<decltype(args)>(args)...);
+  };;
 
   static constexpr auto Memcpy = mcMemcpy;
 
@@ -28,6 +30,12 @@ struct Runtime<Device::Type::kMetax>
   static constexpr auto MemcpyDeviceToHost = mcMemcpyDeviceToHost;
 
   static constexpr auto Memset = mcMemset;
+
+  static constexpr auto SetDevice = mcSetDevice;
+
+  static constexpr auto DeviceSynchronize = mcDeviceSynchronize;
+
+  static constexpr auto StreamSynchronize = mcStreamSynchronize;
 };
 
 static_assert(Runtime<Device::Type::kMetax>::Validate());
