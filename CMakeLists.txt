@@ -143,5 +143,8 @@ install(TARGETS infiniccl DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/infiniccl)
 
 install(PROGRAMS scripts/icclrun.py DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME icclrun)
-install(FILES scripts/icclrun_logic.py DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(DIRECTORY scripts/backends DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Install the supporting logic to a private folder
+set(ICCL_PRIVATE_LIB ${CMAKE_INSTALL_LIBDIR}/infiniccl)
+install(FILES scripts/icclrun_logic.py DESTINATION ${ICCL_PRIVATE_LIB})
+install(DIRECTORY scripts/backends DESTINATION ${ICCL_PRIVATE_LIB})
