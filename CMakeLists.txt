@@ -27,6 +27,7 @@ endif()
 # --- MISC. BUILD OPTIONS ---
 # =========================================================
 option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
+option(BUILD_EXAMPLES "Build internal examples" ON)
 
 if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
@@ -112,7 +113,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(src)
-add_subdirectory(examples)
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 
 # =========================================================
 # --- Installation ---
