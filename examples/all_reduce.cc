@@ -50,7 +50,7 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
             << " | Device " << local_rank << std::endl;
 
   // Setup Communicator
-  infiniComm_t comm;
+  infiniComm_t comm = nullptr;
   CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
   // Prepare Data

@@ -1,23 +1,34 @@
 import os
 
 class OmpiBackend:
-    def get_launch_command(self, config, executable, user_args):
+    def get_launch_command(self, config, executable, user_args, launcher_obj):
         common_dir = config['common_dir']
-        hostfile_path = os.path.join(common_dir, "build", "hosts.txt")
-        launcher_script = os.path.join(common_dir, "scripts/run_wrapper.sh")
-        
+        build_dir = os.path.join(common_dir, "build")
+        os.makedirs(build_dir, exist_ok=True)
+
+        # Hostfile generation
+        hostfile_path = os.path.join(build_dir, "hosts.txt")
         total_slots = 0
         with open(hostfile_path, "w") as f:
             for node in config['nodes']:
                 slots = node.get('slots', 8)
                 total_slots += slots
                 f.write(f"{node['ip']} slots={slots}\n")
+
+        # Launcher Logic: Use YAML override OR Auto-generate
+        launcher_script = config.get('launcher_script')
+        if not launcher_script:
+            launcher_script = launcher_obj.ensure_launcher_exists()
         
         cmd = [
-            "mpirun", "--allow-run-as-root",
+            "mpirun",
             "--hostfile", hostfile_path,
             "-np", str(total_slots)
         ]
+
+        # Safety: OpenMPI refuses to run as root unless explicitly told
+        if os.getuid() == 0:
+            cmd.append("--allow-run-as-root")
 
         if 'backend_args' in config and config['backend_args']:
             for flag, values in config['backend_args'].items():

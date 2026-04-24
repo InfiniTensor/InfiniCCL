@@ -21,15 +21,19 @@ class ICCLLauncher:
                 break
         
         if not self.config:
-            print("Error: cluster.yaml not found. Please create one in examples/")
+            print("Error: cluster.yaml not found.")
             sys.exit(1)
+
+        # Detect InfiniCCL Root
+        self.infiniccl_root = os.environ.get('INFINICCL_ROOT')
+        if not self.infiniccl_root:
+            script_dir = os.path.dirname(os.path.realpath(__file__))
+            self.infiniccl_root = os.path.abspath(os.path.join(script_dir, "../../.."))
 
     def _is_local(self, ip):
         """Check if the IP address belongs to the local machine."""
         try:
-            # Get all local IP addresses
             local_ips = socket.gethostbyname_ex(socket.gethostname())[2]
-            # Also include explicit localhost loopback
             local_ips += ["127.0.0.1", "localhost"]
             return ip in local_ips
         except:
@@ -37,35 +41,84 @@ class ICCLLauncher:
 
     def orchestrate_build(self):
         common_dir = self.config['common_dir']
-        built_archs = set()
+        infiniccl_root = self.infiniccl_root
+        is_internal = os.path.abspath(common_dir) == os.path.abspath(infiniccl_root)
+        base_install = self.config.get('install_dir', common_dir)
+
         for node in self.config['nodes']:
             arch = node['type']
-            if arch not in built_archs:
-                print(f"[*] Orchestrating {arch} build on {node['ip']}...")
-                build_dir = os.path.join(common_dir, "build", arch)
-                flags = node.get('cmake_flags', "")
-                
-                remote_cmd = (
-                    f"mkdir -p {build_dir} && cd {build_dir} && "
-                    f"cmake {flags} ../.. && make -j$(nproc)"
+            install_path = os.path.join(base_install, "install", arch)
+            user_cmake_flags = node.get('cmake_flags', '')
+            
+            # Build the library using YAML flags
+            lib_cmd = (
+                f"mkdir -p {infiniccl_root}/build/{arch} && cd {infiniccl_root}/build/{arch} && "
+                f"cmake -DCMAKE_INSTALL_PREFIX={install_path} {user_cmake_flags} {infiniccl_root} && "
+                f"make -j$(nproc) install"
+            )
+
+            if is_internal:
+                full_cmd = lib_cmd
+            else:
+                app_cmd = (
+                    f"export INFINICCL_INSTALL={install_path} && "
+                    f"mkdir -p {common_dir}/build/{arch} && cd {common_dir}/build/{arch} && "
+                    f"cmake {user_cmake_flags} {common_dir} && "
+                    f"make -j$(nproc)"
                 )
+                full_cmd = f"{lib_cmd} && {app_cmd}"
 
-                if self._is_local(node['ip']):
-                    print(f"    [Local] Detected local node. Running directly...")
-                    # Run via shell=True to handle the cd and && logic
-                    subprocess.run(remote_cmd, shell=True, check=True)
-                else:
-                    print(f"    [Remote] Dispatching via SSH...")
-                    ssh_wrapper = f"bash -l -c '{remote_cmd}'"
-                    subprocess.run(["ssh", "-o", "BatchMode=yes", f"root@{node['ip']}", ssh_wrapper], check=True)
-                
-                built_archs.add(arch)
+            # Execute via SSH or Locally
+            user = node.get('user', self.config.get('common_user', 'root'))
+            exec_cmd = f"bash -l -c '{full_cmd}'"
+            print(f"[*] Orchestrating {arch} on {node['ip']}...")
+            if self._is_local(node['ip']):
+                subprocess.run(exec_cmd, shell=True, check=True)
+            else:
+                subprocess.run(["ssh", f"{user}@{node['ip']}", exec_cmd], check=True)
 
-    def launch(self, backend_name, executable, args):
+        return self.ensure_launcher_exists()
+
+    def ensure_launcher_exists(self):
+        # This must be an absolute path
+        wrapper_path = os.path.abspath(os.path.join(self.config['common_dir'], "build", "run_wrapper.sh"))
+        os.makedirs(os.path.dirname(wrapper_path), exist_ok=True)
+        
+        is_internal = os.path.abspath(self.config['common_dir']) == os.path.abspath(self.infiniccl_root)
+        bin_sub = "examples/$1" if is_internal else "$1"
+
+        case_blocks = ""
+        for node in self.config['nodes']:
+            n_type = node['type']
+            n_env = node.get('backend_env', {})
+            
+            # Generic environment injection from YAML
+            exports = f'        export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
+            for k, v in n_env.items():
+                exports += f'        export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
+
+            if n_type == "nvidia":
+                case_blocks += f'    if [ -c "/dev/nvidia0" ]; then\n{exports}        ARCH="nvidia"\n'
+            elif n_type == "metax":
+                case_blocks += f'    elif [ -d "/opt/maca" ] || [ -c "/dev/maca0" ]; then\n{exports}        ARCH="metax"\n'
+
+        content = f"""#!/bin/bash
+    {case_blocks}    else
+            ARCH="cpu"
+        fi
+    EXE="{self.config['common_dir']}/build/$ARCH/{bin_sub}"
+    shift
+    exec "$EXE" "$@"
+    """
+        with open(wrapper_path, "w") as f: f.write(content)
+        os.chmod(wrapper_path, 0o755)
+        return wrapper_path
+
+    def launch(self, backend_name, executable, args, launcher):
         from backends.ompi import OmpiBackend
         backend = OmpiBackend() if backend_name == "ompi" else None
         if not backend: return
         
-        cmd = backend.get_launch_command(self.config, executable, args)
+        cmd = backend.get_launch_command(self.config, executable, args, launcher)
         subprocess.run(cmd)
         

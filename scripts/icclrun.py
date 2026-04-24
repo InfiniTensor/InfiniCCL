@@ -34,7 +34,7 @@ def main():
     if launcher_args.build:
         launcher.orchestrate_build()
     
-    launcher.launch("ompi", executable, app_args)
+    launcher.launch("ompi", executable, app_args, launcher)
 
 if __name__ == "__main__":
     main()
