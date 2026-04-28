@@ -5,6 +5,14 @@
 
 #include "device.h"
 
+#define CHECK_STATUS(runtime_type, expression)                                 \
+  do {                                                                         \
+    auto _ret = runtime_type::Check(expression);                               \
+    if (_ret != ::infini::ccl::ReturnStatus::kSuccess) {                       \
+      return _ret;                                                             \
+    }                                                                          \
+  } while (0)
+
 namespace infini::ccl {
 
 template <Device::Type device_type> struct Runtime;

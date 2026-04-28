@@ -16,6 +16,7 @@ public:
                             const int *dev_list) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
+    using Rt = Runtime<kDev>;
 
     if (!comm) {
       // TODO(lzm): change to use `glog`.
@@ -46,7 +47,7 @@ public:
       comm->set_device_id(local_rank);
     }
 
-    Runtime<kDev>::SetDevice(comm->device_id());
+    CHECK_STATUS(Rt, Rt::SetDevice(comm->device_id()));
 
     return ReturnStatus::kSuccess;
   }

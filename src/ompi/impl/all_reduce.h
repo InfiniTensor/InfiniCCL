@@ -20,6 +20,7 @@ public:
                             void *stream) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<AllReduce>{});
+    using Rt = Runtime<kDev>;
 
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
 
@@ -44,11 +45,10 @@ public:
       return ReturnStatus::kSystemError;
     }
 
-    Runtime<kDev>::Memcpy(host_sendbuf, send_buff, total_bytes,
-                          Runtime<kDev>::MemcpyDeviceToHost);
+    CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf, send_buff, total_bytes,
+                                Rt::MemcpyDeviceToHost));
 
-    Runtime<kDev>::StreamSynchronize(
-        static_cast<Runtime<kDev>::Stream>(stream));
+    CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     INFINI_CHECK_MPI(MPI_Allreduce(host_sendbuf, host_recvbuf, count, mpi_type,
                                    mpi_op, inst->handle));
@@ -64,13 +64,15 @@ public:
 
         // Simply do the averaging on the CPU before the H2D copy.
         for (size_t i = 0; i < count; ++i) {
+          // TODO(lzm): should later use the unified `Cast` function instead of
+          // static_cast to support CPU custom types.
           typed_buf[i] *= static_cast<T>(scale);
         }
       });
     }
 
-    Runtime<kDev>::Memcpy(recv_buff, host_recvbuf, total_bytes,
-                          Runtime<kDev>::MemcpyHostToDevice);
+    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, total_bytes,
+                                Rt::MemcpyHostToDevice));
 
     free(host_sendbuf);
     free(host_recvbuf);

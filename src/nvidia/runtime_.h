@@ -8,7 +8,9 @@
 // clang-format on
 
 #include "cuda/runtime_.h"
+#include "logging.h"
 #include "nvidia/device_.h"
+#include "return_status_impl.h"
 
 namespace infini::ccl {
 
@@ -18,6 +20,15 @@ struct Runtime<Device::Type::kNvidia>
   using Stream = cudaStream_t;
 
   static constexpr Device::Type kDeviceType = Device::Type::kNvidia;
+
+  static constexpr auto Check =
+      [](auto status, ReturnStatus err_code = ReturnStatus::kSystemError) {
+        if (status != cudaSuccess) {
+          LOG(cudaGetErrorString(static_cast<cudaError_t>(status)));
+          return err_code;
+        }
+        return ReturnStatus::kSuccess;
+      };
 
   static constexpr auto Malloc = [](auto &&...args) {
     return cudaMalloc(std::forward<decltype(args)>(args)...);

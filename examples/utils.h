@@ -13,11 +13,14 @@
   do {                                                                         \
     infiniResult_t res = (cmd);                                                \
     if (res != infiniSuccess) {                                                \
-      std::cerr << "[InfiniCCL Error] received error code " << res             \
-                << " at line " << __LINE__ << std::endl;                       \
+      std::cerr << "[InfiniCCL Error] example program received error code "    \
+                << res << " at line " << __LINE__ << std::endl;                \
       exit(EXIT_FAILURE);                                                      \
     }                                                                          \
   } while (0)
+
+#define CHECK_RT(runtime_type, cmd)                                            \
+  CHECK_INFINI(static_cast<infiniResult_t>(runtime_type::Check(cmd)))
 
 // Simple Timer for profiling
 class Timer {

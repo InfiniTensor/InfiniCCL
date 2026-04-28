@@ -27,6 +27,7 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
                          int profile_iter, const size_t kNumElements) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
+  using Rt = Runtime<kDevType>;
 
   CHECK_INFINI(infiniInit(&argc, &argv));
 
@@ -64,12 +65,12 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
 
   float *d_send, *d_recv;
   size_t total_bytes = kNumElements * sizeof(*d_send);
-  Runtime<kDevType>::Malloc(&d_send, total_bytes);
-  Runtime<kDevType>::Malloc(&d_recv, total_bytes);
-  Runtime<kDevType>::Memcpy(d_send, h_send.data(), total_bytes,
-                            Runtime<kDevType>::MemcpyHostToDevice);
-  Runtime<kDevType>::Memcpy(d_recv, h_recv.data(), total_bytes,
-                            Runtime<kDevType>::MemcpyHostToDevice);
+  CHECK_RT(Rt, Rt::Malloc(&d_send, total_bytes));
+  CHECK_RT(Rt, Rt::Malloc(&d_recv, total_bytes));
+  CHECK_RT(Rt, Rt::Memcpy(d_send, h_send.data(), total_bytes,
+                          Rt::MemcpyHostToDevice));
+  CHECK_RT(Rt, Rt::Memcpy(d_recv, h_recv.data(), total_bytes,
+                          Rt::MemcpyHostToDevice));
 
   if (rank == 0) {
     std::cout << "\n=== Performing AllReduce on GPU Memory ===" << std::endl;
@@ -80,19 +81,19 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
     std::cout << "Profile iterations: " << profile_iter << std::endl;
   }
 
-  Runtime<kDevType>::StreamSynchronize(nullptr);
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   // warm-up and D2H transfer the answer
   CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
                                infiniSum, comm, nullptr));
-  Runtime<kDevType>::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
-                            Runtime<kDevType>::MemcpyDeviceToHost);
+  CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),
+                          Rt::MemcpyDeviceToHost));
 
   for (int i = 1; i < warmup_iter; ++i) {
     CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
                                  infiniSum, comm, nullptr));
   }
-  Runtime<kDevType>::StreamSynchronize(nullptr);
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   // Profiling
   Timer timer;
@@ -102,7 +103,7 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
                                  infiniSum, comm, nullptr));
   }
 
-  Runtime<kDevType>::StreamSynchronize(nullptr);
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
 
   // Result Validation
@@ -120,8 +121,8 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
   }
 
   // Cleanup
-  Runtime<kDevType>::Free(d_send);
-  Runtime<kDevType>::Free(d_recv);
+  CHECK_RT(Rt, Rt::Free(d_send));
+  CHECK_RT(Rt, Rt::Free(d_recv));
 
   CHECK_INFINI(infiniCommDestroy(comm));
   CHECK_INFINI(infiniFinalize());
