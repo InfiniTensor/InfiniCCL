@@ -14,6 +14,7 @@ if os.path.exists(INSTALL_LIB_PATH):
 
 from icclrun_logic import ICCLLauncher
 
+
 def main():
     parser = argparse.ArgumentParser(description="InfiniCCL Unified Launcher")
     parser.add_argument("--config", "-c", dest="cluster", help="Path to cluster.yaml")
@@ -30,12 +31,12 @@ def main():
     app_args = remaining[1:]
 
     launcher = ICCLLauncher(launcher_args.cluster)
-    
+
     if launcher_args.build:
         launcher.orchestrate_build()
-    
+
     launcher.launch("ompi", executable, app_args, launcher)
+
 
 if __name__ == "__main__":
     main()
-    
