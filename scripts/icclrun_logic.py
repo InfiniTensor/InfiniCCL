@@ -93,22 +93,22 @@ class ICCLLauncher:
             n_env = node.get('backend_env', {})
             
             # Generic environment injection from YAML
-            exports = f'        export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
+            exports = f'    export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
             for k, v in n_env.items():
-                exports += f'        export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
+                exports += f'    export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
 
             if n_type == "nvidia":
-                case_blocks += f'    if [ -c "/dev/nvidia0" ]; then\n{exports}        ARCH="nvidia"\n'
+                case_blocks += f'if [ -c "/dev/nvidia0" ]; then\n{exports}    ARCH="nvidia"\n'
             elif n_type == "metax":
-                case_blocks += f'    elif [ -d "/opt/maca" ] || [ -c "/dev/maca0" ]; then\n{exports}        ARCH="metax"\n'
+                case_blocks += f'elif [ -d "/opt/maca" ] || grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1; then\n{exports}    ARCH="metax"\n'
 
         content = f"""#!/bin/bash
-    {case_blocks}    else
-            ARCH="cpu"
-        fi
-    EXE="{self.config['common_dir']}/build/$ARCH/{bin_sub}"
-    shift
-    exec "$EXE" "$@"
+{case_blocks}else
+    ARCH="cpu"
+fi
+EXE="{self.config['common_dir']}/build/$ARCH/{bin_sub}"
+shift
+exec "$EXE" "$@"
     """
         with open(wrapper_path, "w") as f: f.write(content)
         os.chmod(wrapper_path, 0o755)
