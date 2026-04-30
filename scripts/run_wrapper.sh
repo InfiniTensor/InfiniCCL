@@ -1,5 +1,4 @@
 #!/bin/bash
-# scripts/run_wrapper.sh
 
 if [ -f "$HOME/.bashrc" ]; then
     source "$HOME/.bashrc" >/dev/null 2>&1

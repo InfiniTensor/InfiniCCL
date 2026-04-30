@@ -7,7 +7,7 @@ class OmpiBackend:
         build_dir = os.path.join(common_dir, "build")
         os.makedirs(build_dir, exist_ok=True)
 
-        # Hostfile generation
+        # Hostfile Generation
         hostfile_path = os.path.join(build_dir, "hosts.txt")
         total_slots = 0
         with open(hostfile_path, "w") as f:
@@ -16,14 +16,14 @@ class OmpiBackend:
                 total_slots += slots
                 f.write(f"{node['ip']} slots={slots}\n")
 
-        # Launcher Logic: Use YAML override OR Auto-generate
+        # Launcher Logic: Use YAML override OR Auto-generate.
         launcher_script = config.get("launcher_script")
         if not launcher_script:
             launcher_script = launcher_obj.ensure_launcher_exists()
 
         cmd = ["mpirun", "--hostfile", hostfile_path, "-np", str(total_slots)]
 
-        # Safety: OpenMPI refuses to run as root unless explicitly told
+        # Safety: OpenMPI refuses to run as root unless explicitly told.
         if os.getuid() == 0:
             cmd.append("--allow-run-as-root")
 

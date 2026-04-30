@@ -8,7 +8,7 @@ import socket
 class ICCLLauncher:
     def __init__(self, manual_config_path):
         self.config = None
-        # Priority: 1. Argument, 2. Current Dir, 3. examples/ folder
+        # Priority: 1. Argument, 2. Current Dir, 3. examples/ folder.
         search_paths = [
             manual_config_path,
             "./cluster.yaml",
@@ -51,7 +51,7 @@ class ICCLLauncher:
             install_path = os.path.join(base_install, "install", arch)
             user_cmake_flags = node.get("cmake_flags", "")
 
-            # Build the library using YAML flags
+            # Build the library using YAML flags.
             lib_cmd = (
                 f"mkdir -p {infiniccl_root}/build/{arch} && cd {infiniccl_root}/build/{arch} && "
                 f"cmake -DCMAKE_INSTALL_PREFIX={install_path} {user_cmake_flags} {infiniccl_root} && "
@@ -69,7 +69,7 @@ class ICCLLauncher:
                 )
                 full_cmd = f"{lib_cmd} && {app_cmd}"
 
-            # Execute via SSH or Locally
+            # Execute via SSH or locally.
             user = node.get("user", self.config.get("common_user", "root"))
             exec_cmd = f"bash -l -c '{full_cmd}'"
             print(f"[*] Orchestrating {arch} on {node['ip']}...")
@@ -81,7 +81,7 @@ class ICCLLauncher:
         return self.ensure_launcher_exists()
 
     def ensure_launcher_exists(self):
-        # This must be an absolute path
+        # This must be an absolute path.
         wrapper_path = os.path.abspath(
             os.path.join(self.config["common_dir"], "build", "run_wrapper.sh")
         )
@@ -97,7 +97,7 @@ class ICCLLauncher:
             n_type = node["type"]
             n_env = node.get("backend_env", {})
 
-            # Generic environment injection from YAML
+            # Generic environment injection from YAML.
             exports = f'    export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
             for k, v in n_env.items():
                 exports += f'    export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'

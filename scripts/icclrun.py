@@ -6,8 +6,8 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(SCRIPT_DIR)
 
-# Add the installed private library path (for production runs)
-# CMAKE_INSTALL_PREFIX/bin -> CMAKE_INSTALL_PREFIX/lib/infiniccl
+# Add the installed private library path (for production runs).
+# `CMAKE_INSTALL_PREFIX/bin` -> `CMAKE_INSTALL_PREFIX/lib/infiniccl`
 INSTALL_LIB_PATH = os.path.join(os.path.dirname(SCRIPT_DIR), "lib", "infiniccl")
 if os.path.exists(INSTALL_LIB_PATH):
     sys.path.append(INSTALL_LIB_PATH)
@@ -26,7 +26,7 @@ def main():
         print("Error: No executable specified.")
         sys.exit(1)
 
-    # The first 'remaining' item is our binary, the rest are its arguments
+    # The first 'remaining' item is our binary, the rest are its arguments.
     executable = remaining[0]
     app_args = remaining[1:]
 

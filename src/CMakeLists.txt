@@ -105,7 +105,7 @@ endif()
 # =========================================================
 # --- File Generation ---
 # =========================================================
-# --- Generate umbrella header: include/infiniccl.h ---
+# --- Generate umbrella header: `include/infiniccl.h` ---
 set(PUBLIC_HEADERS_DIR "${PROJECT_SOURCE_DIR}/include")
 file(GLOB PUBLIC_HEADERS "${PUBLIC_HEADERS_DIR}/*.h")
 

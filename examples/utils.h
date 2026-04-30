@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-// Simple check macro for the C-API
+// Simple check macro for the C-API.
 #define CHECK_INFINI(cmd)                                                      \
   do {                                                                         \
     infiniResult_t res = (cmd);                                                \
@@ -22,7 +22,7 @@
 #define CHECK_RT(runtime_type, cmd)                                            \
   CHECK_INFINI(static_cast<infiniResult_t>(runtime_type::Check(cmd)))
 
-// Simple Timer for profiling
+// Simple Timer for Profiling
 class Timer {
   std::chrono::high_resolution_clock::time_point start;
 
@@ -44,7 +44,7 @@ struct Metrics {
     double gigabytes =
         static_cast<double>(total_bytes) / (1024.0 * 1024.0 * 1024.0);
 
-    // Industry standard formula: 2 * (n-1) / n
+    // Industry standard formula: `2 * (n-1) / n`.
     double bus_bw =
         (2.0 * (world_size - 1) / world_size) * (gigabytes / seconds);
     double alg_bw = gigabytes / seconds;

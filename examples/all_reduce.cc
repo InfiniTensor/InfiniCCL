@@ -58,7 +58,7 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
   std::vector<float> h_send(kNumElements);
   std::vector<float> h_recv(kNumElements, 0.0f);
 
-  // Initialize: each rank provides its (rank + 1) as data
+  // Initialize: each rank provides its (rank + 1) as data.
   for (size_t i = 0; i < kNumElements; i++) {
     h_send[i] = static_cast<float>(rank + 1);
   }
@@ -83,7 +83,7 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
-  // warm-up and D2H transfer the answer
+  // Warm-up and D2H transfer the answer.
   CHECK_INFINI(infiniAllReduce(d_send, d_recv, kNumElements, infiniFloat32,
                                infiniSum, comm, nullptr));
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, kNumElements * sizeof(float),

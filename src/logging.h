@@ -4,7 +4,7 @@
 #include "constexpr_map.h"
 #include <iostream>
 
-// Internal helper macros to count arguments
+// Internal helper macros to count arguments.
 #define GET_LOG_MACRO(_1, _2, NAME, ...) NAME
 
 #define LOG_1(msg)                                                             \

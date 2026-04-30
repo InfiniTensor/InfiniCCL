@@ -6,7 +6,7 @@ import sys
 # CONFIGURATION
 # =================================================================
 
-# The standardized warning header for generated files
+# The standardized warning header for generated files.
 AUTOGEN_HEADER = """/*
  * -----------------------------------------------------------------
  * AUTO-GENERATED FILE — DO NOT EDIT.
@@ -18,10 +18,10 @@ AUTOGEN_HEADER = """/*
  */
 """
 
-# Hardware traits to look for in device directories
+# Hardware traits to look for in device directories.
 DEVICE_TRAIT_HEADERS = ["device_.h", "runtime_.h", "data_type_.h"]
 
-# Map logical backend names (from CMake) to their internal source paths
+# Map logical backend names (from CMake) to their internal source paths.
 BACKEND_PATH_MAP = {"ompi": "ompi/impl", "nccl": "nvidia/nccl"}
 
 # =================================================================
@@ -52,7 +52,7 @@ def parse_signatures(header_path):
             param_names = []
             if params_raw and params_raw != "void":
                 for p in params_raw.split(","):
-                    # Extract the variable name (last word before comma/bracket)
+                    # Extract the variable name (last word before comma/bracket).
                     param_names.append(p.strip().split()[-1].replace("*", ""))
 
             signatures.append(
@@ -72,7 +72,7 @@ def generate(project_root, output_dir, devices, backends):
     base_dir = os.path.join(src_dir, "base")
     header_path = os.path.join(project_root, "include/comm.h")
 
-    # Get the list of all operations defined in the base directory
+    # Get the list of all operations defined in the base directory.
     ops_in_base = (
         [f[:-2] for f in os.listdir(base_dir) if f.endswith(".h")]
         if os.path.exists(base_dir)
@@ -80,7 +80,7 @@ def generate(project_root, output_dir, devices, backends):
     )
     sigs = parse_signatures(header_path)
 
-    # 1. Generate backend_manifest.h
+    # 1. Generate `backend_manifest.h`.
     manifest_lines = [
         AUTOGEN_HEADER,
         "#ifndef INFINI_CCL_BACKEND_MANIFEST_H_",
@@ -133,7 +133,7 @@ def generate(project_root, output_dir, devices, backends):
     with open(os.path.join(output_dir, "backend_manifest.h"), "w") as f:
         f.write("\n".join(manifest_lines))
 
-    # 2. Generate comm_bridge.cc
+    # 2. Generate `comm_bridge.cc`.
     bridge_lines = [
         AUTOGEN_HEADER,
         '#include "backend_manifest.h"',
@@ -146,9 +146,9 @@ def generate(project_root, output_dir, devices, backends):
     ]
 
     for s in sigs:
-        # We need to transform the raw args to add casts for specific types
+        # We need to transform the raw args to add casts for specific types.
         args_with_casts = []
-        # Split params to analyze types (simplified approach)
+        # Split params to analyze types (simplified approach).
         params_list = s["params"].split(",")
 
         for p in params_list:
@@ -156,12 +156,12 @@ def generate(project_root, output_dir, devices, backends):
             if not p or p == "void":
                 continue
 
-            # Get the type and the name
+            # Get the type and the name.
             parts = p.split()
             arg_type = parts[0]
             arg_name = parts[-1].replace("*", "")
 
-            # Apply static_cast for specialized Infini types
+            # Apply `static_cast` for specialized `Infini` types.
             if arg_type == "infiniDataType_t":
                 args_with_casts.append(f"static_cast<DataType>({arg_name})")
             elif arg_type == "infiniRedOp_t":
@@ -185,7 +185,7 @@ def generate(project_root, output_dir, devices, backends):
 
 
 if __name__ == "__main__":
-    # Path/List arguments passed from CMake
+    # Path/List arguments passed from CMake.
     root = sys.argv[1]
     out = sys.argv[2]
     devs = sys.argv[3].split(";") if len(sys.argv) > 3 else []

@@ -17,7 +17,7 @@ set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 # =========================================================
 option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
-# OMPI is the default bootstrap/CPU backend
+# OMPI is the default bootstrap/CPU backend.
 if(NOT WITH_OMPI AND NOT WITH_NCCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified. Defaulting to WITH_OMPI=ON")
@@ -79,7 +79,6 @@ if(WITH_METAX)
         message(WARNING "MACA_PATH environment variable not set. Defaulting to /opt/maca/. Please verify this path is correct.")
     endif()
 
-    # Force absolute paths to the wrapper script
     get_filename_component(MXCC_WRAPPER_ABS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/devices/mxcc_wrapper.sh" ABSOLUTE)
     
     set(CMAKE_C_COMPILER   "${MXCC_WRAPPER_ABS}")
@@ -106,7 +105,7 @@ if(WITH_NCCL)
     include_directories(${NCCL_INC})
 endif()
 
-# Python is required for code generation
+# Python is required for code generation.
 find_package(Python3 REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -120,7 +119,7 @@ endif()
 # =========================================================
 # --- Installation ---
 # =========================================================
-# For Development: Copy launcher to build/
+# For Development: Copy launcher to `build/`.
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/scripts/icclrun.py"
     "${CMAKE_BINARY_DIR}/icclrun"
@@ -134,7 +133,7 @@ configure_file(
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/scripts/backends" DESTINATION "${CMAKE_BINARY_DIR}")
 
-# Ensure it is executable in build/
+# Ensure it is executable in `build/`.
 file(CHMOD "${CMAKE_BINARY_DIR}/icclrun" 
      PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
@@ -147,7 +146,7 @@ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/infiniccl)
 
 install(PROGRAMS scripts/icclrun.py DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME icclrun)
 
-# Install the supporting logic to a private folder
+# Install the supporting logic to a private folder.
 set(ICCL_PRIVATE_LIB ${CMAKE_INSTALL_LIBDIR}/infiniccl)
 install(FILES scripts/icclrun_logic.py DESTINATION ${ICCL_PRIVATE_LIB})
 install(DIRECTORY scripts/backends DESTINATION ${ICCL_PRIVATE_LIB})
