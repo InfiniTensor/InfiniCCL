@@ -103,10 +103,17 @@ Note: Running `source ~/.bashrc` (or restarting your terminal) is required only 
 InfiniCCL can be built and installed manually.
 
 ```bash
+# Build and Install InfiniCCL
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/install [options]
 cmake --build . -j $(nproc)
 cmake --install .
+
+# Configure the Enviroment Variables
+# It is recommended to add these to your `~/.bashrc` for persistence.
+export INFINICCL_ROOT="/path/to/InfiniCCL"
+export PATH="/path/to/install/bin:$PATH"
+export LD_LIBRARY_PATH="/path/to/install/lib:$LD_LIBRARY_PATH"
 ```
 
 Example Configurations: `NVIDIA` + `OpenMPI`
@@ -161,7 +168,7 @@ After having a successful build and a complete `cluster.yaml`, we are ready for 
 To run an internal example program (e.g., `examples/all_reduce.cc`), just run: 
 
 ```bash
-# Build and run the executable across the cluster based on the config specified in `examples/cluster.yaml`
+# Build and run the executable across the cluster based on the config specified in your `cluster.yaml`
 icclrun --config [path-to-your-cluster.yaml] --build all_reduce [program args]
 ```
 
