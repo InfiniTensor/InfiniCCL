@@ -34,6 +34,7 @@ cmake --install "$BUILD_DIR"
 # Handle Environment Variables (`PATH` and `LD_LIBRARY_PATH`)
 BIN_PATH="$INSTALL_PREFIX/bin"
 LIB_PATH="$INSTALL_PREFIX/lib"
+INFINICCL_ROOT="$PROJECT_ROOT"
 
 # Check if `PATH` already contains the `bin` path.
 if [[ ":$PATH:" != *":$BIN_PATH:"* ]]; then
@@ -45,6 +46,7 @@ if [[ ":$PATH:" != *":$BIN_PATH:"* ]]; then
         echo "--> Updating ~/.bashrc with InfiniCCL paths..."
         echo "" >> "$HOME/.bashrc"
         echo "# InfiniCCL Paths" >> "$HOME/.bashrc"
+        echo "export INFINICCL_ROOT=\"$INFINICCL_ROOT\"" >> "$HOME/.bashrc"
         echo "export PATH=\"$BIN_PATH:\$PATH\"" >> "$HOME/.bashrc"
         echo "export LD_LIBRARY_PATH=\"$LIB_PATH:\$LD_LIBRARY_PATH\"" >> "$HOME/.bashrc"
         echo "Successfully updated ~/.bashrc. Please run 'source ~/.bashrc' or restart your terminal."
