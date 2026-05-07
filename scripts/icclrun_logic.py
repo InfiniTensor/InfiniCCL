@@ -1,8 +1,10 @@
-import subprocess
 import os
-import sys
-import yaml
 import socket
+import subprocess
+import sys
+from pathlib import Path
+
+import yaml
 
 
 class ICCLLauncher:
@@ -87,9 +89,10 @@ class ICCLLauncher:
         )
         os.makedirs(os.path.dirname(wrapper_path), exist_ok=True)
 
-        is_internal = os.path.abspath(self.config["common_dir"]) == os.path.abspath(
-            self.infiniccl_root
-        )
+        common_dir = Path(self.config["common_dir"]).expanduser().resolve()
+        infiniccl_root_dir = Path(self.infiniccl_root).expanduser().resolve()
+        is_internal = common_dir == infiniccl_root_dir
+
         bin_sub = "examples/$1" if is_internal else "$1"
 
         case_blocks = ""
@@ -103,9 +106,7 @@ class ICCLLauncher:
                 exports += f'    export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
 
             if n_type == "nvidia":
-                case_blocks += (
-                    f'if [ -c "/dev/nvidia0" ]; then\n{exports}    ARCH="nvidia"\n'
-                )
+                case_blocks += f'if [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then\n{exports}    ARCH="nvidia"\n'
             elif n_type == "metax":
                 case_blocks += f'elif [ -d "/opt/maca" ] || grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1; then\n{exports}    ARCH="metax"\n'
 

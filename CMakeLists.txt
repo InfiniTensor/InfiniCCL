@@ -33,11 +33,32 @@ if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
 
     # NVIDIA
+    set(NVIDIA_FOUND FALSE)
+
     file(GLOB NVIDIA_DEV_FILES "/dev/nvidia*")
 
     if(NVIDIA_DEV_FILES)
+        set(NVIDIA_FOUND TRUE)
+    elseif(NOT NVIDIA_FOUND)
+        find_program(NVIDIA_SMI_PATH nvidia-smi)
+        if(NVIDIA_SMI_PATH)
+            execute_process(
+                COMMAND ${NVIDIA_SMI_PATH} -L
+                RESULT_VARIABLE SMI_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(SMI_RESULT EQUAL 0)
+                set(NVIDIA_FOUND TRUE)
+            endif()
+        endif()
+    endif()
+
+    if(NVIDIA_FOUND)
         set(WITH_NVIDIA ON)
         message(STATUS "Auto-detected NVIDIA environment.")
+    else()
+        message(STATUS "NVIDIA environment not detected.")
     endif()
 
     # MetaX
