@@ -58,7 +58,7 @@ Commit messages must follow [Conventional Commits](https://www.conventionalcommi
 
 1. Small PRs should be squashed. Large PRs may keep multiple commits, but each commit must be meaningful and well-formed.
 2. PR titles follow the same Conventional Commits format as commit messages.
-3. Before merging (or after each stage of changes), build and test on all supported platforms. Include the results in PRs.
+3. Before merging (or after each major change), ensure that all example programs build and run successfully on at least one supported heterogeneous cluster setup, and include the test environment details and results in the pull request. Whenever possible, validate on a cluster covering all supported platforms and backends. 
 
 ## Branches
 
