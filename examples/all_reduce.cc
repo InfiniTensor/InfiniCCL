@@ -11,7 +11,7 @@
 // Public API
 #include "infiniccl.h"
 
-// Example-specific utilities
+// Example-Specific Utilities
 #include "utils.h"
 
 // Internal Headers (Accessible via example-specific include paths, technically

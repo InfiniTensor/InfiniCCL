@@ -17,11 +17,11 @@ install_dir: "/path/to/install/artifacts"
 
 # [REQUIRED] List of nodes participating in the job.
 nodes:
-  - ip: "localhost"           # IP address or hostname
-    type: "nvidia"            # Architecture type
-    slots: 8                  # Number of GPUs/Processes to run on this node
-    cmake_flags: "-D..."      # Node-specific CMake options (e.g., `-DUSE_CUDA=ON`)
-    backend_env:              # Node-specific environment variables
+  - ip: "localhost"           # IP address or hostname.
+    type: "nvidia"            # Architecture type.
+    slots: 8                  # Number of GPUs/Processes to run on this node.
+    cmake_flags: "-D..."      # Node-specific CMake options (e.g., `-DUSE_CUDA=ON`).
+    backend_env:              # Node-specific environment variables.
       LD_LIBRARY_PATH: "/path/to/cuda/lib"
 
   - ip: ""
@@ -30,7 +30,7 @@ nodes:
     cmake_flags: "-D..."
 
 # [OPTIONAL] Global arguments passed to the backend launcher.
-# Format: "flag": ["value1", "value2"]
+# Format: `"flag": ["value1", "value2"]`.
 backend_args:
   "arg1":
     - "value1"

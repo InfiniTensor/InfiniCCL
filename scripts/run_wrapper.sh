@@ -9,7 +9,7 @@ COMMON_DIR=$(dirname "$SCRIPT_DIR")
 RELATIVE_EXE=$1
 shift
 
-if [ -c "/dev/nvidia0" ]; then
+if [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then
     ARCH="nvidia"
 elif grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1 || [ -d "/opt/maca" ]; then
     ARCH="metax"
