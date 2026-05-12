@@ -10,8 +10,13 @@ template <Device::Type device_type>
 class FinalizeImpl<BackendType::kOmpi, device_type> {
 public:
   static ReturnStatus Apply() {
-    int finalized;
+    int finalized = 0;
     INFINI_CHECK_MPI(MPI_Finalized(&finalized));
+
+    if (!finalized) {
+      INFINI_CHECK_MPI(MPI_Finalize());
+    }
+
     return ReturnStatus::kSuccess;
   }
 };
