@@ -8,6 +8,9 @@
 #include "ompi/checks.h"
 #include "ompi/comm_instance.h"
 #include "ompi/type_map.h"
+#include <type_traits>
+#include <cuda_fp16.h>
+#include <cuda_bf16.h>
 
 namespace infini::ccl {
 
@@ -66,7 +69,15 @@ public:
         for (size_t i = 0; i < count; ++i) {
           // TODO(lzm): should later use the unified `Cast` function instead of
           // static_cast to support CPU custom types.
-          typed_buf[i] *= static_cast<T>(scale);
+          if constexpr (std::is_same_v<T, __half>) {
+            typed_buf[i] =
+                __float2half(__half2float(typed_buf[i]) * static_cast<float>(scale));
+        } else if constexpr (std::is_same_v<T, __nv_bfloat16>) {
+            typed_buf[i] =
+                __float2bfloat16(__bfloat162float(typed_buf[i]) * static_cast<float>(scale));
+        } else {
+            typed_buf[i] *= static_cast<T>(scale);
+        }
         }
       });
     }
