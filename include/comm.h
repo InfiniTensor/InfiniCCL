@@ -40,6 +40,9 @@ infiniResult_t infiniAllReduce(const void *sendbuff, void *recvbuff,
                                size_t count, infiniDataType_t datatype,
                                infiniRedOp_t op, infiniComm_t comm,
                                void *stream);
+infiniResult_t infiniBroadcast(const void *sendbuff, void *recvbuff,
+                               size_t count, infiniDataType_t datatype,
+                               int root, infiniComm_t comm, void *stream);
 
 #ifdef __cplusplus
 }
