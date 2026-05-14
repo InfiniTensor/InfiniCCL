@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_OMPI_IMPL_COMM_INIT_ALL_H_
 #define INFINI_CCL_OMPI_IMPL_COMM_INIT_ALL_H_
 
-#include "base/comm_init_all.h"
 #include "communicator.h"
+#include "base/comm_init_all.h"
 #include "logging.h"
 #include "ompi/checks.h"
 #include "ompi/comm_instance.h"
