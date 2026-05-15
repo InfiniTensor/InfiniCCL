@@ -47,6 +47,11 @@ struct Runtime<Device::Type::kCpu> : RuntimeBase<Runtime<Device::Type::kCpu>> {
 
   static constexpr int MemcpyDeviceToHost = 1;
 
+  static constexpr auto GetDevice = [](int *dev) {
+    *dev = 0;
+    return ReturnStatus::kSuccess;
+  };
+
   static constexpr auto SetDevice = [](int) { return ReturnStatus::kSuccess; };
 
   static constexpr auto DeviceSynchronize = []() {
