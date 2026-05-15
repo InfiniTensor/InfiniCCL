@@ -10,7 +10,13 @@
 extern "C" {
 #endif
 
+#define INFINICCL_UNIQUE_ID_BYTES 128
+
 typedef void *infiniComm_t;
+
+typedef struct {
+  char internal[INFINICCL_UNIQUE_ID_BYTES];
+} infiniUniqueId;
 
 // Initialization
 infiniResult_t infiniInit(int *argc, char ***argv);
@@ -21,6 +27,7 @@ infiniResult_t infiniGetRank(int *rank);
 infiniResult_t infiniGetSize(int *size);
 
 // Communicator Management
+infiniResult_t infiniGetUniqueId(infiniUniqueId *id);
 infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
                                  const int *devlist);
 infiniResult_t infiniCommDestroy(infiniComm_t comm);
