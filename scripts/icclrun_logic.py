@@ -96,6 +96,7 @@ class ICCLLauncher:
         bin_sub = "examples/$1" if is_internal else "$1"
 
         case_blocks = ""
+        first_case = True
         for node in self.config["nodes"]:
             n_type = node["type"]
             n_env = node.get("backend_env", {})
@@ -106,9 +107,13 @@ class ICCLLauncher:
                 exports += f'    export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
 
             if n_type == "nvidia":
-                case_blocks += f'if [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then\n{exports}    ARCH="nvidia"\n'
+                prefix = "if" if first_case else "elif"
+                case_blocks += f'{prefix} [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then\n{exports} ARCH="nvidia"\n'
+                first_case = False
             elif n_type == "metax":
-                case_blocks += f'elif [ -d "/opt/maca" ] || grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1; then\n{exports}    ARCH="metax"\n'
+                prefix = "if" if first_case else "elif"
+                case_blocks += f'{prefix} [ -d "/opt/maca" ] || grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1; then\n{exports} ARCH="metax"\n'
+                first_case = False
 
         content = f"""#!/bin/bash
 {case_blocks}else
