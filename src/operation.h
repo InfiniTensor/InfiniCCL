@@ -4,8 +4,10 @@
 #include <memory>
 
 #include "backend.h"
+#include "backend_device_map.h"
 #include "device.h"
 #include "dispatcher.h"
+#include "return_status_impl.h"
 #include "traits.h"
 
 namespace infini::ccl {
@@ -34,8 +36,12 @@ class Operation {
           constexpr Device::Type kDevice =
               static_cast<Device::Type>(ListGet<1>(resolved_list));
 
-          return Key::template Execute<kBackend, kDevice>(
-              std::forward<Args>(args)...);
+          if constexpr (IsSupportedCombination<kBackend, kDevice>::value) {
+            return Key::template Execute<kBackend, kDevice>(
+                std::forward<Args>(args)...);
+          } else {
+            return ReturnStatus::kNotSupported;
+          }
         },
         "Operation::Call");
   }

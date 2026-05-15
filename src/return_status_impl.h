@@ -16,6 +16,7 @@ enum class ReturnStatus : int8_t {
   kInvalidUsage = infiniInvalidUsage,
   kRemoteError = infiniRemoteError,
   kInProgress = infiniInProgress,
+  kNotSupported = infiniNotSupported,
   kNumResults = infiniNumResults,
 };
 
