@@ -30,6 +30,8 @@ infinicclResult_t infinicclGetSize(int *size);
 infinicclResult_t infinicclGetUniqueId(infinicclUniqueId *id);
 infinicclResult_t infinicclCommInitAll(infinicclComm_t *comm, int ndev,
                                        const int *devlist);
+infinicclResult_t infinicclCommInitRank(infinicclComm_t *comm, int nranks,
+                                        infinicclUniqueId id, int rank);
 infinicclResult_t infinicclCommDestroy(infinicclComm_t comm);
 
 // --- Reduction Operations ---
