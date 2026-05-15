@@ -42,6 +42,8 @@ struct Runtime<Device::Type::kMetax>
 
   static constexpr auto Memset = mcMemset;
 
+  static constexpr auto GetDevice = mcGetDevice;
+
   static constexpr auto SetDevice = mcSetDevice;
 
   static constexpr auto DeviceSynchronize = mcDeviceSynchronize;
