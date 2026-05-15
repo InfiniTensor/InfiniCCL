@@ -1,7 +1,6 @@
-#ifndef INFINI_CCL_BASE_COMM_INIT_ALL_H_
-#define INFINI_CCL_BASE_COMM_INIT_ALL_H_
+#ifndef INFINI_CCL_BASE_COMM_INIT_RANK_H_
+#define INFINI_CCL_BASE_COMM_INIT_RANK_H_
 
-#include "communicator.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -9,9 +8,9 @@
 namespace infini::ccl {
 
 template <BackendType backend_type, Device::Type device_type>
-struct CommInitAllImpl;
+struct CommInitRankImpl;
 
-class CommInitAll : public Operation<CommInitAll> {
+class CommInitRank : public Operation<CommInitRank> {
 public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
@@ -19,20 +18,24 @@ public:
     Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
     if (comm) {
       // TODO(lzm): change to use `glog`.
-      LOG("Invalid communicator handle for `CommInitAll`.");
+      LOG("Invalid communicator handle for `CommInitRank`.");
       return ReturnStatus::kInvalidArgument;
     }
 
     constexpr Device::Type kDev =
-        ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
+        ListGetBest<DevicePriority>(ActiveDevices<CommInitRank>{});
+    using Rt = Runtime<kDev>;
 
-    comm = new Communicator(kDev, 0);
+    int current_dev = 0;
+    CHECK_STATUS(Rt, Rt::GetDevice(&current_dev));
 
-    return CommInitAllImpl<backend_type, device_type>::Apply(
+    comm = new Communicator(kDev, current_dev);
+
+    return CommInitRankImpl<backend_type, device_type>::Apply(
         comm, std::forward<Args>(args)...);
   }
 };
 
 } // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_COMM_INIT_ALL_H_
+#endif // INFINI_CCL_BASE_COMM_INIT_RANK_H_
