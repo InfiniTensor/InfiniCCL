@@ -30,6 +30,8 @@ infiniResult_t infiniGetSize(int *size);
 infiniResult_t infiniGetUniqueId(infiniUniqueId *id);
 infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
                                  const int *devlist);
+infiniResult_t infiniCommInitRank(infiniComm_t *comm, int nranks,
+                                  infiniUniqueId id, int rank);
 infiniResult_t infiniCommDestroy(infiniComm_t comm);
 
 // --- Reduction Operations ---
