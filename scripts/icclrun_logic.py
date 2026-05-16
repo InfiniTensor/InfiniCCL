@@ -95,31 +95,59 @@ class ICCLLauncher:
 
         bin_sub = "examples/$1" if is_internal else "$1"
 
-        case_blocks = ""
+        case_blocks = []
+        first = True
+
         for node in self.config["nodes"]:
             n_type = node["type"]
             n_env = node.get("backend_env", {})
 
             # Generic environment injection from YAML.
             exports = f'    export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
+
             for k, v in n_env.items():
-                exports += f'    export {k}="{v if k != "LD_LIBRARY_PATH" else v + ":${LD_LIBRARY_PATH}"}"\n'
+                if k == "LD_LIBRARY_PATH":
+                    v = f"{v}:${{LD_LIBRARY_PATH}}"
+                exports += f'    export {k}="{v}"\n'
+
+            condition = None
 
             if n_type == "nvidia":
-                case_blocks += f'if [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then\n{exports}    ARCH="nvidia"\n'
+                condition = '[ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]'
+
             elif n_type == "metax":
-                case_blocks += f'elif [ -d "/opt/maca" ] || grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1; then\n{exports}    ARCH="metax"\n'
+                condition = (
+                    '[ -d "/opt/maca" ] || '
+                    'grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1'
+                )
+
+            # Skip unknown platforms cleanly.
+            if condition is None:
+                continue
+
+            keyword = "if" if first else "elif"
+            first = False
+
+            case_blocks.append(
+                f'{keyword} {condition}; then\n{exports}    ARCH="{n_type}"\n'
+            )
+
+        # Fallback when no accelerator matched (or no platforms configured).
+        if case_blocks:
+            case_blocks.append('else\n    ARCH="cpu"\nfi\n')
+        else:
+            case_blocks.append('ARCH="cpu"\n')
 
         content = f"""#!/bin/bash
-{case_blocks}else
-    ARCH="cpu"
-fi
+{"".join(case_blocks)}
 EXE="{self.config["common_dir"]}/build/$ARCH/{bin_sub}"
 shift
 exec "$EXE" "$@"
     """
+
         with open(wrapper_path, "w") as f:
             f.write(content)
+
         os.chmod(wrapper_path, 0o755)
         return wrapper_path
 
