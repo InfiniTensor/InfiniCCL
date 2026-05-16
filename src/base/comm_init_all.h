@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_BASE_COMM_INIT_ALL_H_
 #define INFINI_CCL_BASE_COMM_INIT_ALL_H_
 
+#include "communicator.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
