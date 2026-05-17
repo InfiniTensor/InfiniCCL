@@ -22,7 +22,7 @@ AUTOGEN_HEADER = """/*
 DEVICE_TRAIT_HEADERS = ["device_.h", "runtime_.h", "data_type_.h"]
 
 # Map logical backend names (from CMake) to their internal source paths.
-BACKEND_PATH_MAP = {"ompi": "ompi/impl", "nccl": "nvidia/nccl"}
+BACKEND_PATH_MAP = {"ompi": "ompi/impl", "mpich": "ompi/impl", "nccl": "nvidia/nccl"}
 
 # =================================================================
 # LOGIC
