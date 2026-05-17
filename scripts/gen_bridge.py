@@ -85,7 +85,7 @@ def generate(project_root, output_dir, devices, backends):
     )
     sigs = parse_signatures(header_path)
 
-    # 1. Generate `backend_manifest.h`.
+    implemented_ops = set()
     manifest_lines = [
         AUTOGEN_HEADER,
         "#ifndef INFINI_CCL_BACKEND_MANIFEST_H_",
@@ -126,6 +126,7 @@ def generate(project_root, output_dir, devices, backends):
             rel_path = f"{impl_subpath}/{op}.h"
             if os.path.exists(os.path.join(src_dir, rel_path)):
                 manifest_lines.append(f'#include "{rel_path}"')
+                implemented_ops.add(op)
 
     # Add the Type Alias `EnabledDevices`
     manifest_lines.append("\nnamespace infini::ccl {\n")
@@ -154,20 +155,21 @@ def generate(project_root, output_dir, devices, backends):
     ]
 
     for s in sigs:
-        # We need to transform the raw args to add casts for specific types.
-        args_with_casts = []
-        # Split params to analyze types (simplified approach).
-        params_list = s["params"].split(",")
+        op_filename = re.sub(
+            r"^infini_", "", re.sub(r"(?<!^)(?=[A-Z])", "_", s["name"])
+        ).lower()
 
-        for p in params_list:
-            p = p.strip()
-            if not p or p == "void":
-                continue
-
-            # Get the type and the name.
-            parts = p.split()
-            arg_type = parts[0]
-            arg_name = parts[-1].replace("*", "")
+        # Check if this operation is supported by the compiled backend configuration
+        if op_filename in implemented_ops or s["key"].lower() in implemented_ops:
+            params_list = s["params"].split(",")
+            args_with_casts = []
+            for p in params_list:
+                p = p.strip()
+                if not p or p == "void":
+                    continue
+                parts = p.split()
+                arg_type = parts[0]
+                arg_name = parts[-1].replace("*", "")
 
             # Apply `static_cast` for specialized `Infini` types.
             if arg_type == "infinicclDataType_t":
@@ -177,13 +179,12 @@ def generate(project_root, output_dir, devices, backends):
             else:
                 args_with_casts.append(arg_name)
 
-        casted_args_str = ", ".join(args_with_casts)
+            casted_args_str = ", ".join(args_with_casts)
+            body = f"    return static_cast<{s['ret']}>(Operation<{s['key']}>::Call({casted_args_str}));"
+        else:
+            body = f"    return static_cast<{s['ret']}>(ReturnStatus::kNotSupported);"
 
-        bridge_lines.append(
-            f"\n{s['ret']} {s['name']}({s['params']}) {{\n"
-            f"    return static_cast<{s['ret']}>(Operation<{s['key']}>::Call({casted_args_str}));\n"
-            f"}}"
-        )
+        bridge_lines.append(f"\n{s['ret']} {s['name']}({s['params']}) {{\n{body}\n}}")
 
     bridge_lines.append('\n} // extern "C"')
     bridge_lines.append("} // namespace infini::ccl\n")
