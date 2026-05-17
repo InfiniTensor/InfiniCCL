@@ -67,8 +67,8 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
   float *d_send, *d_recv;
   size_t send_bytes = kNumElements * sizeof(*d_send);
   size_t recv_bytes = send_bytes * size;
-  CHECK_RT(Rt, Rt::Malloc(&d_send, send_bytes));
-  CHECK_RT(Rt, Rt::Malloc(&d_recv, recv_bytes));
+  CHECK_RT(Rt, Rt::Malloc((void **)&d_send, send_bytes));
+  CHECK_RT(Rt, Rt::Malloc((void **)&d_recv, recv_bytes));
   CHECK_RT(Rt, Rt::Memcpy(d_send, h_send.data(), send_bytes,
                           Rt::MemcpyHostToDevice));
   CHECK_RT(Rt, Rt::Memcpy(d_recv, h_recv.data(), recv_bytes,
