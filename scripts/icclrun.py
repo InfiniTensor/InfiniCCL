@@ -19,6 +19,12 @@ def main():
     parser = argparse.ArgumentParser(description="InfiniCCL Unified Launcher")
     parser.add_argument("--config", "-c", dest="cluster", help="Path to cluster.yaml")
     parser.add_argument("--build", action="store_true", help="Compile remote nodes")
+    parser.add_argument(
+        "--launcher",
+        choices=["ompi", "none"],
+        default="ompi",
+        help="Orchestration layer: 'ompi' for mpirun cluster apps, 'none' for native threaded single-node apps.",
+    )
 
     launcher_args, remaining = parser.parse_known_args()
 
@@ -35,7 +41,7 @@ def main():
     if launcher_args.build:
         launcher.orchestrate_build()
 
-    launcher.launch("ompi", executable, app_args, launcher)
+    launcher.launch(launcher_args.launcher, executable, app_args, launcher)
 
 
 if __name__ == "__main__":

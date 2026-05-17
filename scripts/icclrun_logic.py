@@ -151,12 +151,24 @@ exec "$EXE" "$@"
         os.chmod(wrapper_path, 0o755)
         return wrapper_path
 
-    def launch(self, backend_name, executable, args, launcher):
-        from backends.ompi import OmpiBackend
+    def launch(self, launcher_type, executable, args, launcher_obj):
+        if launcher_type == "ompi":
+            from backends.ompi import OmpiBackend
 
-        backend = OmpiBackend() if backend_name == "ompi" else None
-        if not backend:
-            return
+            backend = OmpiBackend()
+            cmd = backend.get_launch_command(
+                self.config, executable, args, launcher_obj
+            )
 
-        cmd = backend.get_launch_command(self.config, executable, args, launcher)
+        elif launcher_type == "none":
+            launcher_script = self.config.get("launcher_script")
+            if not launcher_script:
+                launcher_script = launcher_obj.ensure_launcher_exists()
+
+            cmd = [launcher_script, executable] + list(args)
+
+        else:
+            print(f"Error: Unsupported launcher environment '{launcher_type}'")
+            sys.exit(1)
+
         subprocess.run(cmd)
