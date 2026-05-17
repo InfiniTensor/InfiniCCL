@@ -17,18 +17,17 @@ set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 # =========================================================
 option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
-# OMPI is the default bootstrap/CPU backend.
-if(NOT WITH_OMPI AND NOT WITH_NCCL)
-    set(WITH_OMPI ON)
-    message(STATUS "No backend specified. Defaulting to WITH_OMPI=ON")
-endif()
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
 # =========================================================
 option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
+option(AUTO_DETECT_BACKENDS "Automatically detect available backends" ON)
 option(BUILD_EXAMPLES "Build internal examples" ON)
 
+# =========================================================
+# --- AUTO-DETECTION: DEVICES ---
+# =========================================================
 if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
 
@@ -82,6 +81,45 @@ if(AUTO_DETECT_DEVICES)
             message(STATUS "No MetaX GPU detected")
         endif()
     endif()
+endif()
+
+# =========================================================
+# --- AUTO-DETECTION: BACKENDS ---
+# =========================================================
+if(AUTO_DETECT_BACKENDS)
+    message(STATUS "Auto-detecting available communication backends...")
+
+    # Detect OpenMPI Dependencies
+    find_program(MPIRUN_PATH NAMES mpirun mpiexec)
+    find_program(MPICC_PATH NAMES mpicc)
+    
+    if(MPIRUN_PATH AND MPICC_PATH)
+        set(WITH_OMPI ON)
+        message(STATUS "Auto-detected OpenMPI environment.")
+    else()
+        message(STATUS "OpenMPI environment not detected.")
+    endif()
+
+    # Detect NCCL Dependencies
+    if(WITH_NVIDIA)
+        find_path(AUTO_NCCL_INC NAMES nccl.h QUIET)
+        find_library(AUTO_NCCL_LIB NAMES nccl QUIET)
+
+        if(AUTO_NCCL_INC AND AUTO_NCCL_LIB)
+            set(WITH_NCCL ON)
+            message(STATUS "Auto-detected NCCL backend.")
+        else()
+            message(STATUS "NCCL library/headers not found in standard paths.")
+        endif()
+    else()
+        message(STATUS "No suitable device environment, skipping NCCL detection.")
+    endif()
+endif()
+
+# Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
+if(NOT WITH_OMPI AND NOT WITH_NCCL)
+    set(WITH_OMPI ON)
+    message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
 
 # =========================================================
