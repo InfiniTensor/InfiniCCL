@@ -89,15 +89,30 @@ endif()
 if(AUTO_DETECT_BACKENDS)
     message(STATUS "Auto-detecting available communication backends...")
 
-    # Detect OpenMPI Dependencies
+    # Detect MPI Dependencies
     find_program(MPIRUN_PATH NAMES mpirun mpiexec)
     find_program(MPICC_PATH NAMES mpicc)
     
     if(MPIRUN_PATH AND MPICC_PATH)
-        set(WITH_OMPI ON)
-        message(STATUS "Auto-detected OpenMPI environment.")
-    else()
-        message(STATUS "OpenMPI environment not detected.")
+        # Query the active `mpirun` variant
+        execute_process(
+            COMMAND ${MPIRUN_PATH} --version
+            OUTPUT_VARIABLE MPI_VERSION_OUT
+            ERROR_VARIABLE MPI_VERSION_ERR
+        )
+        set(MPI_VERSION_INFO "${MPI_VERSION_OUT}${MPI_VERSION_ERR}")
+
+        if(MPI_VERSION_INFO MATCHES "Open MPI" OR MPI_VERSION_INFO MATCHES "PRRTE")
+            set(WITH_OMPI ON)
+            message(STATUS "Auto-detected OpenMPI environment.")
+        elseif(MPI_VERSION_INFO MATCHES "MPICH" OR MPI_VERSION_INFO MATCHES "Hydra" OR MPI_VERSION_INFO MATCHES "Intel\\(R\\) MPI")
+            set(WITH_MPICH ON)
+            message(STATUS "Auto-detected MPICH/Hydra environment.")
+        else()
+            # Fallback to OMPI if it's an unrecognized wrapper
+            set(WITH_OMPI ON)
+            message(STATUS "Unknown MPI implementation. Defaulting to `WITH_OMPI=ON`")
+        endif()
     endif()
 
     # Detect NCCL Dependencies
@@ -117,7 +132,7 @@ if(AUTO_DETECT_BACKENDS)
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_NCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -149,7 +164,7 @@ if(WITH_METAX)
     find_library(MACA_RUNTIME_LIB NAMES mcruntime HINTS "${MACA_PATH}/lib" REQUIRED)
 endif()
 
-if(WITH_OMPI)
+if(WITH_OMPI OR WITH_MPICH)
     find_package(MPI REQUIRED)
 endif()
 

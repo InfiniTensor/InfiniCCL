@@ -12,7 +12,7 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${example_name} PRIVATE CUDA::cudart)
     endif()
     
-    if(WITH_OMPI)
+    if(WITH_OMPI OR WITH_MPICH)
         target_link_libraries(${example_name} PRIVATE MPI::MPI_CXX)
     endif()
 

@@ -41,9 +41,9 @@ def main():
     parser.add_argument("--build", action="store_true", help="Compile remote nodes")
     parser.add_argument(
         "--launcher",
-        choices=["ompi", "none"],
+        choices=["ompi", "mpich", "none"],
         default="ompi",
-        help="Orchestration layer: 'ompi' for mpirun cluster apps, 'none' for native threaded single-node apps.",
+        help="Orchestration layer: 'ompi'/'mpich' for mpirun cluster apps, 'none' for native threaded single-node apps.",
     )
 
     launcher_args, remaining = parser.parse_known_args()

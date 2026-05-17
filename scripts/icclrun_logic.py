@@ -160,6 +160,14 @@ exec "$EXE" "$@"
                 self.config, executable, args, launcher_obj
             )
 
+        elif launcher_type == "mpich":
+            from backends.mpich import MpichBackend
+
+            backend = MpichBackend()
+            cmd = backend.get_launch_command(
+                self.config, executable, args, launcher_obj
+            )
+
         elif launcher_type == "none":
             launcher_script = self.config.get("launcher_script")
             if not launcher_script:

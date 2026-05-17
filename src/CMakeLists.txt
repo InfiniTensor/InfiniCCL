@@ -89,6 +89,17 @@ if(WITH_OMPI)
     endif()
 endif()
 
+if(WITH_MPICH)
+    list(APPEND BACKEND_LIST "mpich")
+    # Note: MPICH shares the same internal implementation as OMPI, so we reuse the `ompi/impl` sources for both.
+    # However, later there may be MPICH-specific sources added to the `mpich/` directory.
+    file(GLOB_RECURSE MPICH_SRCS "mpich/*.cc" "mpich/*.cpp" "ompi/*.cc" "ompi/*.cpp") 
+    target_sources(infiniccl PRIVATE ${MPICH_SRCS})
+    if(TARGET MPI::MPI_CXX)
+        target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
+    endif()
+endif()
+
 # NCCL
 if(WITH_NCCL)
     list(APPEND BACKEND_LIST "nccl")
