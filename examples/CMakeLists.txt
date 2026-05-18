@@ -11,6 +11,14 @@ foreach(source_file ${EXAMPLE_SOURCES})
     if(WITH_NVIDIA)
         target_link_libraries(${example_name} PRIVATE CUDA::cudart)
     endif()
+
+    if(WITH_METAX)
+        target_link_libraries(${example_name} PRIVATE ${MACA_RUNTIME_LIB})
+    endif()
+
+    if(WITH_CAMBRICON)
+        target_link_libraries(${example_name} PRIVATE ${CAMBRICON_RUNTIME_LIB})
+    endif()
     
     if(WITH_OMPI OR WITH_MPICH)
         target_link_libraries(${example_name} PRIVATE MPI::MPI_CXX)
