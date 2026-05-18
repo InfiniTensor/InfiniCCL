@@ -45,8 +45,13 @@ infiniResult_t infiniAllGather(const void *sendbuff, void *recvbuff,
                                size_t count, infiniDataType_t datatype,
                                infiniComm_t comm, void *stream);
 
+infiniResult_t infiniReduceScatter(const void *sendbuff, void *recvbuff,
+                                   size_t recvcount, infiniDataType_t datatype,
+                                   infiniRedOp_t op, infiniComm_t comm,
+                                   void *stream);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // INFINI_CCL_COMM_H_
+#endif  // INFINI_CCL_COMM_H_
