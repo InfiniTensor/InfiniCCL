@@ -74,6 +74,82 @@ if(WITH_METAX)
     target_compile_options(infiniccl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-x maca>)
 endif()
 
+# Cambricon
+if(WITH_CAMBRICON)
+    list(APPEND DEVICE_LIST "cambricon")
+
+    set(CAMBRICON_PATTERNS
+        "cambricon/*.cc"
+        "cambricon/*.cpp"
+        "cambricon/*.mlu"
+    )
+    file(GLOB CAMBRICON_SOURCES ${CAMBRICON_PATTERNS})
+
+    find_program(CNCC_COMPILER cncc HINTS "${NEUWARE_HOME}/bin" "$ENV{NEUWARE_HOME}/bin" /usr/local/neuware/bin)
+
+    if(CNCC_COMPILER)
+        message(STATUS "Found Cambricon `cncc` compiler: ${CNCC_COMPILER}")
+        execute_process(
+            COMMAND ${CNCC_COMPILER} --print-file-name=include
+            OUTPUT_VARIABLE CNCC_INTERNAL_INC_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        
+        set(MLU_COMPILE_OPTS
+            -c --bang-mlu-arch=mtp_592 -O3 -fPIC -Wall -Werror -std=c++17 -pthread
+            -I${PROJECT_SOURCE_DIR}
+            -I${PROJECT_SOURCE_DIR}/include
+            -I${CMAKE_CURRENT_SOURCE_DIR}
+            -I${NEUWARE_HOME}/include
+            -I${CNCC_INTERNAL_INC_DIR}
+        )
+
+        # Custom automation function to route `.mlu` sources through `cncc`.
+        function(compile_mlu_file src_file)
+            get_filename_component(name ${src_file} NAME_WE)
+            get_filename_component(path ${src_file} DIRECTORY)
+            set(out_file "${CMAKE_CURRENT_BINARY_DIR}/${path}/${name}.o")
+            file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${path}")
+            
+            add_custom_command(OUTPUT ${out_file}
+                COMMAND ${CNCC_COMPILER} ${MLU_COMPILE_OPTS} -c ${src_file} -o ${out_file}
+                DEPENDS ${src_file}
+                COMMENT "Building MLU kernel: ${src_file}"
+            )
+            set_property(DIRECTORY APPEND PROPERTY CAMBRICON_OBJECTS ${out_file})
+        endfunction()
+
+        foreach(src ${CAMBRICON_SOURCES})
+            if(${src} MATCHES "\\.mlu$")
+                compile_mlu_file(${src})
+            endif()
+        endforeach()
+
+        # Append generated MLU hardware binaries straight into the target.
+        get_directory_property(CAMBRICON_OBJECT_FILES CAMBRICON_OBJECTS)
+        if(CAMBRICON_OBJECT_FILES)
+            target_sources(infiniccl PRIVATE ${CAMBRICON_OBJECT_FILES})
+        endif()
+    else()
+        message(FATAL_ERROR "`cncc` compiler required for Cambricon build but not found.")
+    endif()
+
+    foreach(src ${CAMBRICON_SOURCES})
+        if(${src} MATCHES "\\.(cc|cpp)$")
+            target_sources(infiniccl PRIVATE ${src})
+        endif()
+    endforeach()
+
+    target_include_directories(infiniccl PRIVATE "${NEUWARE_HOME}/include")
+    
+    target_link_libraries(infiniccl PRIVATE 
+        ${CAMBRICON_RUNTIME_LIB} 
+        ${CAMBRICON_CNNL_LIB} 
+        ${CAMBRICON_CNNL_EXTRA_LIB} 
+        ${CAMBRICON_PAPI_LIB}
+    )
+endif()
+
 # =========================================================
 # --- BACKEND SECTIONS (Communication Protocols) ---
 # =========================================================

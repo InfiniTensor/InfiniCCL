@@ -9,7 +9,7 @@
 namespace infini::ccl {
 
 class Device {
-public:
+ public:
   enum class Type {
     kCpu = 0,
     kNvidia = 1,
@@ -50,7 +50,7 @@ public:
 
   bool operator!=(const Device &other) const { return !(*this == other); }
 
-private:
+ private:
   Type type_{Type::kCpu};
 
   static constexpr ConstexprMap<Device::Type, std::string_view,
@@ -88,7 +88,8 @@ private:
 
 // Primary template: Devices are disabled by default. Platform-specific
 // headers (e.g. `cpu/device_.h`) specialize this to `std::true_type`.
-template <Device::Type> struct DeviceEnabled : std::false_type {};
+template <Device::Type>
+struct DeviceEnabled : std::false_type {};
 
 // Defines the common categories of devices using List.
 using AllDeviceTypes =
@@ -102,37 +103,48 @@ using AllDeviceTypes =
 // specializations from platform `device_.h` headers are visible at
 // instantiation time. Use with a dependent type parameter
 // (e.g. `ActiveDevices<Key>`) to ensure deferred instantiation.
-template <typename> struct ActiveDevicesImpl {
+template <typename>
+struct ActiveDevicesImpl {
   struct Filter {
     template <Device::Type kDev>
-    std::enable_if_t<DeviceEnabled<kDev>::value>
-    operator()(ValueTag<kDev>) const {}
+    std::enable_if_t<DeviceEnabled<kDev>::value> operator()(
+        ValueTag<kDev>) const {}
   };
 
   using type = typename FilterList<Filter, std::tuple<>, AllDeviceTypes>::type;
 };
 
-template <typename T> using ActiveDevices = typename ActiveDevicesImpl<T>::type;
+template <typename T>
+using ActiveDevices = typename ActiveDevicesImpl<T>::type;
 
 /**
  * @brief Priority trait for device selection.
  */
-template <Device::Type device_type> struct DevicePriority {
+template <Device::Type device_type>
+struct DevicePriority {
   static constexpr int value = 0;
 };
 
-template <> struct DevicePriority<Device::Type::kCpu> {
+template <>
+struct DevicePriority<Device::Type::kCpu> {
   static constexpr int value = 1;
 };
 
-template <> struct DevicePriority<Device::Type::kNvidia> {
+template <>
+struct DevicePriority<Device::Type::kNvidia> {
   static constexpr int value = 5;
 };
 
-template <> struct DevicePriority<Device::Type::kMetax> {
+template <>
+struct DevicePriority<Device::Type::kMetax> {
   static constexpr int value = 5;
 };
 
-} // namespace infini::ccl
+template <>
+struct DevicePriority<Device::Type::kCambricon> {
+  static constexpr int value = 5;
+};
 
-#endif // INFINI_CCL_DEVICE_H_
+}  // namespace infini::ccl
+
+#endif  // INFINI_CCL_DEVICE_H_

@@ -7,8 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # =========================================================
 # --- DEVICE OPTIONS (Hardware Runtimes) ---
 # =========================================================
-option(WITH_NVIDIA "Enable NVIDIA GPU support" OFF)
-option(WITH_METAX  "Enable MetaX GPU support"  OFF)
+option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
+option(WITH_METAX       "Enable MetaX GPU support"      OFF)
+option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 
@@ -64,7 +65,7 @@ if(AUTO_DETECT_DEVICES)
     # MetaX
     if(DEFINED ENV{MACA_PATH})
         set(WITH_METAX ON)
-        message(STATUS "Auto-detected MetaX environment from MACA_PATH")
+        message(STATUS "Auto-detected MetaX environment from `MACA_PATH`")
     else()
         execute_process(
             COMMAND sh -c "grep -h 9999 /sys/bus/pci/devices/*/vendor 2>/dev/null"
@@ -81,6 +82,35 @@ if(AUTO_DETECT_DEVICES)
             set(WITH_METAX OFF)
             message(STATUS "No MetaX GPU detected")
         endif()
+    endif()
+
+    # Cambricon
+    set(CAMBRICON_FOUND FALSE)
+
+    if(DEFINED ENV{NEUWARE_HOME})
+        set(CAMBRICON_FOUND TRUE)
+        message(STATUS "Auto-detected Cambricon environment from `NEUWARE_HOME`")
+    else()
+        find_program(CNMON_PATH cnmon)
+        if(CNMON_PATH)
+            execute_process(
+                COMMAND ${CNMON_PATH} -l
+                RESULT_VARIABLE CNMON_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(CNMON_RESULT EQUAL 0)
+                set(CAMBRICON_FOUND TRUE)
+            endif()
+        endif()
+    endif()
+
+    if(CAMBRICON_FOUND)
+        set(WITH_CAMBRICON ON)
+        message(STATUS "Cambricon environment detected.")
+    else()
+        set(WITH_CAMBRICON OFF)
+        message(STATUS "Cambricon environment not detected.")
     endif()
 endif()
 
@@ -163,6 +193,20 @@ if(WITH_METAX)
     link_directories("${MACA_PATH}/lib")
 
     find_library(MACA_RUNTIME_LIB NAMES mcruntime HINTS "${MACA_PATH}/lib" REQUIRED)
+endif()
+
+if(WITH_CAMBRICON)
+    set(NEUWARE_HOME $ENV{NEUWARE_HOME})
+
+    include_directories("${NEUWARE_HOME}/include")
+    link_directories("${NEUWARE_HOME}/lib")
+    link_directories("${NEUWARE_HOME}/lib64")
+
+    # Libraries: `cnrt` / `cnnl` / `cnnl_extra` / `cnpapi`.
+    find_library(CAMBRICON_RUNTIME_LIB    NAMES cnrt       HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
+    find_library(CAMBRICON_CNNL_LIB       NAMES cnnl       HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
+    find_library(CAMBRICON_CNNL_EXTRA_LIB NAMES cnnl_extra HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
+    find_library(CAMBRICON_PAPI_LIB       NAMES cnpapi     HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
 endif()
 
 if(WITH_OMPI OR WITH_MPICH)
