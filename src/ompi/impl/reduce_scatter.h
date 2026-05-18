@@ -56,7 +56,7 @@ class ReduceScatterImpl<BackendType::kOmpi, device_type> {
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     if (recv_count > static_cast<size_t>(std::numeric_limits<int>::max())) {
-      LOG("recv_count exceeds MPI int range for ReduceScatter.");
+      LOG("recv_count exceeds MPI int range for `ReduceScatter`.");
       free(host_sendbuf);
       free(host_recvbuf);
       return ReturnStatus::kInvalidArgument;
