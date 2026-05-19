@@ -13,13 +13,13 @@ template <BackendType backend_type, Device::Type device_type>
 struct BroadcastImpl;
 
 class Broadcast : public Operation<Broadcast> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type>
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype, int root,
                               void *comm_handle, void *stream) {
     if (!comm_handle) {
-      LOG("Invalid communicator handle for Broadcast.");
+      LOG("Invalid communicator handle for `Broadcast`.");
       return ReturnStatus::kInvalidArgument;
     }
 
@@ -35,33 +35,30 @@ public:
         send_buff, recv_buff, count, datatype, root, comm, stream);
   }
 
-private:
+ private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
                              size_t count, DataType datatype, int root,
                              Communicator *comm) {
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
-      LOG("Invalid data type for Broadcast.");
+      LOG("Invalid data type for `Broadcast`.");
       return true;
     }
     if (root < 0 || root >= comm->size()) {
-      LOG("Invalid root rank for Broadcast.");
+      LOG("Invalid root rank for `Broadcast`.");
       return true;
     }
-    if (count == 0) {
-      return false;
-    }
     if (!recv_buff) {
-      LOG("Invalid receive buffer pointer for Broadcast.");
+      LOG("Invalid receive buffer pointer for `Broadcast`.");
       return true;
     }
     if (comm->rank() == root && !send_buff) {
-      LOG("Invalid root send buffer pointer for Broadcast.");
+      LOG("Invalid root send buffer pointer for `Broadcast`.");
       return true;
     }
     return false;
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_BROADCAST_H_
+#endif  // INFINI_CCL_BASE_BROADCAST_H_
