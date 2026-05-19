@@ -65,8 +65,8 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
   std::vector<float> h_recv(kTotalCount, 0.0f);
 
   // Layout: block per destination rank.
-  // block[dst] is what this rank sends to dst.
-  // Fill with value encoding src/dst for easy validation.
+  // `block[dst]` is what this rank sends to dst.
+  // Fill with value encoding `src`/`dst` for easy validation.
   for (int dst = 0; dst < size; ++dst) {
     float v = static_cast<float>(rank * 1000 + dst);
     size_t off = static_cast<size_t>(dst) * kCountPerPeer;
@@ -123,7 +123,7 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
   double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
 
   // Result Validation
-  // recv block[src] on rank r should come from src's send block[dst=r].
+  // recv `block[src]` on rank r should come from `src`'s send `block[dst=r]`.
   bool correct = true;
   int error_count = 0;
 
