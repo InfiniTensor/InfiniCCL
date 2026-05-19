@@ -9,24 +9,24 @@
 #include <vector>
 
 // Simple check macro for the C-API.
-#define CHECK_INFINI(cmd)                                                      \
-  do {                                                                         \
-    infiniResult_t res = (cmd);                                                \
-    if (res != infiniSuccess) {                                                \
-      std::cerr << "[InfiniCCL Error] example program received error code "    \
-                << res << " at line " << __LINE__ << std::endl;                \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
+#define CHECK_INFINI(cmd)                                                   \
+  do {                                                                      \
+    infiniResult_t res = (cmd);                                             \
+    if (res != infiniSuccess) {                                             \
+      std::cerr << "[InfiniCCL Error] example program received error code " \
+                << res << " at line " << __LINE__ << std::endl;             \
+      exit(EXIT_FAILURE);                                                   \
+    }                                                                       \
   } while (0)
 
-#define CHECK_RT(runtime_type, cmd)                                            \
+#define CHECK_RT(runtime_type, cmd) \
   CHECK_INFINI(static_cast<infiniResult_t>(runtime_type::Check(cmd)))
 
 // Simple Timer for Profiling
 class Timer {
   std::chrono::high_resolution_clock::time_point start;
 
-public:
+ public:
   Timer() : start(std::chrono::high_resolution_clock::now()) {}
   double elapsed_ms() const {
     auto end = std::chrono::high_resolution_clock::now();
@@ -59,10 +59,11 @@ struct Metrics {
 };
 
 class Validator {
-public:
+ public:
   template <typename T>
   static bool ValidateResult(const T *data, size_t count, T expected_val,
-                             int rank) {
+                             int rank, bool verbose = false,
+                             std::string op_name = "\b") {
     bool correct = true;
     int error_count = 0;
 
@@ -78,17 +79,18 @@ public:
       }
     }
 
-    if (rank == 0) {
+    if (verbose && rank == 0) {
       const char *GREEN = "\033[32m";
       const char *RED = "\033[31m";
       const char *RESET = "\033[0m";
 
-      std::cout << "\n=== AllReduce Results ===" << std::endl;
+      std::cout << "\n=== " << op_name << " Results ===" << std::endl;
       std::cout << "Correct: "
                 << (correct ? (GREEN + std::string("YES") + RESET)
                             : (RED + std::string("NO") + RESET));
-      if (!correct)
+      if (!correct) {
         std::cout << " (" << error_count << " errors)";
+      }
       std::cout << std::endl;
 
       std::cout << "Expect:  " << std::fixed << std::setprecision(2)
