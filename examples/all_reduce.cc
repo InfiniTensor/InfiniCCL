@@ -4,8 +4,9 @@
  * collective sum-reduction across multiple GPUs and nodes.
  */
 
-#include <iostream>
 #include <unistd.h>
+
+#include <iostream>
 #include <vector>
 
 // Public API
@@ -112,7 +113,8 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
     expected += static_cast<float>(r + 1);
   }
 
-  Validator::ValidateResult(h_recv.data(), kNumElements, expected, rank);
+  Validator::ValidateResult(h_recv.data(), kNumElements, expected, rank, true,
+                            "AllReduce");
 
   // Metrics Reporting (Only from rank 0 for cleaner output)
   if (rank == 0) {

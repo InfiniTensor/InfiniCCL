@@ -124,7 +124,8 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
     expected += static_cast<float>(r + 1);
   }
 
-  Validator::ValidateResult(h_recv.data(), kRecvCount, expected, rank);
+  Validator::ValidateResult(h_recv.data(), kRecvCount, expected, rank, true,
+                            "ReduceScatter");
 
   // Metrics Reporting (Only from rank 0 for cleaner output)
   if (rank == 0) {

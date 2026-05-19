@@ -119,18 +119,8 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
     float expected = static_cast<float>(src_rank + 1);
     size_t offset = static_cast<size_t>(src_rank) * kNumElements;
 
-    for (size_t i = 0; i < kNumElements; ++i) {
-      float actual = h_recv[offset + i];
-      if (std::fabs(actual - expected) > 1e-3f) {
-        correct = false;
-        ++error_count;
-        if (error_count <= 3 && rank == 0) {
-          std::cerr << "Error at block(rank) = " << src_rank
-                    << ", index = " << i << ": " << actual << " != " << expected
-                    << std::endl;
-        }
-      }
-    }
+    Validator::ValidateResult(h_recv.data() + offset, kNumElements, expected,
+                              rank);
   }
 
   if (rank == 0) {
