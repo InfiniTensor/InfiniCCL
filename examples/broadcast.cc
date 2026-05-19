@@ -3,11 +3,12 @@
  *
  * This example demonstrates the API for performing a collective
  * broadcast operation across multiple accelerators and nodes,
- * supporting both out-of-place and in-place memory topologies.
+ * supporting out-of-place, in-place, and legacy in-place topologies.
  */
 
 #include <unistd.h>
 
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -83,92 +84,79 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
+  // The Abstract Execution & Validation Function
+  auto ProfileAndValidateScenario = [&](const std::string &scenario_name,
+                                        float *d_verify_source,
+                                        auto &&collective_call) {
+    if (rank == kRoot) {
+      std::cout << "\n=== Performing " << scenario_name << " ===" << std::endl;
+      if (scenario_name.find("Scenario 1") != std::string::npos) {
+        std::cout << "Data size: " << kNumElements << " floats ("
+                  << total_bytes / 1024 / 1024 << " MB)" << std::endl;
+        std::cout << "Root Node: " << kRoot << std::endl;
+      }
+    }
+
+    // Warm-up Iteration & Initial Capture
+    CHECK_INFINI(collective_call());
+    CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_verify_source, total_bytes,
+                            Rt::MemcpyDeviceToHost));
+
+    for (int i = 1; i < warmup_iter; ++i) {
+      CHECK_INFINI(collective_call());
+    }
+    CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+
+    // Profiling
+    Timer timer;
+    for (int i = 0; i < profile_iter; i++) {
+      CHECK_INFINI(collective_call());
+    }
+    CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+    double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+
+    // Validation
+    Validator::ValidateResult(h_recv.data(), kNumElements, kRootMagicValue,
+                              rank, true, scenario_name);
+
+    // Performance Reporting
+    if (rank == kRoot) {
+      Metrics metrics{elapsed, total_bytes, size};
+      metrics.Print();
+    }
+  };
+
   // --------------------------------------------------------------------------
   // Scenario 1: Out-of-Place Broadcast
   // --------------------------------------------------------------------------
-  if (rank == kRoot) {
-    std::cout << "\n=== Scenario 1: Performing Out-of-Place Broadcast ==="
-              << std::endl;
-    std::cout << "Data size: " << kNumElements << " floats ("
-              << total_bytes / 1024 / 1024 << " MB)" << std::endl;
-    std::cout << "Root Node: " << kRoot << std::endl;
-  }
-
-  // Warm-up and pull single verification frame.
-  CHECK_INFINI(infiniBroadcast(d_send, d_recv, kNumElements, infiniFloat32,
-                               kRoot, comm, nullptr));
-  CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, total_bytes,
-                          Rt::MemcpyDeviceToHost));
-
-  for (int i = 1; i < warmup_iter; ++i) {
-    CHECK_INFINI(infiniBroadcast(d_send, d_recv, kNumElements, infiniFloat32,
-                                 kRoot, comm, nullptr));
-  }
-  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-
-  // Profiling Out-of-Place
-  Timer oop_timer;
-  for (int i = 0; i < profile_iter; i++) {
-    CHECK_INFINI(infiniBroadcast(d_send, d_recv, kNumElements, infiniFloat32,
-                                 kRoot, comm, nullptr));
-  }
-  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  double oop_elapsed =
-      oop_timer.elapsed_ms() / static_cast<double>(profile_iter);
-
-  // Out-of-Place Result Validation
-  Validator::ValidateResult(h_recv.data(), kNumElements, kRootMagicValue, rank,
-                            true, "Broadcast");
-
-  if (rank == kRoot) {
-    Metrics metrics{oop_elapsed, total_bytes, size};
-    metrics.Print();
-  }
+  ProfileAndValidateScenario(
+      "Scenario 1: Out-of-Place Broadcast", d_recv, [&]() {
+        return infiniBroadcast(d_send, d_recv, kNumElements, infiniFloat32,
+                               kRoot, comm, nullptr);
+      });
 
   // --------------------------------------------------------------------------
   // Scenario 2: In-Place Broadcast
   // --------------------------------------------------------------------------
-  if (rank == kRoot) {
-    std::cout << "\n=== Scenario 2: Performing In-Place Broadcast ==="
-              << std::endl;
-  }
-
-  // Reset receiving host buffer to verify clean overwrite tracking.
   std::fill(h_recv.begin(), h_recv.end(), 0.0f);
-
-  // In-place means non-root ranks receive into their primary operational
-  // buffer. Root broadcasts directly out of its existing storage buffer.
   float *d_inplace_buf = (rank == kRoot) ? d_send : d_recv;
 
-  // Warm-up
-  CHECK_INFINI(infiniBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
-                               infiniFloat32, kRoot, comm, nullptr));
-  CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_inplace_buf, total_bytes,
-                          Rt::MemcpyDeviceToHost));
+  ProfileAndValidateScenario(
+      "Scenario 2: In-Place Broadcast", d_inplace_buf, [&]() {
+        return infiniBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
+                               infiniFloat32, kRoot, comm, nullptr);
+      });
 
-  for (int i = 1; i < warmup_iter; ++i) {
-    CHECK_INFINI(infiniBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
-                                 infiniFloat32, kRoot, comm, nullptr));
-  }
-  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+  // --------------------------------------------------------------------------
+  // Scenario 3: Legacy In-Place Bcast
+  // --------------------------------------------------------------------------
+  std::fill(h_recv.begin(), h_recv.end(), 0.0f);
 
-  // Profiling In-Place
-  Timer ip_timer;
-  for (int i = 0; i < profile_iter; i++) {
-    CHECK_INFINI(infiniBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
-                                 infiniFloat32, kRoot, comm, nullptr));
-  }
-  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  double ip_elapsed = ip_timer.elapsed_ms() / static_cast<double>(profile_iter);
-
-  // In-Place Result Validation
-  Validator::ValidateResult(h_recv.data(), kNumElements, kRootMagicValue, rank,
-                            true, "Broadcast");
-
-  if (rank == kRoot) {
-    Metrics metrics{ip_elapsed, total_bytes, size};
-    metrics.Print();
-  }
+  ProfileAndValidateScenario(
+      "Scenario 3: Legacy In-Place Bcast", d_inplace_buf, [&]() {
+        return infiniBcast(d_inplace_buf, kNumElements, infiniFloat32, kRoot,
+                           comm, nullptr);
+      });
 
   // --------------------------------------------------------------------------
   // Cleanup
