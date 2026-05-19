@@ -55,7 +55,7 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
   infiniComm_t comm = nullptr;
   CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
 
-  // ReduceScatter requires send_count = recv_count * world_size.
+  // ReduceScatter requires `send_count = recv_count * world_size`.
   const size_t kSendCount = kRecvCount * static_cast<size_t>(size);
 
   // Prepare Data
