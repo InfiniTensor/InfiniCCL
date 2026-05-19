@@ -131,18 +131,10 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
     float expected = static_cast<float>(src * 1000 + rank);
     size_t off = static_cast<size_t>(src) * kCountPerPeer;
 
-    for (size_t i = 0; i < kCountPerPeer; ++i) {
-      float actual = h_recv[off + i];
-      if (std::fabs(actual - expected) > 1e-3f) {
-        correct = false;
-        ++error_count;
-        if (rank == 0 && error_count <= 3) {
-          std::cerr << "Error at src=" << src << ", idx=" << i
-                    << ": actual=" << actual << ", expected=" << expected
-                    << std::endl;
-        }
-      }
-    }
+    bool block_ok = Validator::ValidateResult(h_recv.data() + off,
+                                              kCountPerPeer, expected, rank);
+
+    correct = correct && block_ok;
   }
 
   if (rank == 0) {
