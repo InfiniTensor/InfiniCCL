@@ -41,6 +41,13 @@ infiniResult_t infiniAllReduce(const void *sendbuff, void *recvbuff,
                                infiniRedOp_t op, infiniComm_t comm,
                                void *stream);
 
+infiniResult_t infiniBroadcast(const void *sendbuff, void *recvbuff,
+                               size_t count, infiniDataType_t datatype,
+                               int root, infiniComm_t comm, void *stream);
+
+infiniResult_t infiniBcast(void *buff, size_t count, infiniDataType_t datatype,
+                           int root, infiniComm_t comm, void *stream);
+
 infiniResult_t infiniAllGather(const void *sendbuff, void *recvbuff,
                                size_t count, infiniDataType_t datatype,
                                infiniComm_t comm, void *stream);
