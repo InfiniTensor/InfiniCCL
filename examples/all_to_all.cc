@@ -146,7 +146,9 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
     std::cout << "Correct: "
               << (correct ? (GREEN + std::string("YES") + RESET)
                           : (RED + std::string("NO") + RESET));
-    if (!correct) std::cout << " (" << error_count << " errors)";
+    if (!correct) {
+      std::cout << " (" << error_count << " errors)";
+    }
     std::cout << std::endl;
 
     std::cout << "Sample recv blocks: ";
@@ -178,8 +180,7 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
 int main(int argc, char **argv) {
   int warmup_iters = 2;
   int profile_iters = 20;
-  size_t count_per_peer =
-      1 << 18;  // smaller default than all_reduce to limit memory
+  size_t count_per_peer = 1 << 18;
 
   RunAllToAllExample(argc, argv, warmup_iters, profile_iters, count_per_peer);
 

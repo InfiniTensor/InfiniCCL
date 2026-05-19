@@ -31,7 +31,7 @@ class AllToAllImpl<BackendType::kOmpi, device_type> {
     }
 
     if (count > static_cast<size_t>(std::numeric_limits<int>::max())) {
-      LOG("count exceeds MPI int range for `AllToAll`.");
+      LOG("count exceeds MPI `int` range for `AllToAll`.");
       return ReturnStatus::kInvalidArgument;
     }
     int mpi_count = static_cast<int>(count);
