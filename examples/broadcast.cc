@@ -168,9 +168,7 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
   CHECK_INFINI(infiniFinalize());
 
   if (rank == kRoot) {
-    std::cout
-        << "\nInfiniCCL Broadcast execution complete and finalized safely."
-        << std::endl;
+    std::cout << "\nInfiniCCL finalized." << std::endl;
   }
 }
 

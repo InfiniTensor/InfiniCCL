@@ -9,10 +9,9 @@ namespace infini::ccl {
 
 class Bcast : public Operation<Bcast> {
  public:
-  template <BackendType backend_type, Device::Type device_type,
-            typename StreamType>
+  template <BackendType backend_type, Device::Type device_type>
   static ReturnStatus Execute(void *buff, size_t count, DataType datatype,
-                              int root, void *comm_handle, StreamType stream) {
+                              int root, void *comm_handle, void *stream) {
     // Note: we simply forward to `Broadcast`.
     return Broadcast::Execute<backend_type, device_type>(
         buff, buff, count, datatype, root, comm_handle, stream);
