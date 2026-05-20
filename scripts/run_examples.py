@@ -25,6 +25,7 @@ def run_iccl_example(
     log_dir: str,
     trigger_build: bool,
     verbose: bool,
+    timeout_duration: int,
 ) -> bool:
     """Executes an example via `icclrun` orchestration framework."""
     log_file_path = os.path.join(log_dir, f"{example_name}.log")
@@ -76,7 +77,7 @@ def run_iccl_example(
                     sys.stdout.write(line)
                     log_file.write(line)
 
-                process.wait(timeout=600)
+                process.wait(timeout=timeout_duration)
                 return_code = process.returncode
                 print(
                     f"--- [VERBOSE OUTPUT END: {example_name}] ---\n" + " " * 56, end=""
@@ -89,7 +90,7 @@ def run_iccl_example(
                     stderr=subprocess.STDOUT,
                     env=custom_env,
                     text=True,
-                    timeout=600,
+                    timeout=timeout_duration,
                 )
                 return_code = result.returncode
 
@@ -101,9 +102,9 @@ def run_iccl_example(
             return False
 
     except subprocess.TimeoutExpired:
-        print(" ❌ TIMEOUT (Exceeded 10 minutes)")
+        print(f" ❌ TIMEOUT (Exceeded {timeout_duration} seconds)")
         with open(log_file_path, "a") as f:
-            f.write("\n[RUNNER ERROR]: Distributed `icclrun` harness timed out.\n")
+            f.write(f"\n[RUNNER ERROR]: Distributed `icclrun` harness timed out after {timeout_duration} seconds.\n")
         return False
     except FileNotFoundError:
         print(" ❌ ERROR   (`icclrun` executable not found in `PATH`)")
@@ -147,6 +148,13 @@ def main():
         type=str,
         default="./example_logs",
         help="Destination directory where output logs will be stored.",
+    )
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout duration in seconds for each individual example execution pass.",
     )
     parser.add_argument(
         "-v",
@@ -196,6 +204,7 @@ def main():
             log_dir=current_run_log_dir,
             trigger_build=is_first_run,
             verbose=args.verbose,
+            timeout_duration=args.timeout,
         )
 
         is_first_run = False
