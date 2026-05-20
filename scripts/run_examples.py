@@ -95,7 +95,7 @@ def run_iccl_example(
                 return_code = result.returncode
 
         if return_code == 0:
-            print(f"  ✓ PASSED  (Log saved to {os.path.basename(log_file_path)})")
+            print(f"  ✓ PASSED  (Log saved to `{os.path.basename(log_file_path)}`)")
             return True
         else:
             print(f" ❌ FAILED  (Exit Code: {return_code})")
