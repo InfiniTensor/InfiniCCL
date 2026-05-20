@@ -24,20 +24,20 @@ class SendImpl<BackendType::kOmpi, device_type> {
 
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
     if (!inst || inst->handle == MPI_COMM_NULL) {
-      LOG("Invalid OpenMPI communicator instance for Send.");
+      LOG("Invalid `OpenMPI` communicator instance for `Send`.");
       return ReturnStatus::kInternalError;
     }
 
     size_t type_size = kDataTypeToSize.at(data_type);
     if (count > std::numeric_limits<size_t>::max() / type_size) {
-      LOG("Send byte size overflow.");
+      LOG("Byte size overflow for `Send`.");
       return ReturnStatus::kInvalidArgument;
     }
 
     size_t total_bytes = count * type_size;
     void *host_buf = std::malloc(total_bytes);
     if (!host_buf) {
-      LOG("Failed to allocate host buffer for Send staging.");
+      LOG("Failed to allocate host buffer for `Send` staging.");
       return ReturnStatus::kSystemError;
     }
 

@@ -19,7 +19,7 @@ class Send : public Operation<Send> {
                               DataType datatype, int peer, void *comm_handle,
                               void *stream) {
     if (!comm_handle) {
-      LOG("Invalid communicator handle for Send.");
+      LOG("Invalid communicator handle for `Send`.");
       return ReturnStatus::kInvalidArgument;
     }
 
@@ -39,18 +39,18 @@ class Send : public Operation<Send> {
   static bool HasInvalidArgs(const void *send_buff, size_t count,
                              DataType datatype, int peer, Communicator *comm) {
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
-      LOG("Invalid data type for Send.");
+      LOG("Invalid data type for `Send`.");
       return true;
     }
     if (peer < 0 || peer >= comm->size()) {
-      LOG("Invalid peer rank for Send.");
+      LOG("Invalid peer rank for `Send`.");
       return true;
     }
     if (count == 0) {
       return false;
     }
     if (!send_buff) {
-      LOG("Invalid send buffer pointer for Send.");
+      LOG("Invalid send buffer pointer for `Send`.");
       return true;
     }
     return false;
