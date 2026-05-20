@@ -62,9 +62,9 @@ def run_iccl_example(
             log_file.flush()
 
             if verbose:
-                print(f"\n--- [VERBOSE OUTPUT START: {example_name}] ---")
+                print(f"\n--- [VERBOSE OUTPUT START: `{example_name}`] ---")
 
-                # Execute with `Popen` to stream stdout/stderr live to both terminal and file.
+                # Execute with `Popen` to stream `stdout`/`stderr` live to both terminal and file.
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -80,7 +80,7 @@ def run_iccl_example(
                 process.wait(timeout=timeout_duration)
                 return_code = process.returncode
                 print(
-                    f"--- [VERBOSE OUTPUT END: {example_name}] ---\n" + " " * 56, end=""
+                    f"--- [VERBOSE OUTPUT END: `{example_name}`] ---\n" + " " * 56, end=""
                 )
             else:
                 # Quiet mode: Redirect straight to the file handle.
@@ -160,7 +160,7 @@ def main():
         "-v",
         "--verbose",
         action="store_true",
-        help="Enable verbose mode: stream execution stdout/stderr directly to terminal while logging.",
+        help="Enable verbose mode: stream execution `stdout`/`stderr` directly to terminal while logging.",
     )
 
     args = parser.parse_args()
