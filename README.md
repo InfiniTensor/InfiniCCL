@@ -50,7 +50,7 @@ There are two methods to build InfiniCCL.
 ### Method 1 - Quick Build with `build.sh` (Recommended)
 
 ```bash
-# Grant execution permission to the script
+# Give execute permission to the script
 chmod +x ./scripts/build.sh
 
 # Build and install to default location (~/.infini)
@@ -165,8 +165,6 @@ To achieve this, a `cluster.yaml` is required to be filled. This is the configur
 After having a successful build and a complete `cluster.yaml`, we are ready for compiling and executing a distributed program across the cluster. 
 
 ### 1. Run Internal Examples
-
-#### 1.1. Run a Single Example
 To run an internal example program (e.g., `examples/all_reduce.cc`), just run: 
 
 ```bash
@@ -186,22 +184,6 @@ icclrun --help
 ```
 
 If everything is correctly set up, the example program should have just been launched and executed across the cluster you specified in `cluster.yaml`!
-
-#### 1.2. Automated Multi-Collective Verification Harness
-To run and log multiple example programs consecutively, use the provided automated batch verification script `scripts/run_examples.py`. This tool runs multiple validation profiles, monitors exit codes, captures chronological trace logs, and optimizes away redundant compilation passes. 
-
-For the first time using the script, grant it execution permission:
-
-```bash
-# Grant execution permission to the script
-chmod +x ./scripts/run_examples.sh
-```
-
-For all the options of the script, see:
-
-```bash
-./run_examples --help
-```
 
 ### 2. Run a Custom User Program
 
