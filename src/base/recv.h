@@ -18,7 +18,7 @@ class Recv : public Operation<Recv> {
   static ReturnStatus Execute(void *recv_buff, size_t count, DataType datatype,
                               int peer, void *comm_handle, void *stream) {
     if (!comm_handle) {
-      LOG("Invalid communicator handle for Recv.");
+      LOG("Invalid communicator handle for `Recv`.");
       return ReturnStatus::kInvalidArgument;
     }
 
@@ -38,18 +38,18 @@ class Recv : public Operation<Recv> {
   static bool HasInvalidArgs(const void *recv_buff, size_t count,
                              DataType datatype, int peer, Communicator *comm) {
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
-      LOG("Invalid data type for Recv.");
+      LOG("Invalid data type for `Recv`.");
       return true;
     }
     if (peer < 0 || peer >= comm->size()) {
-      LOG("Invalid peer rank for Recv.");
+      LOG("Invalid peer rank for `Recv`.");
       return true;
     }
     if (count == 0) {
       return false;
     }
     if (!recv_buff) {
-      LOG("Invalid receive buffer pointer for Recv.");
+      LOG("Invalid receive buffer pointer for `Recv`.");
       return true;
     }
     return false;
