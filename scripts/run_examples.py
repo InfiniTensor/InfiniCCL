@@ -36,7 +36,7 @@ def run_iccl_example(
     )
     print(f"{status_msg:<35} {example_name:<20}", end="", flush=True)
 
-    # Base command assembly
+    # Base Command Assembly
     cmd = ["icclrun", "--config", config_path]
     if launcher_opt and launcher_opt.strip():
         cmd.extend(["--launcher", launcher_opt.strip()])
@@ -46,16 +46,16 @@ def run_iccl_example(
     else:
         cmd.append(example_name)
 
-    # Format the exact command as a clean string for log documentation
+    # Format the exact command as a clean string for log documentation.
     exact_command_str = " ".join(cmd)
 
-    # Force environment unbuffered stream states for sub-python instances (icclrun_logic.py)
+    # Force environment unbuffered stream states for sub-python instances.
     custom_env = os.environ.copy()
     custom_env["PYTHONUNBUFFERED"] = "1"
 
     try:
         with open(log_file_path, "w", buffering=1) as log_file:
-            # Write the exact underlying command as the absolute first line of the log
+            # Write the exact underlying command as the absolute first line of the log.
             log_file.write(f"[COMMAND]: {exact_command_str}\n")
             log_file.write("=" * 80 + "\n\n")
             log_file.flush()
@@ -63,7 +63,7 @@ def run_iccl_example(
             if verbose:
                 print(f"\n--- [VERBOSE OUTPUT START: {example_name}] ---")
 
-                # Execute with Popen to stream stdout/stderr live to both terminal and file
+                # Execute with `Popen` to stream stdout/stderr live to both terminal and file.
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -82,7 +82,7 @@ def run_iccl_example(
                     f"--- [VERBOSE OUTPUT END: {example_name}] ---\n" + " " * 56, end=""
                 )
             else:
-                # Quiet mode: Redirect straight to the file handle
+                # Quiet mode: Redirect straight to the file handle.
                 result = subprocess.run(
                     cmd,
                     stdout=log_file,
@@ -157,7 +157,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse and clean the comma-separated examples list
+    # Parse and clean the comma-separated examples list.
     examples_to_run = [ex.strip() for ex in args.examples.split(",") if ex.strip()]
 
     # Sanity Checks
@@ -167,7 +167,7 @@ def main():
 
     if not examples_to_run:
         print(
-            "❌ Error: No target programs defined. Please check your --examples list."
+            "❌ Error: No target programs defined. Please check your `--examples` list."
         )
         sys.exit(1)
 
@@ -227,7 +227,7 @@ def main():
         )
         sys.exit(1)
     else:
-        print("🎉 All targets functioned within specification thresholds!")
+        print("🎉 All targets executed successfully!")
         sys.exit(0)
 
 
