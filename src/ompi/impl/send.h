@@ -21,6 +21,7 @@ class SendImpl<BackendType::kOmpi, device_type> {
                             void *stream) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<Send>{});
+    using Rt = Runtime<kDev>;
 
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
     if (!inst || inst->handle == MPI_COMM_NULL) {
@@ -41,10 +42,9 @@ class SendImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kSystemError;
     }
 
-    Runtime<kDev>::Memcpy(host_buf, send_buff, total_bytes,
-                          Runtime<kDev>::MemcpyDeviceToHost);
-    Runtime<kDev>::StreamSynchronize(
-        static_cast<Runtime<kDev>::Stream>(stream));
+    CHECK_STATUS(Rt, Rt::Memcpy(host_buf, send_buff, total_bytes,
+                                Rt::MemcpyDeviceToHost));
+    CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     auto *bytes = static_cast<char *>(host_buf);
     size_t offset = 0;

@@ -20,6 +20,7 @@ class RecvImpl<BackendType::kOmpi, device_type> {
                             int peer, Communicator *comm, void *stream) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<Recv>{});
+    using Rt = Runtime<kDev>;
 
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
     if (!inst || inst->handle == MPI_COMM_NULL) {
@@ -56,8 +57,8 @@ class RecvImpl<BackendType::kOmpi, device_type> {
       offset += chunk;
     }
 
-    Runtime<kDev>::Memcpy(recv_buff, host_buf, total_bytes,
-                          Runtime<kDev>::MemcpyHostToDevice);
+    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_buf, total_bytes,
+                                Rt::MemcpyHostToDevice));
 
     std::free(host_buf);
     return ReturnStatus::kSuccess;
