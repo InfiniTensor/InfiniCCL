@@ -184,4 +184,4 @@ exec "$EXE" "$@"
             print(f"Error: Unsupported launcher environment '{launcher_type}'")
             sys.exit(1)
 
-        subprocess.run(cmd)
+        subprocess.run(cmd, check=True)
