@@ -95,7 +95,7 @@ if(AUTO_DETECT_BACKENDS)
     find_program(MPICC_PATH NAMES mpicc)
     
     if(MPIRUN_PATH AND MPICC_PATH)
-        # Query the active `mpirun` variant
+        # Query the active `mpirun` variant.
         execute_process(
             COMMAND ${MPIRUN_PATH} --version
             OUTPUT_VARIABLE MPI_VERSION_OUT
@@ -110,7 +110,7 @@ if(AUTO_DETECT_BACKENDS)
             set(WITH_MPICH ON)
             message(STATUS "Auto-detected MPICH/Hydra environment.")
         else()
-            # Fallback to OMPI if it's an unrecognized wrapper
+            # Fallback to OMPI if it's an unrecognized wrapper.
             set(WITH_OMPI ON)
             message(STATUS "Unknown MPI implementation. Defaulting to `WITH_OMPI=ON`")
         endif()

@@ -6,7 +6,7 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(SCRIPT_DIR)
 
-# CMAKE_INSTALL_PREFIX
+# `CMAKE_INSTALL_PREFIX`
 PREFIX_DIR = os.path.dirname(SCRIPT_DIR)
 lib_found = False
 

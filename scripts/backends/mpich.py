@@ -10,5 +10,5 @@ class MpichBackend(BaseMpiBackend):
         return ["mpirun", "-f", hostfile_path, "-n", str(total_slots)]
 
     def get_env_args(self, env_key, env_val):
-        # MPICH/Hydra utilizes global genv flags.
+        # MPICH/Hydra utilizes global `genv` flags.
         return ["-genv", env_key, str(env_val)]

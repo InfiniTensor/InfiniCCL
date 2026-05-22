@@ -3,11 +3,11 @@ import os
 
 class BaseMpiBackend:
     def get_hostfile_line(self, ip, slots):
-        """Must return the string format for a hostfile line."""
+        """Must return the string format for a `hostfile` line."""
         raise NotImplementedError
 
     def get_base_mpi_args(self, hostfile_path, total_slots):
-        """Must return the initial mpirun execution arguments list."""
+        """Must return the initial `mpirun` execution arguments list."""
         raise NotImplementedError
 
     def get_env_args(self, env_key, env_val):
