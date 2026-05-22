@@ -137,6 +137,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_CPU`    | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
+| `WITH_MPICH`  | Enable MPICH backend | `OFF` |
 | `WITH_NCCL`   | Enable NCCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
@@ -154,6 +155,7 @@ These options are available in any CMake project and can be passed during config
 
 > **Notes**:
 > - `AUTO_DETECT_DEVICES` overrides device options like `WITH_NVIDIA` when detection succeeds.
+> - `AUTO_DETECT_BACKENDS` overrides backend options like `WITH_OMPI` when detection succeeds.
 
 </details>
 
@@ -286,6 +288,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | Backend | Support Level | Required CMake Option | Dependencies |
 |---------|---------------|----------------------|---------------|
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
+| **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
 
 </details>
 
