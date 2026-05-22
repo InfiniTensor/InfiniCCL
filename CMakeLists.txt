@@ -22,7 +22,7 @@ option(WITH_NCCL "Enable NCCL backend"    OFF)
 # --- MISC. BUILD OPTIONS ---
 # =========================================================
 option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
-option(AUTO_DETECT_BACKENDS "Automatically detect available backends" ON)
+option(AUTO_DETECT_BACKENDS "Automatically detect available backends" OFF)
 option(BUILD_EXAMPLES "Build internal examples" ON)
 
 # =========================================================
