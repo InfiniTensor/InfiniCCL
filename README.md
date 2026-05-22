@@ -140,6 +140,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_NCCL`   | Enable NCCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
+| `AUTO_DETECT_BACKENDS` | Automatically detect available communication backends and enable corresponding support | `OFF` |
 | `BUILD_EXAMPLES` | Build internal example programs | `ON` |
 
 ### Standard CMake Options (not InfiniCCL‑specific)
@@ -176,6 +177,7 @@ icclrun --config [path-to-your-cluster.yaml] --build all_reduce [program args]
 
 - `--config / -c` : Path to the cluster YAML file.
 - `--build` : Instructs `icclrun` to compile the library on each node before execution. If omitted, `icclrun` assumes the library is already installed at a consistent location.
+- `--launcher` : Specify the backend launcher to be used. Default to `ompi`.
 
 The executable (e.g., `all_reduce`) and its arguments follow the options.
 
@@ -272,7 +274,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 
 | Platform | Support Level | Notes |
 |----------|---------------|-------|
-| **CPU**    | Partial | Runtime available, but no pure CPU collective operations yet. Planned for future releases. |
+| **CPU**    | Partial | Runtime available, suppot OpenMPI backend, but no pure CPU collective operations yet. Planned for future releases. |
 | **NVIDIA** | Full | Requires CUDA Toolkit. |
 | **MetaX**  | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
 
