@@ -1,5 +1,5 @@
-#ifndef INFINI_CCL_CAMBRICON_RUNTIME_H_
-#define INFINI_CCL_CAMBRICON_RUNTIME_H_
+#ifndef INFINI_CCL_CAMBRICON_RUNTIME__H_
+#define INFINI_CCL_CAMBRICON_RUNTIME__H_
 
 #include <utility>
 
@@ -58,4 +58,4 @@ static_assert(Runtime<Device::Type::kCambricon>::Validate());
 
 }  // namespace infini::ccl
 
-#endif  // INFINI_CCL_CAMBRICON_RUNTIME_H_
+#endif  // INFINI_CCL_CAMBRICON_RUNTIME__H_
