@@ -132,9 +132,10 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | Option | Description | Default |
 |--------|-------------|---------|
 | **Device (Hardware) Options** |||
-| `WITH_NVIDIA` | Enable NVIDIA GPU support | `OFF` |
-| `WITH_METAX`  | Enable MetaX GPU support  | `OFF` |
-| `WITH_CPU`    | CPU support (always enabled) | `ON` (internal, not user‑settable) |
+| `WITH_NVIDIA`     | Enable NVIDIA GPU support | `OFF` |
+| `WITH_METAX`      | Enable MetaX GPU support  | `OFF` |
+| `WITH_CAMBRICON`  | Enable Cambricon MLU support  | `OFF` |
+| `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
@@ -276,9 +277,10 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 
 | Platform | Support Level | Notes |
 |----------|---------------|-------|
-| **CPU**    | Partial | Runtime available, suppot OpenMPI backend, but no pure CPU collective operations yet. Planned for future releases. |
-| **NVIDIA** | Full | Requires CUDA Toolkit. |
-| **MetaX**  | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
+| **CPU**        | Partial | Runtime available, suppot OpenMPI backend, but no pure CPU collective operations yet. Planned for future releases. |
+| **NVIDIA**     | Full | Requires CUDA Toolkit. |
+| **MetaX**      | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
+| **Cambricon**  | Full | Requires CNToolKit and `NEUWARE_HOME` to be set. |
 
 </details>
 
