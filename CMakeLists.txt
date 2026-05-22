@@ -16,6 +16,7 @@ set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 # --- BACKEND OPTIONS (Communication Protocols) ---
 # =========================================================
 option(WITH_OMPI "Enable OpenMPI backend" OFF)
+option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 
 # =========================================================
