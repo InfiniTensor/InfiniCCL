@@ -121,6 +121,11 @@ class ICCLLauncher:
                     'grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1'
                 )
 
+            elif n_type == "cambricon":
+                condition = (
+                    '[ -n "${NEUWARE_HOME}" ] || command -v cnmon >/dev/null 2>&1'
+                )
+
             # Skip unknown platforms cleanly.
             if condition is None:
                 continue
@@ -179,4 +184,4 @@ exec "$EXE" "$@"
             print(f"Error: Unsupported launcher environment '{launcher_type}'")
             sys.exit(1)
 
-        subprocess.run(cmd)
+        subprocess.run(cmd, check=True)

@@ -66,8 +66,8 @@ void RunAllReduceExample(int argc, char **argv, int warmup_iter,
 
   float *d_send, *d_recv;
   size_t total_bytes = kNumElements * sizeof(*d_send);
-  CHECK_RT(Rt, Rt::Malloc(&d_send, total_bytes));
-  CHECK_RT(Rt, Rt::Malloc(&d_recv, total_bytes));
+  CHECK_RT(Rt, Rt::Malloc((void **)&d_send, total_bytes));
+  CHECK_RT(Rt, Rt::Malloc((void **)&d_recv, total_bytes));
   CHECK_RT(Rt, Rt::Memcpy(d_send, h_send.data(), total_bytes,
                           Rt::MemcpyHostToDevice));
   CHECK_RT(Rt, Rt::Memcpy(d_recv, h_recv.data(), total_bytes,
