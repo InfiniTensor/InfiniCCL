@@ -200,4 +200,13 @@ using T = TypeMapType<Device::Type::kCpu, ListGet<0>(list_tag)>;
 ```
 
 ## Troubleshooting
-
+### 1. `icclrun` fails on the first node with a `VAR:type=value` CMake error
+```bash
+[*] Orchestrating nvidia on localhost...
+CMake Error: Parse error in command line argument: ...
+ Should be: VAR:type=value
+CMake Error: Run 'cmake --help' for all supported options.
+Traceback (most recent call last):
+...
+```
+If you encounter this error, make sure you are using the correct `cluster.yaml` and that all required fields are filled in using the proper format.
