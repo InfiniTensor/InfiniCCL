@@ -12,6 +12,6 @@ struct NcclInstance : public BackendCommInstance {
   NcclInstance() { type = BackendType::kNccl; }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
 #endif

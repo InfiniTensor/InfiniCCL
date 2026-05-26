@@ -39,7 +39,7 @@ class ICCLLauncher:
             local_ips = socket.gethostbyname_ex(socket.gethostname())[2]
             local_ips += ["127.0.0.1", "localhost"]
             return ip in local_ips
-        except:
+        except Exception:
             return False
 
     def orchestrate_build(self):
