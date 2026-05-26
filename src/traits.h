@@ -8,9 +8,11 @@ namespace infini::ccl {
 
 // --------------------- List and TypePack ---------------------
 // A generic container for a sequence of compile-time values.
-template <auto... items> struct List {};
+template <auto... items>
+struct List {};
 
-template <typename... Ts> struct TypePack {};
+template <typename... Ts>
+struct TypePack {};
 
 // -----------------------------------------------------------------------------
 // Tags
@@ -21,13 +23,15 @@ template <typename... Ts> struct TypePack {};
 
 // `TypeTag<T>`: carries a C++ type. Recover with `typename
 // decltype(tag)::type`.
-template <typename T> struct TypeTag {
+template <typename T>
+struct TypeTag {
   using type = T;
 };
 
 // `ValueTag<V>`: carries a compile-time value. Recover with
 // `decltype(tag)::value`.
-template <auto v> struct ValueTag {
+template <auto v>
+struct ValueTag {
   using value_type = decltype(v);
   static constexpr auto value = v;
 };
@@ -38,7 +42,8 @@ template <auto v> struct ValueTag {
 
 // Check at compile-time if a value exists within a construct (e.g., `List<>`).
 // Example: `static_assert(ContainsValue<SupportedTiles, 32>)`;
-template <typename T, auto value> struct Contains;
+template <typename T, auto value>
+struct Contains;
 
 template <auto value, auto... items>
 struct Contains<List<items...>, value>
@@ -54,9 +59,11 @@ template <typename T, typename... Ts>
 inline constexpr bool IsTypeInList = (std::is_same_v<T, Ts> || ...);
 
 // Trait to detect whether `T` is a `List<...>` specialization.
-template <typename T> struct IsListType : std::false_type {};
+template <typename T>
+struct IsListType : std::false_type {};
 
-template <auto... items> struct IsListType<List<items...>> : std::true_type {};
+template <auto... items>
+struct IsListType<List<items...>> : std::true_type {};
 
 // -----------------------------------------------------------------------------
 // List Operations
@@ -80,15 +87,18 @@ constexpr auto ListGet(List<items...> list) {
 
 // `ListSize` gets the size of a List.
 // Usage: `ListSize<List<1, 2, 3>>::value` is `3`.
-template <typename T> struct ListSize;
+template <typename T>
+struct ListSize;
 
-template <auto... Args> struct ListSize<List<Args...>> {
+template <auto... Args>
+struct ListSize<List<Args...>> {
   static constexpr size_t value = sizeof...(Args);
 };
 
 // Concatenates two List types into a single `List`.
 // Example: `ConcatType<List<1, 2>, List<3, 4>>` is `List<1, 2, 3, 4>`.
-template <typename L1, typename L2> struct Concat;
+template <typename L1, typename L2>
+struct Concat;
 
 template <auto... item1, auto... item2>
 struct Concat<List<item1...>, List<item2...>> {
@@ -100,9 +110,11 @@ using ConcatType = typename Concat<L1, L2>::type;
 
 // Flatten multi-level `List` into a single `List`.
 // Example: `Flatten<List<1>, List<2, 3>, List<4>>::type` is `List<1, 2, 3, 4>`.
-template <typename... Lists> struct Flatten;
+template <typename... Lists>
+struct Flatten;
 
-template <auto... items> struct Flatten<List<items...>> {
+template <auto... items>
+struct Flatten<List<items...>> {
   using type = List<items...>;
 };
 
@@ -193,6 +205,6 @@ struct FilterList<Functor, std::tuple<Args...>, List<items...>> {
       typename Filter<Functor, std::tuple<Args...>, List<>, items...>::type;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_TRAITS_H_
+#endif  // INFINI_CCL_TRAITS_H_

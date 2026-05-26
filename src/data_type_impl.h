@@ -2,8 +2,8 @@
 #define INFINI_CCL_DATA_TYPE_IMPL_H_
 
 #include <cstddef>
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <string_view>
 
 #include "constexpr_map.h"
@@ -75,24 +75,28 @@ constexpr ConstexprMap<std::string_view, DataType, 12> kStringToDataType{{{
 
 // `TypeMap` maps a `DataType` on a given `Device::Type` to the corresponding
 // C++ type.
-template <Device::Type dev, DataType dtype> struct TypeMap;
+template <Device::Type dev, DataType dtype>
+struct TypeMap;
 
 template <Device::Type dev, DataType dtype>
 using TypeMapType = typename TypeMap<dev, dtype>::type;
 
 // `DataTypeMap` maps a C++ type to the corresponding `DataType`.
-template <typename T> struct DataTypeMap;
+template <typename T>
+struct DataTypeMap;
 
 template <typename T>
 inline constexpr DataType DataTypeMapValue = DataTypeMap<T>::value;
 
-#define DEFINE_DATA_TYPE_MAPPING(ENUM_VALUE, CPP_TYPE)                         \
-  template <Device::Type dev> struct TypeMap<dev, DataType::ENUM_VALUE> {      \
-    using type = CPP_TYPE;                                                     \
-  };                                                                           \
-                                                                               \
-  template <> struct DataTypeMap<CPP_TYPE> {                                   \
-    static constexpr DataType value = DataType::ENUM_VALUE;                    \
+#define DEFINE_DATA_TYPE_MAPPING(ENUM_VALUE, CPP_TYPE)      \
+  template <Device::Type dev>                               \
+  struct TypeMap<dev, DataType::ENUM_VALUE> {               \
+    using type = CPP_TYPE;                                  \
+  };                                                        \
+                                                            \
+  template <>                                               \
+  struct DataTypeMap<CPP_TYPE> {                            \
+    static constexpr DataType value = DataType::ENUM_VALUE; \
   };
 
 DEFINE_DATA_TYPE_MAPPING(kUInt8, std::uint8_t)
@@ -138,6 +142,6 @@ using AllFloatTypes = ConcatType<FloatTypes, ReducedFloatTypes>;
 using AllIntTypes = ConcatType<IntTypes, UIntTypes>;
 using AllTypes = ConcatType<AllFloatTypes, AllIntTypes>;
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_DATA_TYPE_IMPL_H_
+#endif  // INFINI_CCL_DATA_TYPE_IMPL_H_

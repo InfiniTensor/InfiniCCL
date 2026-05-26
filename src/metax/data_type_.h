@@ -12,14 +12,16 @@
 
 namespace infini::ccl {
 
-template <> struct TypeMap<Device::Type::kMetax, DataType::kFloat16> {
+template <>
+struct TypeMap<Device::Type::kMetax, DataType::kFloat16> {
   using type = __half;
 };
 
-template <> struct TypeMap<Device::Type::kMetax, DataType::kBFloat16> {
+template <>
+struct TypeMap<Device::Type::kMetax, DataType::kBFloat16> {
   using type = __maca_bfloat16;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_METAX_DATA_TYPE__H_
+#endif  // INFINI_CCL_METAX_DATA_TYPE__H_

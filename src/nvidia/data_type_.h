@@ -11,14 +11,16 @@
 
 namespace infini::ccl {
 
-template <> struct TypeMap<Device::Type::kNvidia, DataType::kFloat16> {
+template <>
+struct TypeMap<Device::Type::kNvidia, DataType::kFloat16> {
   using type = half;
 };
 
-template <> struct TypeMap<Device::Type::kNvidia, DataType::kBFloat16> {
+template <>
+struct TypeMap<Device::Type::kNvidia, DataType::kBFloat16> {
   using type = __nv_bfloat16;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_NVIDIA_DATA_TYPE__H_
+#endif  // INFINI_CCL_NVIDIA_DATA_TYPE__H_

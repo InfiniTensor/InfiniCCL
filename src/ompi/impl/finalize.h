@@ -8,7 +8,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class FinalizeImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply() {
     int finalized = 0;
     INFINI_CHECK_MPI(MPI_Finalized(&finalized));
@@ -24,6 +24,6 @@ public:
 template <>
 struct BackendEnabled<Finalize, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_FINALIZE_H_
+#endif  // INFINI_CCL_OMPI_IMPL_FINALIZE_H_

@@ -60,6 +60,6 @@ struct Runtime<Device::Type::kCpu> : RuntimeBase<Runtime<Device::Type::kCpu>> {
 
 static_assert(Runtime<Device::Type::kCpu>::Validate());
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_CPU_RUNTIME_H_
+#endif  // INFINI_CCL_CPU_RUNTIME_H_

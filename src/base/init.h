@@ -6,10 +6,11 @@
 
 namespace infini::ccl {
 
-template <BackendType backend_type, Device::Type device_type> struct InitImpl;
+template <BackendType backend_type, Device::Type device_type>
+struct InitImpl;
 
 class Init : public Operation<Init> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
   static ReturnStatus Execute(Args &&...args) {
@@ -18,6 +19,6 @@ public:
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_INIT_H_
+#endif  // INFINI_CCL_BASE_INIT_H_

@@ -11,7 +11,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class CommInitAllImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply(Communicator *comm, int n_dev,
                             const int *dev_list) {
     constexpr Device::Type kDev =
@@ -56,6 +56,6 @@ public:
 template <>
 struct BackendEnabled<CommInitAll, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_COMM_INIT_ALL_H_
+#endif  // INFINI_CCL_OMPI_IMPL_COMM_INIT_ALL_H_

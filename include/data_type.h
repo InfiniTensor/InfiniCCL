@@ -30,4 +30,4 @@ typedef enum {
 }
 #endif
 
-#endif // INFINI_CCL_DATA_TYPE_H_
+#endif  // INFINI_CCL_DATA_TYPE_H_

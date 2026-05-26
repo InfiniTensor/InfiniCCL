@@ -1,12 +1,13 @@
 #ifndef INFINI_CCL_OMPI_CHECKS_H_
 #define INFINI_CCL_OMPI_CHECKS_H_
 
-#include <iostream>
 #include <mpi.h>
+
+#include <iostream>
 
 #include "return_status_impl.h"
 
-#define INFINI_CHECK_MPI(result)                                               \
+#define INFINI_CHECK_MPI(result) \
   ::infini::ccl::detail::CheckMpiImpl((result), __FILE__, __LINE__)
 
 namespace infini::ccl {
@@ -22,8 +23,8 @@ inline ReturnStatus CheckMpiImpl(int mpi_result, const char *file, int line) {
   return ReturnStatus::kSuccess;
 }
 
-} // namespace detail
+}  // namespace detail
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_CHECKS_H_
+#endif  // INFINI_CCL_OMPI_CHECKS_H_

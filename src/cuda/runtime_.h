@@ -7,7 +7,8 @@
 
 namespace infini::ccl {
 
-template <typename Derived> struct CudaRuntime : DeviceRuntime<Derived> {
+template <typename Derived>
+struct CudaRuntime : DeviceRuntime<Derived> {
   static constexpr bool Validate() {
     DeviceRuntime<Derived>::Validate();
     static_assert(
@@ -19,6 +20,6 @@ template <typename Derived> struct CudaRuntime : DeviceRuntime<Derived> {
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
 #endif

@@ -1,17 +1,18 @@
 #ifndef INFINI_CCL_UTILS_H_
 #define INFINI_CCL_UTILS_H_
 
-#include "constexpr_map.h"
 #include <iostream>
+
+#include "constexpr_map.h"
 
 // Internal helper macros to count arguments.
 #define GET_LOG_MACRO(_1, _2, NAME, ...) NAME
 
-#define LOG_1(msg)                                                             \
-  ::infini::ccl::Logger::PrintMsg(                                             \
+#define LOG_1(msg)                 \
+  ::infini::ccl::Logger::PrintMsg( \
       (msg), ::infini::ccl::Logger::LogLevel::kError, __FILE__, __LINE__)
 
-#define LOG_2(msg, level)                                                      \
+#define LOG_2(msg, level) \
   ::infini::ccl::Logger::PrintMsg((msg), (level), __FILE__, __LINE__)
 
 // Temporary logging macro. To be replaced by `glog` in the future.
@@ -20,7 +21,7 @@
 namespace infini::ccl {
 
 class Logger {
-public:
+ public:
   enum class LogLevel : int8_t { kInfo, kWarning, kError, kFatal, kCount };
 
   static void PrintMsg(const char *msg, LogLevel level = LogLevel::kError,
@@ -32,7 +33,7 @@ public:
     }
   }
 
-private:
+ private:
   static constexpr ConstexprMap<LogLevel, std::string_view,
                                 static_cast<std::size_t>(LogLevel::kCount)>
       kLogLevelToDesc{{{
@@ -43,6 +44,6 @@ private:
       }}};
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_UTILS_H_
+#endif  // INFINI_CCL_UTILS_H_

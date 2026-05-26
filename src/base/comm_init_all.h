@@ -12,7 +12,7 @@ template <BackendType backend_type, Device::Type device_type>
 struct CommInitAllImpl;
 
 class CommInitAll : public Operation<CommInitAll> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
   static ReturnStatus Execute(void **comm_handle, Args &&...args) {
@@ -33,6 +33,6 @@ public:
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_COMM_INIT_ALL_H_
+#endif  // INFINI_CCL_BASE_COMM_INIT_ALL_H_

@@ -86,14 +86,16 @@ struct BFloat16 {
   }
 };
 
-template <> struct TypeMap<Device::Type::kCpu, DataType::kFloat16> {
+template <>
+struct TypeMap<Device::Type::kCpu, DataType::kFloat16> {
   using type = Float16;
 };
 
-template <> struct TypeMap<Device::Type::kCpu, DataType::kBFloat16> {
+template <>
+struct TypeMap<Device::Type::kCpu, DataType::kBFloat16> {
   using type = BFloat16;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_CPU_DATA_TYPE__H_
+#endif  // INFINI_CCL_CPU_DATA_TYPE__H_
