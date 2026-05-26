@@ -67,6 +67,7 @@ body:
     id: backend
     attributes:
       label: Backend
+      multiple: true
       options:
         - OpenMPI
         - MPICH
@@ -77,6 +78,7 @@ body:
     id: platform
     attributes:
       label: Platform
+      multiple: true
       options:
         - CPU
         - NVIDIA
