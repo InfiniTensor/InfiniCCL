@@ -80,7 +80,8 @@ def run_iccl_example(
                 process.wait(timeout=timeout_duration)
                 return_code = process.returncode
                 print(
-                    f"--- [VERBOSE OUTPUT END: `{example_name}`] ---\n" + " " * 56, end=""
+                    f"--- [VERBOSE OUTPUT END: `{example_name}`] ---\n" + " " * 56,
+                    end="",
                 )
             else:
                 # Quiet mode: Redirect straight to the file handle.
@@ -104,7 +105,9 @@ def run_iccl_example(
     except subprocess.TimeoutExpired:
         print(f" ❌ TIMEOUT (Exceeded {timeout_duration} seconds)")
         with open(log_file_path, "a") as f:
-            f.write(f"\n[RUNNER ERROR]: Distributed `icclrun` harness timed out after {timeout_duration} seconds.\n")
+            f.write(
+                f"\n[RUNNER ERROR]: Distributed `icclrun` harness timed out after {timeout_duration} seconds.\n"
+            )
         return False
     except FileNotFoundError:
         print(" ❌ ERROR   (`icclrun` executable not found in `PATH`)")

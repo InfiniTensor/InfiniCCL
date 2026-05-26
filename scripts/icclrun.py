@@ -1,41 +1,46 @@
 #!/usr/bin/env python3
 import argparse
-import sys
 import os
+import sys
 
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(SCRIPT_DIR)
 
-# `CMAKE_INSTALL_PREFIX`
-PREFIX_DIR = os.path.dirname(SCRIPT_DIR)
-lib_found = False
+def configure_system_paths():
+    """Dynamically resolves and injects necessary framework search paths."""
+    SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+    sys.path.append(SCRIPT_DIR)
 
-for lib_dir_name in ["lib64", "lib"]:
-    candidate_path = os.path.join(PREFIX_DIR, lib_dir_name, "infiniccl")
-    if os.path.exists(candidate_path):
-        sys.path.append(candidate_path)
-        lib_found = True
-        break
+    # `CMAKE_INSTALL_PREFIX`
+    PREFIX_DIR = os.path.dirname(SCRIPT_DIR)
+    lib_found = False
 
-# Fallback
-if not lib_found:
-    if os.path.exists(os.path.join(PREFIX_DIR, "icclrun_logic.py")):
-        sys.path.append(PREFIX_DIR)
-    else:
-        print(
-            f"[Error]: Could not locate 'icclrun_logic.py' in system library paths or local workspace.",
-            file=sys.stderr,
-        )
-        print(
-            f"Looked under: {os.path.join(PREFIX_DIR, 'lib64/infiniccl')}, {os.path.join(PREFIX_DIR, 'lib/infiniccl')}, and {PREFIX_DIR}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    for lib_dir_name in ["lib64", "lib"]:
+        candidate_path = os.path.join(PREFIX_DIR, lib_dir_name, "infiniccl")
+        if os.path.exists(candidate_path):
+            sys.path.append(candidate_path)
+            lib_found = True
+            break
 
-from icclrun_logic import ICCLLauncher
+    # Fallback
+    if not lib_found:
+        if os.path.exists(os.path.join(PREFIX_DIR, "icclrun_logic.py")):
+            sys.path.append(PREFIX_DIR)
+        else:
+            print(
+                "[Error]: Could not locate 'icclrun_logic.py' in system library paths or local workspace.",
+                file=sys.stderr,
+            )
+            print(
+                f"Looked under: {os.path.join(PREFIX_DIR, 'lib64/infiniccl')}, {os.path.join(PREFIX_DIR, 'lib/infiniccl')}, and {PREFIX_DIR}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
 
 def main():
+    configure_system_paths()
+
+    from icclrun_logic import ICCLLauncher
+
     parser = argparse.ArgumentParser(description="InfiniCCL Unified Launcher")
     parser.add_argument("--config", "-c", dest="cluster", help="Path to cluster.yaml")
     parser.add_argument("--build", action="store_true", help="Compile remote nodes")
