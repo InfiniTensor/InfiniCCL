@@ -5,8 +5,9 @@
 
 namespace infini::ccl {
 
-template <> struct DeviceEnabled<Device::Type::kCpu> : std::true_type {};
+template <>
+struct DeviceEnabled<Device::Type::kCpu> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
 #endif

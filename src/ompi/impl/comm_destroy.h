@@ -10,7 +10,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class CommDestroyImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply(void *comm) {
     auto *comm_internal = static_cast<Communicator *>(comm);
     if (!comm_internal) {
@@ -30,6 +30,6 @@ public:
 template <>
 struct BackendEnabled<CommDestroy, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_COMM_DESTROY_H_
+#endif  // INFINI_CCL_OMPI_IMPL_COMM_DESTROY_H_

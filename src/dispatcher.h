@@ -104,7 +104,7 @@ struct DispatchFuncUnwrap<ValueType, Functor, List<>, std::tuple<Args...>> {
   }
 };
 
-} // namespace detail
+}  // namespace detail
 
 // (Single Dispatch) Dispatches a runtime value to a compile-time functor.
 template <typename ValueType, ValueType... all_values, typename Functor,
@@ -195,7 +195,8 @@ namespace detail {
 
 // Bridges the generic value dispatch layer to the `DataType`-specific type
 // dispatch layer.
-template <Device::Type kDev, typename Functor> struct DataTypeAdapter {
+template <Device::Type kDev, typename Functor>
+struct DataTypeAdapter {
   Functor &func;
 
   template <auto dtype, typename... Args>
@@ -205,7 +206,8 @@ template <Device::Type kDev, typename Functor> struct DataTypeAdapter {
   }
 };
 
-template <Device::Type kDev, typename Functor> struct DataTypeMultiAdapter {
+template <Device::Type kDev, typename Functor>
+struct DataTypeMultiAdapter {
   Functor &func;
 
   template <auto... dtypes, typename... Args>
@@ -215,7 +217,8 @@ template <Device::Type kDev, typename Functor> struct DataTypeMultiAdapter {
   }
 };
 
-template <typename Functor> struct DeviceAdapter {
+template <typename Functor>
+struct DeviceAdapter {
   Functor &func;
 
   template <auto dev, typename... Args>
@@ -224,7 +227,8 @@ template <typename Functor> struct DeviceAdapter {
   }
 };
 
-template <typename Functor> struct DeviceMultiAdapter {
+template <typename Functor>
+struct DeviceMultiAdapter {
   Functor &func;
 
   template <auto... devs, typename... Args>
@@ -233,7 +237,7 @@ template <typename Functor> struct DeviceMultiAdapter {
   }
 };
 
-} // namespace detail
+}  // namespace detail
 
 // `DataType` Dispatch
 template <Device::Type kDev, DataType... allowed_dtypes, typename Functor,
@@ -251,8 +255,7 @@ template <Device::Type kDev, typename... Lists, typename Functor,
 auto DispatchFunc(std::initializer_list<DataType> dtypes, Functor &&func,
                   std::string_view context_str = "", Args &&...args) {
   std::vector<int64_t> v;
-  for (auto d : dtypes)
-    v.push_back(static_cast<int64_t>(d));
+  for (auto d : dtypes) v.push_back(static_cast<int64_t>(d));
 
   detail::DataTypeMultiAdapter<kDev, std::remove_reference_t<Functor>> adapter{
       func};
@@ -275,8 +278,7 @@ template <typename... Lists, typename Functor, typename... Args>
 auto DispatchFunc(std::initializer_list<Device::Type> devices, Functor &&func,
                   std::string_view context_str = "", Args &&...args) {
   std::vector<int64_t> v;
-  for (auto d : devices)
-    v.push_back(static_cast<int64_t>(d));
+  for (auto d : devices) v.push_back(static_cast<int64_t>(d));
 
   detail::DeviceMultiAdapter<std::remove_reference_t<Functor>> adapter{func};
   return DispatchFunc<Lists...>(v, 0, adapter, context_str, List<>{},
@@ -334,6 +336,6 @@ auto DispatchFunc(std::initializer_list<int64_t> keys, Functor &&func,
                                 std::forward<Args>(args)...);
 }
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_DISPATCHER_H_
+#endif  // INFINI_CCL_DISPATCHER_H_

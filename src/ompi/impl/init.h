@@ -8,7 +8,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class InitImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply(int *argc, char ***argv) {
     int initialized = 0;
     INFINI_CHECK_MPI(MPI_Initialized(&initialized));
@@ -29,12 +29,13 @@ public:
     return ReturnStatus::kSuccess;
   }
 
-private:
+ private:
   constexpr static auto required_level_ = MPI_THREAD_FUNNELED;
 };
 
-template <> struct BackendEnabled<Init, BackendType::kOmpi> : std::true_type {};
+template <>
+struct BackendEnabled<Init, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_INIT_H_
+#endif  // INFINI_CCL_OMPI_IMPL_INIT_H_

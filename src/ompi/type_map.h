@@ -41,6 +41,6 @@ inline MPI_Op RedOpToOmpiOp(ReductionOpType red_op) {
   return kOmpiOpMap.at(red_op);
 }
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_TYPE_MAPPING_H_
+#endif  // INFINI_CCL_OMPI_TYPE_MAPPING_H_

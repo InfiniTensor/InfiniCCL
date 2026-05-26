@@ -19,6 +19,6 @@ enum class ReturnStatus : int8_t {
   kNumResults = infiniNumResults,
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_RETURN_STATUS_IMPL_H_
+#endif  // INFINI_CCL_RETURN_STATUS_IMPL_H_

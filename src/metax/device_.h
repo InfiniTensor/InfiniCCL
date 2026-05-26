@@ -5,8 +5,9 @@
 
 namespace infini::ccl {
 
-template <> struct DeviceEnabled<Device::Type::kMetax> : std::true_type {};
+template <>
+struct DeviceEnabled<Device::Type::kMetax> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_METAX_DEVICE__H_
+#endif  // INFINI_CCL_METAX_DEVICE__H_

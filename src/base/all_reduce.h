@@ -13,7 +13,7 @@ template <BackendType backend_type, Device::Type device_type>
 struct AllReduceImpl;
 
 class AllReduce : public Operation<AllReduce> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
@@ -28,7 +28,7 @@ public:
         send_buff, recv_buff, count, datatype, op, comm, stream);
   }
 
-private:
+ private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
                              DataType datatype, ReductionOpType op,
                              void *comm_handle) {
@@ -53,6 +53,6 @@ private:
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_ALL_REDUCE_H_
+#endif  // INFINI_CCL_BASE_ALL_REDUCE_H_

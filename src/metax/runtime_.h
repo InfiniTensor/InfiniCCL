@@ -51,6 +51,6 @@ struct Runtime<Device::Type::kMetax>
 
 static_assert(Runtime<Device::Type::kMetax>::Validate());
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_METAX_RUNTIME__H_
+#endif  // INFINI_CCL_METAX_RUNTIME__H_

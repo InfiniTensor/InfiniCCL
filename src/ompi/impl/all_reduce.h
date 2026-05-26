@@ -13,7 +13,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class AllReduceImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply(const void *send_buff, void *recv_buff,
                             size_t count, DataType data_type,
                             ReductionOpType op, Communicator *comm,
@@ -84,6 +84,6 @@ public:
 template <>
 struct BackendEnabled<AllReduce, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_ALL_REDUCE_H_
+#endif  // INFINI_CCL_OMPI_IMPL_ALL_REDUCE_H_

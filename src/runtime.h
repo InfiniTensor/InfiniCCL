@@ -5,17 +5,18 @@
 
 #include "device.h"
 
-#define CHECK_STATUS(runtime_type, expression)                                 \
-  do {                                                                         \
-    auto _ret = runtime_type::Check(expression);                               \
-    if (_ret != ::infini::ccl::ReturnStatus::kSuccess) {                       \
-      return _ret;                                                             \
-    }                                                                          \
+#define CHECK_STATUS(runtime_type, expression)           \
+  do {                                                   \
+    auto _ret = runtime_type::Check(expression);         \
+    if (_ret != ::infini::ccl::ReturnStatus::kSuccess) { \
+      return _ret;                                       \
+    }                                                    \
   } while (0)
 
 namespace infini::ccl {
 
-template <Device::Type device_type> struct Runtime;
+template <Device::Type device_type>
+struct Runtime;
 
 /// ## Interface enforcement via CRTP.
 ///
@@ -29,7 +30,8 @@ template <Device::Type device_type> struct Runtime;
 /// - `DeviceRuntime`: adds `Stream`, `Malloc`, and `Free` (e.g. Cambricon).
 
 /// Every Runtime must provide `static constexpr Device::Type kDeviceType`.
-template <typename Derived> struct RuntimeBase {
+template <typename Derived>
+struct RuntimeBase {
   static constexpr bool Validate() {
     static_assert(
         std::is_same_v<std::remove_cv_t<decltype(Derived::kDeviceType)>,
@@ -41,7 +43,8 @@ template <typename Derived> struct RuntimeBase {
 
 /// Runtimes with device memory must additionally provide `Stream`, `Malloc`,
 /// and `Free`.
-template <typename Derived> struct DeviceRuntime : RuntimeBase<Derived> {
+template <typename Derived>
+struct DeviceRuntime : RuntimeBase<Derived> {
   static constexpr bool Validate() {
     RuntimeBase<Derived>::Validate();
     static_assert(sizeof(typename Derived::Stream) > 0,
@@ -55,6 +58,6 @@ template <typename Derived> struct DeviceRuntime : RuntimeBase<Derived> {
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_RUNTIME_H_
+#endif  // INFINI_CCL_RUNTIME_H_

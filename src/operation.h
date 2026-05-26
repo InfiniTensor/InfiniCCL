@@ -13,8 +13,9 @@ namespace infini::ccl {
 template <typename Key, BackendType backend_type = BackendType::kCount,
           Device::Type device_type = Device::Type::kCount>
 class Operation {
-public:
-  template <typename... Args> static auto Call(Args &&...args) {
+ public:
+  template <typename... Args>
+  static auto Call(Args &&...args) {
     constexpr BackendType kBestBack =
         ListGetBest<BackendPriority>(ActiveBackends<Key>{});
     constexpr Device::Type kBestDev =
@@ -40,6 +41,6 @@ public:
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OPERATION_H_
+#endif  // INFINI_CCL_OPERATION_H_

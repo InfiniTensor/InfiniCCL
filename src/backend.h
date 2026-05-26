@@ -23,10 +23,12 @@ using AllBackendTypes =
          BackendType::kMccl, BackendType::kRccl, BackendType::kCncl,
          BackendType::kHccl>;
 
-template <typename Key, BackendType> struct BackendEnabled : std::false_type {};
+template <typename Key, BackendType>
+struct BackendEnabled : std::false_type {};
 
 // Deferred computation of active backends for a specific operation Key.
-template <typename Key> struct ActiveBackendsImpl {
+template <typename Key>
+struct ActiveBackendsImpl {
   struct Filter {
     template <auto kBackend>
     std::enable_if_t<
@@ -41,18 +43,21 @@ template <typename Key>
 using ActiveBackends = typename ActiveBackendsImpl<Key>::type;
 
 // Priority trait for backend selection.
-template <BackendType backend_type> struct BackendPriority {
+template <BackendType backend_type>
+struct BackendPriority {
   static constexpr int value = 0;
 };
 
-template <> struct BackendPriority<BackendType::kOmpi> {
+template <>
+struct BackendPriority<BackendType::kOmpi> {
   static constexpr int value = 1;
 };
 
-template <> struct BackendPriority<BackendType::kNccl> {
+template <>
+struct BackendPriority<BackendType::kNccl> {
   static constexpr int value = 10;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BACKEND_H_
+#endif  // INFINI_CCL_BACKEND_H_

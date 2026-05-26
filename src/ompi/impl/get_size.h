@@ -8,7 +8,7 @@ namespace infini::ccl {
 
 template <Device::Type device_type>
 class GetSizeImpl<BackendType::kOmpi, device_type> {
-public:
+ public:
   static ReturnStatus Apply(int *size) {
     INFINI_CHECK_MPI(MPI_Comm_size(MPI_COMM_WORLD, size));
     return ReturnStatus::kSuccess;
@@ -18,6 +18,6 @@ public:
 template <>
 struct BackendEnabled<GetSize, BackendType::kOmpi> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_IMPL_GET_SIZE_H_
+#endif  // INFINI_CCL_OMPI_IMPL_GET_SIZE_H_

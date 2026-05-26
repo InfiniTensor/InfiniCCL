@@ -53,6 +53,6 @@ struct Runtime<Device::Type::kNvidia>
 
 static_assert(Runtime<Device::Type::kNvidia>::Validate());
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
 #endif

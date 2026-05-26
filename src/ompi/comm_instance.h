@@ -20,6 +20,6 @@ struct OmpiInstance : public BackendCommInstance {
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_OMPI_COMM_INSTANCE_H_
+#endif  // INFINI_CCL_OMPI_COMM_INSTANCE_H_

@@ -16,6 +16,6 @@ enum class ReductionOpType : int8_t {
   kNumRedOps = infiniNumOps,
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_COMM_IMPL_H_
+#endif  // INFINI_CCL_COMM_IMPL_H_

@@ -10,7 +10,7 @@ template <BackendType backend_type, Device::Type device_type>
 struct GetSizeImpl;
 
 class GetSize : public Operation<GetSize> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
   static ReturnStatus Execute(Args &&...args) {
@@ -19,6 +19,6 @@ public:
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_GET_SIZE_H_
+#endif  // INFINI_CCL_BASE_GET_SIZE_H_

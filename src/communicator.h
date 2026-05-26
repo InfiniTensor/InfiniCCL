@@ -14,9 +14,11 @@ struct BackendCommInstance {
 };
 
 class Communicator {
-public:
+ public:
   Communicator(Device::Type device_type, int device_id)
-      : device_type_(device_type), device_id_(device_id), global_rank_(-1),
+      : device_type_(device_type),
+        device_id_(device_id),
+        global_rank_(-1),
         global_size_(0) {}
 
   void set_world_info(int rank, int size) {
@@ -58,7 +60,7 @@ public:
     return (intra_comm_backend() == t) || (inter_comm_backend() == t);
   }
 
-private:
+ private:
   // Slot 1: Intra-node (e.g., NCCL)
   std::unique_ptr<BackendCommInstance> intra_comm_;
 
@@ -74,6 +76,6 @@ private:
   Device::Type device_type_;
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_COMMUNICATOR_H_
+#endif  // INFINI_CCL_COMMUNICATOR_H_

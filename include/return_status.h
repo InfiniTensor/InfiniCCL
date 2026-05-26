@@ -21,4 +21,4 @@ typedef enum {
 }
 #endif
 
-#endif // INFINI_CCL_RETURN_STATUS_H_
+#endif  // INFINI_CCL_RETURN_STATUS_H_
