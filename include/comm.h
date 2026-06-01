@@ -63,6 +63,11 @@ infinicclResult_t infinicclGather(const void *sendbuff, void *recvbuff,
                                   size_t count, infinicclDataType_t datatype,
                                   int root, infinicclComm_t comm, void *stream);
 
+infinicclResult_t infinicclScatter(const void *sendbuff, void *recvbuff,
+                                   size_t count, infinicclDataType_t datatype,
+                                   int root, infinicclComm_t comm,
+                                   void *stream);
+
 infinicclResult_t infinicclReduceScatter(const void *sendbuff, void *recvbuff,
                                          size_t recvcount,
                                          infinicclDataType_t datatype,
