@@ -8,7 +8,7 @@ foreach(source_file ${EXAMPLE_SOURCES})
     target_link_libraries(${example_name} PRIVATE infiniccl)
 
     # Add runtime and backend dependencies for direct runtime/backend usage.
-    if(WITH_NVIDIA)
+    if(WITH_NVIDIA OR WITH_ILUVATAR)
         target_link_libraries(${example_name} PRIVATE CUDA::cudart)
     endif()
 

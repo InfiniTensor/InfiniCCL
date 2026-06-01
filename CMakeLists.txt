@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --- DEVICE OPTIONS (Hardware Runtimes) ---
 # =========================================================
 option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
+option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 
@@ -60,6 +61,35 @@ if(AUTO_DETECT_DEVICES)
         message(STATUS "Auto-detected NVIDIA environment.")
     else()
         message(STATUS "NVIDIA environment not detected.")
+    endif()
+
+    # Iluvatar
+    set(ILUVATAR_FOUND FALSE)
+
+    file(GLOB ILUVATAR_DEV_FILES "/dev/iluvatar*")
+
+    if(ILUVATAR_DEV_FILES)
+        set(ILUVATAR_FOUND TRUE)
+    elseif(NOT ILUVATAR_FOUND)
+        find_program(ILUVATAR_SMI_PATH ixsmi)
+        if(ILUVATAR_SMI_PATH)
+            execute_process(
+                COMMAND ${ILUVATAR_SMI_PATH} -L
+                RESULT_VARIABLE SMI_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(SMI_RESULT EQUAL 0)
+                set(ILUVATAR_FOUND TRUE)
+            endif()
+        endif()
+    endif()
+
+    if(ILUVATAR_FOUND)
+        set(WITH_ILUVATAR ON)
+        message(STATUS "Auto-detected Iluvatar environment.")
+    else()
+        message(STATUS "Iluvatar environment not detected.")
     endif()
 
     # MetaX
@@ -174,6 +204,29 @@ endif()
 if(WITH_NVIDIA)
     enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
+endif()
+
+if(WITH_ILUVATAR)
+    find_program(ILUVATAR_CUDA_COMPILER NAMES clang++ HINTS /usr/local/corex/bin)
+    
+    if(NOT ILUVATAR_CUDA_COMPILER)
+        message(FATAL_ERROR "`WITH_ILUVATAR` is `ON` but CoreX `clang++` was not found.")
+    endif()
+    
+    get_filename_component(ILUVATAR_CUDA_BIN_DIR "${ILUVATAR_CUDA_COMPILER}" DIRECTORY)
+    get_filename_component(ILUVATAR_CUDA_ROOT "${ILUVATAR_CUDA_BIN_DIR}/.." ABSOLUTE)
+    
+    set(CUDAToolkit_ROOT "${ILUVATAR_CUDA_ROOT}" CACHE PATH "Iluvatar CoreX toolkit root" FORCE)
+    find_package(CUDAToolkit REQUIRED)
+
+    set(ILUVATAR_INCLUDE_DIR "${ILUVATAR_CUDA_ROOT}/include")
+    set(ILUVATAR_LIB_DIR "${ILUVATAR_CUDA_ROOT}/lib" "${ILUVATAR_CUDA_ROOT}/lib64")
+
+    set(ILUVATAR_CUDA_FLAGS
+        "-fPIC;-Wno-error=unused-variable;-Wno-error=unused-private-field;-Wno-unused-variable;-std=c++17;--cuda-path=${ILUVATAR_CUDA_ROOT};-x;ivcore"
+        CACHE STRING "Iluvatar CUDA compiler flags")
+
+    message(STATUS "Iluvatar: CUDA compiler ${ILUVATAR_CUDA_COMPILER}, arch ${ILUVATAR_ARCH}, toolkit ${ILUVATAR_CUDA_ROOT}")
 endif()
 
 if(WITH_METAX)

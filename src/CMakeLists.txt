@@ -53,6 +53,30 @@ if(WITH_NVIDIA)
     )
 endif()
 
+# Iluvatar
+if(WITH_ILUVATAR)
+    list(APPEND DEVICE_LIST "iluvatar")
+
+    set(ILUVATAR_PATTERNS
+        "cuda/*.cc"
+        "cuda/*.cpp"
+        "cuda/*.cu"
+        "iluvatar/*.cc"
+        "iluvatar/*.cpp"
+        "iluvatar/*.cu"
+    )
+    file(GLOB_RECURSE ILUVATAR_SOURCES ${ILUVATAR_PATTERNS})
+    target_sources(infiniccl PRIVATE ${ILUVATAR_SOURCES})
+
+    target_include_directories(infiniccl PRIVATE "${ILUVATAR_INCLUDE_DIR}")
+
+    set_source_files_properties(${ILUVATAR_SOURCES} PROPERTIES 
+        COMPILE_OPTIONS "${ILUVATAR_CUDA_FLAGS}"
+    )
+
+    target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
+endif()
+
 # MetaX
 if(WITH_METAX)
     list(APPEND DEVICE_LIST "metax")

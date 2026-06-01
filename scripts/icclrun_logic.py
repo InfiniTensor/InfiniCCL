@@ -115,6 +115,9 @@ class ICCLLauncher:
             if n_type == "nvidia":
                 condition = '[ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]'
 
+            elif n_type == "iluvatar":
+                condition = '[ -c "/dev/iluvatar0" ] || [ -x "$(command -v ixsmi)" ]'
+
             elif n_type == "metax":
                 condition = (
                     '[ -d "/opt/maca" ] || '

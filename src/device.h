@@ -136,6 +136,11 @@ struct DevicePriority<Device::Type::kNvidia> {
 };
 
 template <>
+struct DevicePriority<Device::Type::kIluvatar> {
+  static constexpr int value = 5;
+};
+
+template <>
 struct DevicePriority<Device::Type::kMetax> {
   static constexpr int value = 5;
 };
