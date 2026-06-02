@@ -32,11 +32,11 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
 
-  CHECK_INFINI(infiniInit(&argc, &argv));
+  CHECK_INFINI(infinicclInit(&argc, &argv));
 
   int rank, size;
-  CHECK_INFINI(infiniGetRank(&rank));
-  CHECK_INFINI(infiniGetSize(&size));
+  CHECK_INFINI(infinicclGetRank(&rank));
+  CHECK_INFINI(infinicclGetSize(&size));
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -54,8 +54,8 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
             << " | Device " << local_rank << std::endl;
 
   // Setup Communicator
-  infiniComm_t comm = nullptr;
-  CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
+  infinicclComm_t comm = nullptr;
+  CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
   // Root of the Reduce
   constexpr int kRoot = 0;
@@ -91,16 +91,16 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   // Warm-up and D2H transfer the answer on `root`.
-  CHECK_INFINI(infiniReduce(d_send, d_recv, kNumElements, infiniFloat32,
-                            infiniSum, kRoot, comm, nullptr));
+  CHECK_INFINI(infinicclReduce(d_send, d_recv, kNumElements, infinicclFloat32,
+                               infinicclSum, kRoot, comm, nullptr));
   if (rank == kRoot) {
     CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, total_bytes,
                             Rt::MemcpyDeviceToHost));
   }
 
   for (int i = 1; i < warmup_iter; ++i) {
-    CHECK_INFINI(infiniReduce(d_send, d_recv, kNumElements, infiniFloat32,
-                              infiniSum, kRoot, comm, nullptr));
+    CHECK_INFINI(infinicclReduce(d_send, d_recv, kNumElements, infinicclFloat32,
+                                 infinicclSum, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
@@ -108,8 +108,8 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
   Timer timer;
 
   for (int i = 0; i < profile_iter; ++i) {
-    CHECK_INFINI(infiniReduce(d_send, d_recv, kNumElements, infiniFloat32,
-                              infiniSum, kRoot, comm, nullptr));
+    CHECK_INFINI(infinicclReduce(d_send, d_recv, kNumElements, infinicclFloat32,
+                                 infinicclSum, kRoot, comm, nullptr));
   }
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
@@ -133,8 +133,8 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
   CHECK_RT(Rt, Rt::Free(d_send));
   CHECK_RT(Rt, Rt::Free(d_recv));
 
-  CHECK_INFINI(infiniCommDestroy(comm));
-  CHECK_INFINI(infiniFinalize());
+  CHECK_INFINI(infinicclCommDestroy(comm));
+  CHECK_INFINI(infinicclFinalize());
 
   if (rank == kRoot) {
     std::cout << "InfiniCCL finalized." << std::endl;

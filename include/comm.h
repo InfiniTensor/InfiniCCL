@@ -50,9 +50,10 @@ infinicclResult_t infinicclBcast(void *buff, size_t count,
                                  infinicclDataType_t datatype, int root,
                                  infinicclComm_t comm, void *stream);
 
-infiniResult_t infiniReduce(const void *sendbuff, void *recvbuff, size_t count,
-                            infiniDataType_t datatype, infiniRedOp_t op,
-                            int root, infiniComm_t comm, void *stream);
+infinicclResult_t infinicclReduce(const void *sendbuff, void *recvbuff,
+                                  size_t count, infinicclDataType_t datatype,
+                                  infinicclRedOp_t op, int root,
+                                  infinicclComm_t comm, void *stream);
 
 infinicclResult_t infinicclAllGather(const void *sendbuff, void *recvbuff,
                                      size_t count, infinicclDataType_t datatype,
