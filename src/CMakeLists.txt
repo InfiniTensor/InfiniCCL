@@ -98,6 +98,29 @@ if(WITH_METAX)
     target_compile_options(infiniccl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-x maca>)
 endif()
 
+# Mthreads (Moore)
+if(WITH_MOORE)
+    list(APPEND DEVICE_LIST "moore")
+
+    set(MOORE_PATTERNS
+        "cuda/*.cc"
+        "cuda/*.cpp"
+        "moore/*.cc"
+        "moore/*.cpp"
+        "moore/*.mu"
+    )
+    file(GLOB MOORE_SOURCES ${MOORE_PATTERNS})
+
+    set_source_files_properties(${MOORE_SOURCES} PROPERTIES LANGUAGE CXX)
+
+    # target_compile_options(infiniccl PRIVATE "-x" "musa")
+    target_sources(infiniccl PRIVATE ${MOORE_SOURCES})
+
+    target_include_directories(infiniccl PRIVATE "${MUSA_ROOT}/include")
+    target_link_libraries(infiniccl PRIVATE ${MUSA_LIB} ${MUSART_LIB} ${MUBLAS_LIB})
+    target_compile_options(infiniccl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-x musa>)
+endif()
+
 # Cambricon
 if(WITH_CAMBRICON)
     list(APPEND DEVICE_LIST "cambricon")

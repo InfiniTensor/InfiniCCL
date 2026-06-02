@@ -13,6 +13,8 @@ if [ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]; then
     ARCH="nvidia"
 elif grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1 || [ -d "/opt/maca" ]; then
     ARCH="metax"
+elif [ -c "/dev/mtgpu.0" ] || [ -x "$(command -v mthreads-gmi)" ]; then
+    ARCH="moore"
 elif [ -n "${NEUWARE_HOME}" ] || [ -x "$(command -v cnmon)" ]; then
     ARCH="cambricon"
 else

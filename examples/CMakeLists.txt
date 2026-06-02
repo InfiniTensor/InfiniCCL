@@ -16,6 +16,11 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${example_name} PRIVATE ${MACA_RUNTIME_LIB})
     endif()
 
+    if(WITH_MOORE)
+        target_link_libraries(${example_name} PRIVATE ${MUSART_LIB})
+        target_compile_options(${example_name} PRIVATE "-x" "musa")
+    endif()
+
     if(WITH_CAMBRICON)
         target_link_libraries(${example_name} PRIVATE ${CAMBRICON_RUNTIME_LIB})
     endif()

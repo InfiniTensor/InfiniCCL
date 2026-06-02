@@ -146,6 +146,11 @@ struct DevicePriority<Device::Type::kMetax> {
 };
 
 template <>
+struct DevicePriority<Device::Type::kMoore> {
+  static constexpr int value = 5;
+};
+
+template <>
 struct DevicePriority<Device::Type::kCambricon> {
   static constexpr int value = 5;
 };

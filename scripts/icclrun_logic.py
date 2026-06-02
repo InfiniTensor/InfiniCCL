@@ -124,6 +124,9 @@ class ICCLLauncher:
                     'grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1'
                 )
 
+            elif n_type == "moore":
+                condition = '[ -c "/dev/mtgpu.0" ] || [ -x "$(command -v mthreads-gmi)" ]'
+
             elif n_type == "cambricon":
                 condition = (
                     '[ -n "${NEUWARE_HOME}" ] || command -v cnmon >/dev/null 2>&1'

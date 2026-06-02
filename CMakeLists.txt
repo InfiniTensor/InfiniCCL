@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
 option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
+option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
@@ -112,6 +113,38 @@ if(AUTO_DETECT_DEVICES)
             set(WITH_METAX OFF)
             message(STATUS "No MetaX GPU detected")
         endif()
+    endif()
+
+    # MThreads (Moore)
+    set(MOORE_FOUND FALSE)
+
+    file(GLOB MOORE_DEV_FILES "/dev/mtgpu*")
+
+    if(DEFINED ENV{MUSA_ROOT} OR DEFINED ENV{MUSA_HOME} OR DEFINED ENV{MUSA_PATH})
+        set(MOORE_FOUND TRUE)
+    elseif(MOORE_DEV_FILES)
+        set(MOORE_FOUND TRUE)
+    elseif(NOT MOORE_FOUND)
+        find_program(MOORE_SMI_PATH mthreads-gmi)
+
+        if(MOORE_SMI_PATH)
+            execute_process(
+                COMMAND ${MOORE_SMI_PATH} -L
+                RESULT_VARIABLE SMI_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(SMI_RESULT EQUAL 0)
+                set(MOORE_FOUND TRUE)
+            endif()
+        endif()
+    endif()
+
+    if(MOORE_FOUND)
+        set(WITH_MOORE ON)
+        message(STATUS "Auto-detected Moore environment.")
+    else()
+        message(STATUS "Moore environment not detected.")
     endif()
 
     # Cambricon
@@ -246,6 +279,40 @@ if(WITH_METAX)
     link_directories("${MACA_PATH}/lib")
 
     find_library(MACA_RUNTIME_LIB NAMES mcruntime HINTS "${MACA_PATH}/lib" REQUIRED)
+endif()
+
+if(WITH_MOORE)  
+    set(MUSA_ROOT "")
+    foreach(_musa_env MUSA_ROOT MUSA_HOME MUSA_PATH)
+        if(NOT MUSA_ROOT AND DEFINED ENV{${_musa_env}} AND NOT "$ENV{${_musa_env}}" STREQUAL "")
+            set(MUSA_ROOT "$ENV{${_musa_env}}")
+        endif()
+    endforeach()
+
+    if(NOT MUSA_ROOT AND EXISTS "/usr/local/musa")
+        set(MUSA_ROOT "/usr/local/musa")
+    endif()
+
+    if(NOT MUSA_ROOT)
+        message(FATAL_ERROR "`WITH_MOORE` is `ON` but `MUSA_ROOT`/`MUSA_HOME`/`MUSA_PATH` is not set and `/usr/local/musa` was not found.")
+    endif()
+
+    if(NOT EXISTS "${MUSA_ROOT}/bin/mcc")
+        message(FATAL_ERROR "Could not find `mcc` under `${MUSA_ROOT}/bin`.")
+    endif()
+
+    get_filename_component(MCC_WRAPPER_ABS "${CMAKE_CURRENT_SOURCE_DIR}/scripts/devices/mcc_wrapper.sh" ABSOLUTE)
+    file(CHMOD "${MCC_WRAPPER_ABS}"
+     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    set(CMAKE_C_COMPILER   "${MCC_WRAPPER_ABS}")
+    set(CMAKE_CXX_COMPILER "${MCC_WRAPPER_ABS}")
+
+    include_directories("${MUSA_ROOT}/include")
+    link_directories("${MUSA_ROOT}/lib")
+
+    find_library(MUSA_LIB   NAMES musa   HINTS "${MUSA_ROOT}/lib" REQUIRED)
+    find_library(MUSART_LIB NAMES musart HINTS "${MUSA_ROOT}/lib" REQUIRED)
+    find_library(MUBLAS_LIB NAMES mublas HINTS "${MUSA_ROOT}/lib" REQUIRED)
 endif()
 
 if(WITH_CAMBRICON)
