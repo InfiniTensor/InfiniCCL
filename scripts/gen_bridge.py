@@ -30,7 +30,7 @@ BACKEND_PATH_MAP = {"ompi": "ompi/impl", "mpich": "ompi/impl", "nccl": "nvidia/n
 
 
 def snake_to_camel(name):
-    """Converts infiniccl_all_reduce or infinicclAllReduce to AllReduce."""
+    """Converts `infiniccl_all_reduce` or `infinicclAllReduce` to `AllReduce`."""
     clean_name = re.sub(r"^infiniccl", "", name)
     if "_" in clean_name:
         return "".join(x.capitalize() for x in clean_name.split("_"))
