@@ -32,11 +32,11 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
 
-  CHECK_INFINI(infiniInit(&argc, &argv));
+  CHECK_INFINI(infinicclInit(&argc, &argv));
 
   int rank, size;
-  CHECK_INFINI(infiniGetRank(&rank));
-  CHECK_INFINI(infiniGetSize(&size));
+  CHECK_INFINI(infinicclGetRank(&rank));
+  CHECK_INFINI(infinicclGetSize(&size));
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -52,8 +52,8 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
             << " | Device " << local_rank << std::endl;
 
   // Setup Communicator
-  infiniComm_t comm = nullptr;
-  CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
+  infinicclComm_t comm = nullptr;
+  CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
   // Root of the Broadcast
   constexpr int kRoot = 0;
@@ -131,8 +131,8 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
   // --------------------------------------------------------------------------
   ProfileAndValidateScenario(
       "Scenario 1: Out-of-Place Broadcast", d_recv, [&]() {
-        return infiniBroadcast(d_send, d_recv, kNumElements, infiniFloat32,
-                               kRoot, comm, nullptr);
+        return infinicclBroadcast(d_send, d_recv, kNumElements,
+                                  infinicclFloat32, kRoot, comm, nullptr);
       });
 
   // --------------------------------------------------------------------------
@@ -143,8 +143,8 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
 
   ProfileAndValidateScenario(
       "Scenario 2: In-Place Broadcast", d_inplace_buf, [&]() {
-        return infiniBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
-                               infiniFloat32, kRoot, comm, nullptr);
+        return infinicclBroadcast(d_inplace_buf, d_inplace_buf, kNumElements,
+                                  infinicclFloat32, kRoot, comm, nullptr);
       });
 
   // --------------------------------------------------------------------------
@@ -154,8 +154,8 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
 
   ProfileAndValidateScenario(
       "Scenario 3: Legacy In-Place Bcast", d_inplace_buf, [&]() {
-        return infiniBcast(d_inplace_buf, kNumElements, infiniFloat32, kRoot,
-                           comm, nullptr);
+        return infinicclBcast(d_inplace_buf, kNumElements, infinicclFloat32,
+                              kRoot, comm, nullptr);
       });
 
   // --------------------------------------------------------------------------
@@ -164,8 +164,8 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
   CHECK_RT(Rt, Rt::Free(d_send));
   CHECK_RT(Rt, Rt::Free(d_recv));
 
-  CHECK_INFINI(infiniCommDestroy(comm));
-  CHECK_INFINI(infiniFinalize());
+  CHECK_INFINI(infinicclCommDestroy(comm));
+  CHECK_INFINI(infinicclFinalize());
 
   if (rank == kRoot) {
     std::cout << "\nInfiniCCL finalized." << std::endl;

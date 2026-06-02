@@ -11,8 +11,8 @@
 // Simple check macro for the C-API.
 #define CHECK_INFINI(cmd)                                                   \
   do {                                                                      \
-    infiniResult_t res = (cmd);                                             \
-    if (res != infiniSuccess) {                                             \
+    infinicclResult_t res = (cmd);                                          \
+    if (res != infinicclSuccess) {                                          \
       std::cerr << "[InfiniCCL Error] example program received error code " \
                 << res << " at line " << __LINE__ << std::endl;             \
       exit(EXIT_FAILURE);                                                   \
@@ -20,7 +20,7 @@
   } while (0)
 
 #define CHECK_RT(runtime_type, cmd) \
-  CHECK_INFINI(static_cast<infiniResult_t>(runtime_type::Check(cmd)))
+  CHECK_INFINI(static_cast<infinicclResult_t>(runtime_type::Check(cmd)))
 
 // Simple Timer for Profiling
 class Timer {

@@ -12,20 +12,20 @@
 namespace infini::ccl {
 
 enum class DataType : int8_t {
-  kChar = infiniChar,
-  kInt8 = infiniInt8,
-  kInt16 = infiniInt16,
-  kInt32 = infiniInt32,
-  kInt64 = infiniInt64,
-  kUInt8 = infiniUInt8,
-  kUInt16 = infiniUInt16,
-  kUInt32 = infiniUInt32,
-  kUInt64 = infiniUInt64,
-  kFloat16 = infiniFloat16,
-  kBFloat16 = infiniBFloat16,
-  kFloat32 = infiniFloat32,
-  kFloat64 = infiniFloat64,
-  kNumTypes = infiniNumTypes,
+  kChar = infinicclChar,
+  kInt8 = infinicclInt8,
+  kInt16 = infinicclInt16,
+  kInt32 = infinicclInt32,
+  kInt64 = infinicclInt64,
+  kUInt8 = infinicclUInt8,
+  kUInt16 = infinicclUInt16,
+  kUInt32 = infinicclUInt32,
+  kUInt64 = infinicclUInt64,
+  kFloat16 = infinicclFloat16,
+  kBFloat16 = infinicclBFloat16,
+  kFloat32 = infinicclFloat32,
+  kFloat64 = infinicclFloat64,
+  kNumTypes = infinicclNumTypes,
 };
 
 constexpr ConstexprMap<DataType, std::size_t, 12> kDataTypeToSize{{{

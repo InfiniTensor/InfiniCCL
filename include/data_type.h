@@ -6,25 +6,25 @@ extern "C" {
 #endif
 
 typedef enum {
-  infiniChar = 0,
-  infiniInt8 = 0,
-  infiniInt16 = 1,
-  infiniInt = 2,
-  infiniInt32 = 2,
-  infiniInt64 = 3,
-  infiniUInt8 = 4,
-  infiniUInt16 = 5,
-  infiniUInt32 = 6,
-  infiniUInt64 = 7,
-  infiniHalf = 8,
-  infiniFloat16 = 8,
-  infiniBFloat16 = 9,
-  infiniFloat = 10,
-  infiniFloat32 = 10,
-  infiniDouble = 11,
-  infiniFloat64 = 11,
-  infiniNumTypes = 12,
-} infiniDataType_t;
+  infinicclChar = 0,
+  infinicclInt8 = 0,
+  infinicclInt16 = 1,
+  infinicclInt = 2,
+  infinicclInt32 = 2,
+  infinicclInt64 = 3,
+  infinicclUInt8 = 4,
+  infinicclUInt16 = 5,
+  infinicclUInt32 = 6,
+  infinicclUInt64 = 7,
+  infinicclHalf = 8,
+  infinicclFloat16 = 8,
+  infinicclBFloat16 = 9,
+  infinicclFloat = 10,
+  infinicclFloat32 = 10,
+  infinicclDouble = 11,
+  infinicclFloat64 = 11,
+  infinicclNumTypes = 12,
+} infinicclDataType_t;
 
 #ifdef __cplusplus
 }

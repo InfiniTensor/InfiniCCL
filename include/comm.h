@@ -10,68 +10,71 @@
 extern "C" {
 #endif
 
-typedef void *infiniComm_t;
+typedef void *infinicclComm_t;
 
 // Initialization
-infiniResult_t infiniInit(int *argc, char ***argv);
-infiniResult_t infiniFinalize(void);
+infinicclResult_t infinicclInit(int *argc, char ***argv);
+infinicclResult_t infinicclFinalize(void);
 
 // Rank/Size Query
-infiniResult_t infiniGetRank(int *rank);
-infiniResult_t infiniGetSize(int *size);
+infinicclResult_t infinicclGetRank(int *rank);
+infinicclResult_t infinicclGetSize(int *size);
 
 // Communicator Management
-infiniResult_t infiniCommInitAll(infiniComm_t *comm, int ndev,
-                                 const int *devlist);
-infiniResult_t infiniCommDestroy(infiniComm_t comm);
+infinicclResult_t infinicclCommInitAll(infinicclComm_t *comm, int ndev,
+                                       const int *devlist);
+infinicclResult_t infinicclCommDestroy(infinicclComm_t comm);
 
 // --- Reduction Operations ---
 typedef enum {
-  infiniSum = 0,
-  infiniProd = 1,
-  infiniMax = 2,
-  infiniMin = 3,
-  infiniAvg = 4,
-  infiniNumOps
-} infiniRedOp_t;
+  infinicclSum = 0,
+  infinicclProd = 1,
+  infinicclMax = 2,
+  infinicclMin = 3,
+  infinicclAvg = 4,
+  infinicclNumOps
+} infinicclRedOp_t;
 
 // Collective Communication Functions
-infiniResult_t infiniAllReduce(const void *sendbuff, void *recvbuff,
-                               size_t count, infiniDataType_t datatype,
-                               infiniRedOp_t op, infiniComm_t comm,
-                               void *stream);
+infinicclResult_t infinicclAllReduce(const void *sendbuff, void *recvbuff,
+                                     size_t count, infinicclDataType_t datatype,
+                                     infinicclRedOp_t op, infinicclComm_t comm,
+                                     void *stream);
 
-infiniResult_t infiniBroadcast(const void *sendbuff, void *recvbuff,
-                               size_t count, infiniDataType_t datatype,
-                               int root, infiniComm_t comm, void *stream);
+infinicclResult_t infinicclBroadcast(const void *sendbuff, void *recvbuff,
+                                     size_t count, infinicclDataType_t datatype,
+                                     int root, infinicclComm_t comm,
+                                     void *stream);
 
-infiniResult_t infiniBcast(void *buff, size_t count, infiniDataType_t datatype,
-                           int root, infiniComm_t comm, void *stream);
+infinicclResult_t infinicclBcast(void *buff, size_t count,
+                                 infinicclDataType_t datatype, int root,
+                                 infinicclComm_t comm, void *stream);
 
 infiniResult_t infiniReduce(const void *sendbuff, void *recvbuff, size_t count,
                             infiniDataType_t datatype, infiniRedOp_t op,
                             int root, infiniComm_t comm, void *stream);
 
-infiniResult_t infiniAllGather(const void *sendbuff, void *recvbuff,
-                               size_t count, infiniDataType_t datatype,
-                               infiniComm_t comm, void *stream);
+infinicclResult_t infinicclAllGather(const void *sendbuff, void *recvbuff,
+                                     size_t count, infinicclDataType_t datatype,
+                                     infinicclComm_t comm, void *stream);
 
-infiniResult_t infiniReduceScatter(const void *sendbuff, void *recvbuff,
-                                   size_t recvcount, infiniDataType_t datatype,
-                                   infiniRedOp_t op, infiniComm_t comm,
-                                   void *stream);
+infinicclResult_t infinicclReduceScatter(const void *sendbuff, void *recvbuff,
+                                         size_t recvcount,
+                                         infinicclDataType_t datatype,
+                                         infinicclRedOp_t op,
+                                         infinicclComm_t comm, void *stream);
 
-infiniResult_t infiniAllToAll(const void *sendbuff, void *recvbuff,
-                              size_t count, infiniDataType_t datatype,
-                              infiniComm_t comm, void *stream);
+infinicclResult_t infinicclAllToAll(const void *sendbuff, void *recvbuff,
+                                    size_t count, infinicclDataType_t datatype,
+                                    infinicclComm_t comm, void *stream);
 
-infiniResult_t infiniSend(const void *sendbuff, size_t count,
-                          infiniDataType_t datatype, int peer,
-                          infiniComm_t comm, void *stream);
+infinicclResult_t infinicclSend(const void *sendbuff, size_t count,
+                                infinicclDataType_t datatype, int peer,
+                                infinicclComm_t comm, void *stream);
 
-infiniResult_t infiniRecv(void *recvbuff, size_t count,
-                          infiniDataType_t datatype, int peer,
-                          infiniComm_t comm, void *stream);
+infinicclResult_t infinicclRecv(void *recvbuff, size_t count,
+                                infinicclDataType_t datatype, int peer,
+                                infinicclComm_t comm, void *stream);
 
 #ifdef __cplusplus
 }

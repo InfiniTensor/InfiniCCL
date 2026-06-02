@@ -1,7 +1,7 @@
 /**
  * InfiniCCL Example: `Send-Recv`
  *
- * This example demonstrates point-to-point `infiniSend` and `infiniRecv`
+ * This example demonstrates point-to-point `infinicclSend` and `infinicclRecv`
  * operations between rank 0 and rank 1 on accelerator memory.
  */
 
@@ -27,12 +27,12 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
       ccl::ListGetBest<ccl::DevicePriority>(ccl::EnabledDevices{});
   using Rt = ccl::Runtime<kDevType>;
 
-  CHECK_INFINI(infiniInit(&argc, &argv));
+  CHECK_INFINI(infinicclInit(&argc, &argv));
 
   int rank = 0;
   int size = 0;
-  CHECK_INFINI(infiniGetRank(&rank));
-  CHECK_INFINI(infiniGetSize(&size));
+  CHECK_INFINI(infinicclGetRank(&rank));
+  CHECK_INFINI(infinicclGetSize(&size));
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -57,12 +57,12 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
       std::cerr << "Send/Recv example requires at least 2 ranks." << std::endl;
     }
 
-    CHECK_INFINI(infiniFinalize());
+    CHECK_INFINI(infinicclFinalize());
     return;
   }
 
-  infiniComm_t comm = nullptr;
-  CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
+  infinicclComm_t comm = nullptr;
+  CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
   std::vector<float> h_send(num_elements, kSendValue);
   std::vector<float> h_recv(num_elements, 0.0f);
@@ -92,16 +92,16 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
 
   auto send_recv_call = [&]() {
     if (rank == kSender) {
-      return infiniSend(d_send, num_elements, infiniFloat32, kReceiver, comm,
-                        nullptr);
+      return infinicclSend(d_send, num_elements, infinicclFloat32, kReceiver,
+                           comm, nullptr);
     }
 
     if (rank == kReceiver) {
-      return infiniRecv(d_recv, num_elements, infiniFloat32, kSender, comm,
-                        nullptr);
+      return infinicclRecv(d_recv, num_elements, infinicclFloat32, kSender,
+                           comm, nullptr);
     }
 
-    return infiniSuccess;
+    return infinicclSuccess;
   };
 
   CHECK_INFINI(send_recv_call());
@@ -148,8 +148,8 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
     if (!correct) {
       CHECK_RT(Rt, Rt::Free(d_send));
       CHECK_RT(Rt, Rt::Free(d_recv));
-      CHECK_INFINI(infiniCommDestroy(comm));
-      CHECK_INFINI(infiniFinalize());
+      CHECK_INFINI(infinicclCommDestroy(comm));
+      CHECK_INFINI(infinicclFinalize());
       std::exit(EXIT_FAILURE);
     }
   }
@@ -162,8 +162,8 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
   CHECK_RT(Rt, Rt::Free(d_send));
   CHECK_RT(Rt, Rt::Free(d_recv));
 
-  CHECK_INFINI(infiniCommDestroy(comm));
-  CHECK_INFINI(infiniFinalize());
+  CHECK_INFINI(infinicclCommDestroy(comm));
+  CHECK_INFINI(infinicclFinalize());
 
   if (rank == kSender) {
     std::cout << "InfiniCCL finalized." << std::endl;

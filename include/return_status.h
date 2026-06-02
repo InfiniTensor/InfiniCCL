@@ -6,16 +6,16 @@ extern "C" {
 #endif
 
 typedef enum {
-  infiniSuccess = 0,
-  infiniUnhandledError = 1,
-  infiniSystemError = 2,
-  infiniInternalError = 3,
-  infiniInvalidArgument = 4,
-  infiniInvalidUsage = 5,
-  infiniRemoteError = 6,
-  infiniInProgress = 7,
-  infiniNumResults = 8
-} infiniResult_t;
+  infinicclSuccess = 0,
+  infinicclUnhandledError = 1,
+  infinicclSystemError = 2,
+  infinicclInternalError = 3,
+  infinicclInvalidArgument = 4,
+  infinicclInvalidUsage = 5,
+  infinicclRemoteError = 6,
+  infinicclInProgress = 7,
+  infinicclNumResults = 8
+} infinicclResult_t;
 
 #ifdef __cplusplus
 }

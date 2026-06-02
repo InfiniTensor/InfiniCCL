@@ -8,12 +8,12 @@
 namespace infini::ccl {
 
 enum class ReductionOpType : int8_t {
-  kSum = infiniSum,
-  kProd = infiniProd,
-  kMax = infiniMax,
-  kMin = infiniMin,
-  kAvg = infiniAvg,
-  kNumRedOps = infiniNumOps,
+  kSum = infinicclSum,
+  kProd = infinicclProd,
+  kMax = infinicclMax,
+  kMin = infinicclMin,
+  kAvg = infinicclAvg,
+  kNumRedOps = infinicclNumOps,
 };
 
 }  // namespace infini::ccl

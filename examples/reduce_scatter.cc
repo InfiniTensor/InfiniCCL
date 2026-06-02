@@ -30,11 +30,11 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
 
-  CHECK_INFINI(infiniInit(&argc, &argv));
+  CHECK_INFINI(infinicclInit(&argc, &argv));
 
   int rank, size;
-  CHECK_INFINI(infiniGetRank(&rank));
-  CHECK_INFINI(infiniGetSize(&size));
+  CHECK_INFINI(infinicclGetRank(&rank));
+  CHECK_INFINI(infinicclGetSize(&size));
 
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
@@ -52,8 +52,8 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
             << " | Device " << local_rank << std::endl;
 
   // Setup Communicator
-  infiniComm_t comm = nullptr;
-  CHECK_INFINI(infiniCommInitAll(&comm, size, nullptr));
+  infinicclComm_t comm = nullptr;
+  CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
   // ReduceScatter requires `send_count = recv_count * world_size`.
   const size_t kSendCount = kRecvCount * static_cast<size_t>(size);
@@ -93,14 +93,16 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   // Warm-up and D2H transfer the answer.
-  CHECK_INFINI(infiniReduceScatter(d_send, d_recv, kRecvCount, infiniFloat32,
-                                   infiniSum, comm, nullptr));
+  CHECK_INFINI(infinicclReduceScatter(d_send, d_recv, kRecvCount,
+                                      infinicclFloat32, infinicclSum, comm,
+                                      nullptr));
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, recv_bytes,
                           Rt::MemcpyDeviceToHost));
 
   for (int i = 1; i < warmup_iter; ++i) {
-    CHECK_INFINI(infiniReduceScatter(d_send, d_recv, kRecvCount, infiniFloat32,
-                                     infiniSum, comm, nullptr));
+    CHECK_INFINI(infinicclReduceScatter(d_send, d_recv, kRecvCount,
+                                        infinicclFloat32, infinicclSum, comm,
+                                        nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
@@ -108,8 +110,9 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
   Timer timer;
 
   for (int i = 0; i < profile_iter; ++i) {
-    CHECK_INFINI(infiniReduceScatter(d_send, d_recv, kRecvCount, infiniFloat32,
-                                     infiniSum, comm, nullptr));
+    CHECK_INFINI(infinicclReduceScatter(d_send, d_recv, kRecvCount,
+                                        infinicclFloat32, infinicclSum, comm,
+                                        nullptr));
   }
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
@@ -137,8 +140,8 @@ void RunReduceScatterExample(int argc, char **argv, int warmup_iter,
   CHECK_RT(Rt, Rt::Free(d_send));
   CHECK_RT(Rt, Rt::Free(d_recv));
 
-  CHECK_INFINI(infiniCommDestroy(comm));
-  CHECK_INFINI(infiniFinalize());
+  CHECK_INFINI(infinicclCommDestroy(comm));
+  CHECK_INFINI(infinicclFinalize());
 
   if (rank == 0) {
     std::cout << "InfiniCCL finalized." << std::endl;

@@ -30,8 +30,8 @@ BACKEND_PATH_MAP = {"ompi": "ompi/impl", "mpich": "ompi/impl", "nccl": "nvidia/n
 
 
 def snake_to_camel(name):
-    """Converts infini_all_reduce or infiniAllReduce to AllReduce."""
-    clean_name = re.sub(r"^infini", "", name)
+    """Converts infiniccl_all_reduce or infinicclAllReduce to AllReduce."""
+    clean_name = re.sub(r"^infiniccl", "", name)
     if "_" in clean_name:
         return "".join(x.capitalize() for x in clean_name.split("_"))
     return clean_name[0].upper() + clean_name[1:]
@@ -40,7 +40,7 @@ def snake_to_camel(name):
 def parse_signatures(header_path):
     """Extracts function metadata from the public C header."""
     signatures = []
-    regex = r"(infiniResult_t)\s+(infini\w+)\s*\((.*?)\);"
+    regex = r"(infinicclResult_t)\s+(infiniccl\w+)\s*\((.*?)\);"
     if not os.path.exists(header_path):
         return signatures
 
@@ -162,9 +162,9 @@ def generate(project_root, output_dir, devices, backends):
             arg_name = parts[-1].replace("*", "")
 
             # Apply `static_cast` for specialized `Infini` types.
-            if arg_type == "infiniDataType_t":
+            if arg_type == "infinicclDataType_t":
                 args_with_casts.append(f"static_cast<DataType>({arg_name})")
-            elif arg_type == "infiniRedOp_t":
+            elif arg_type == "infinicclRedOp_t":
                 args_with_casts.append(f"static_cast<ReductionOpType>({arg_name})")
             else:
                 args_with_casts.append(arg_name)

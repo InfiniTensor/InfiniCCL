@@ -8,15 +8,15 @@
 namespace infini::ccl {
 
 enum class ReturnStatus : int8_t {
-  kSuccess = infiniSuccess,
-  kUnhandledError = infiniUnhandledError,
-  kSystemError = infiniSystemError,
-  kInternalError = infiniInternalError,
-  kInvalidArgument = infiniInvalidArgument,
-  kInvalidUsage = infiniInvalidUsage,
-  kRemoteError = infiniRemoteError,
-  kInProgress = infiniInProgress,
-  kNumResults = infiniNumResults,
+  kSuccess = infinicclSuccess,
+  kUnhandledError = infinicclUnhandledError,
+  kSystemError = infinicclSystemError,
+  kInternalError = infinicclInternalError,
+  kInvalidArgument = infinicclInvalidArgument,
+  kInvalidUsage = infinicclInvalidUsage,
+  kRemoteError = infinicclRemoteError,
+  kInProgress = infinicclInProgress,
+  kNumResults = infinicclNumResults,
 };
 
 }  // namespace infini::ccl
