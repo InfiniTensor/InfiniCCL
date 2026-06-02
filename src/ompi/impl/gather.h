@@ -6,10 +6,10 @@
 
 #include "base/gather.h"
 #include "communicator.h"
+#include "data_type_impl.h"
 #include "logging.h"
 #include "ompi/checks.h"
 #include "ompi/comm_instance.h"
-#include "ompi/type_map.h"
 #include "runtime.h"
 
 namespace infini::ccl {
@@ -30,18 +30,22 @@ class GatherImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kInternalError;
     }
 
-    MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
-
-    if (count > static_cast<size_t>(std::numeric_limits<int>::max())) {
-      LOG("`count` exceeds MPI int range for `Gather`.");
+    size_t type_size = kDataTypeToSize.at(data_type);
+    if (count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Byte size overflow for `Gather`.");
       return ReturnStatus::kInvalidArgument;
     }
-    int mpi_count = static_cast<int>(count);
-
-    size_t type_size = kDataTypeToSize.at(data_type);
     size_t send_bytes = count * type_size;
     size_t recv_bytes = send_bytes * static_cast<size_t>(comm->size());
     const bool is_root = comm->rank() == root;
+
+    // Transfer raw bytes so the gather is correct for every data type,
+    // including `kFloat16` / `kBFloat16`, which map to `MPI_BYTE`.
+    if (send_bytes > static_cast<size_t>(std::numeric_limits<int>::max())) {
+      LOG("Per-rank byte count exceeds MPI int range for `Gather`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    int mpi_byte_count = static_cast<int>(send_bytes);
 
     // Host staging buffers. Only `root` allocates the receive side, since
     // `MPI_Gather` writes the gathered result only on `root`.
@@ -59,8 +63,9 @@ class GatherImpl<BackendType::kOmpi, device_type> {
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     // Note: `MPI_Gather`'s `recvcount` is the per-rank count, not the total.
-    INFINI_CHECK_MPI(MPI_Gather(host_sendbuf, mpi_count, mpi_type, host_recvbuf,
-                                mpi_count, mpi_type, root, inst->handle));
+    INFINI_CHECK_MPI(MPI_Gather(host_sendbuf, mpi_byte_count, MPI_BYTE,
+                                host_recvbuf, mpi_byte_count, MPI_BYTE, root,
+                                inst->handle));
 
     if (is_root) {
       CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
