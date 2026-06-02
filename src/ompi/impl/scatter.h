@@ -6,10 +6,10 @@
 
 #include "base/scatter.h"
 #include "communicator.h"
+#include "data_type_impl.h"
 #include "logging.h"
 #include "ompi/checks.h"
 #include "ompi/comm_instance.h"
-#include "ompi/type_map.h"
 #include "runtime.h"
 
 namespace infini::ccl {
@@ -30,18 +30,22 @@ class ScatterImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kInternalError;
     }
 
-    MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
-
-    if (count > static_cast<size_t>(std::numeric_limits<int>::max())) {
-      LOG("`count` exceeds MPI int range for `Scatter`.");
+    size_t type_size = kDataTypeToSize.at(data_type);
+    if (count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Byte size overflow for `Scatter`.");
       return ReturnStatus::kInvalidArgument;
     }
-    int mpi_count = static_cast<int>(count);
-
-    size_t type_size = kDataTypeToSize.at(data_type);
     size_t recv_bytes = count * type_size;
     size_t send_bytes = recv_bytes * static_cast<size_t>(comm->size());
     const bool is_root = comm->rank() == root;
+
+    // Transfer raw bytes so the scatter is correct for every data type,
+    // including `kFloat16` / `kBFloat16`, which map to `MPI_BYTE`.
+    if (recv_bytes > static_cast<size_t>(std::numeric_limits<int>::max())) {
+      LOG("Per-rank byte count exceeds MPI int range for `Scatter`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    int mpi_byte_count = static_cast<int>(recv_bytes);
 
     // Host staging buffers. Only `root` allocates the send side, since
     // `MPI_Scatter` reads the distributed blocks only from `root`.
@@ -61,8 +65,8 @@ class ScatterImpl<BackendType::kOmpi, device_type> {
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     // Note: `MPI_Scatter`'s `sendcount` is the per-rank count, not the total.
-    INFINI_CHECK_MPI(MPI_Scatter(host_sendbuf, mpi_count, mpi_type,
-                                 host_recvbuf, mpi_count, mpi_type, root,
+    INFINI_CHECK_MPI(MPI_Scatter(host_sendbuf, mpi_byte_count, MPI_BYTE,
+                                 host_recvbuf, mpi_byte_count, MPI_BYTE, root,
                                  inst->handle));
 
     CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
