@@ -6,8 +6,8 @@
 #include <cuda_fp16.h>
 // clang-format on
 
-#include "iluvatar/device_.h"
 #include "data_type_impl.h"
+#include "iluvatar/device_.h"
 
 namespace infini::ccl {
 
