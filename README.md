@@ -135,6 +135,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_NVIDIA`     | Enable NVIDIA GPU support | `OFF` |
 | `WITH_ILUVATAR`   | Enable Iluvatar GPU support | `OFF` |
 | `WITH_METAX`      | Enable MetaX GPU support  | `OFF` |
+| `WITH_MOORE`      | Enable Moore Threads GPU support  | `OFF` |
 | `WITH_CAMBRICON`  | Enable Cambricon MLU support  | `OFF` |
 | `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
@@ -282,6 +283,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **NVIDIA**     | Full | Requires CUDA Toolkit. |
 | **Iluvatar**   | Full | Requires Iluvatar CoreX SDK. |
 | **MetaX**      | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
+| **Moore Threads** | Full | Requires MUSA SDK and at least one of `MACA_ROOT` (default `/usr/local/musa`), `MACA_PATH`, and `MUSA_HOME` to be set. |
 | **Cambricon**  | Full | Requires CNToolKit and `NEUWARE_HOME` to be set. |
 
 </details>
