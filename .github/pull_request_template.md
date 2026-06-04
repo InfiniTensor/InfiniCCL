@@ -56,6 +56,7 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] NVIDIA GPU
 - [ ] Iluvatar GPU
 - [ ] MetaX GPU
+- [ ] Moore Threads GPU
 - [ ] Cambricon MLU
 
 ### Backend
@@ -102,6 +103,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] NVIDIA GPU
 - [ ] Iluvatar GPU
 - [ ] MetaX GPU
+- [ ] Moore Threads GPU
 - [ ] Cambricon MLU
 
 ### Test Involved Backend
