@@ -125,7 +125,9 @@ class ICCLLauncher:
                 )
 
             elif n_type == "moore":
-                condition = '[ -c "/dev/mtgpu.0" ] || [ -x "$(command -v mthreads-gmi)" ]'
+                condition = (
+                    '[ -c "/dev/mtgpu.0" ] || [ -x "$(command -v mthreads-gmi)" ]'
+                )
 
             elif n_type == "cambricon":
                 condition = (
