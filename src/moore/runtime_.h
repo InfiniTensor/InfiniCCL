@@ -50,7 +50,7 @@ struct Runtime<Device::Type::kMoore>
 
   static constexpr auto DeviceSynchronize = [](auto &&...args) {
     return musaDeviceSynchronize(std::forward<decltype(args)>(args)...);
-  };;
+  };
 
   static constexpr auto StreamSynchronize = musaStreamSynchronize;
 };

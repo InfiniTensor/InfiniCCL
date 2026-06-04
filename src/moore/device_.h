@@ -10,4 +10,4 @@ struct DeviceEnabled<Device::Type::kMoore> : std::true_type {};
 
 }  // namespace infini::ccl
 
-#endif // INFINI_CCL_MOORE_DEVICE__H_
+#endif  // INFINI_CCL_MOORE_DEVICE__H_
