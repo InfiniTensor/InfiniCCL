@@ -51,7 +51,7 @@ class ICCLLauncher:
         for node in self.config["nodes"]:
             arch = node["type"]
             install_path = os.path.join(base_install, "install", arch)
-            user_cmake_flags = node.get("cmake_flags", "")
+            user_cmake_flags = node.get("cmake_flags", self.config.get("cmake_flags", ""))
 
             # Build the library using YAML flags.
             lib_cmd = (
