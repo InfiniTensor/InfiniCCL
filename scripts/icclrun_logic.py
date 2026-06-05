@@ -127,6 +127,7 @@ class ICCLLauncher:
         bin_sub = "examples/$1" if is_internal else "$1"
 
         PATH_LIKE = {"LD_LIBRARY_PATH", "PATH", "CPATH", "LIBRARY_PATH"}
+        global_env = self.config.get("backend_env", {})
 
         blocks = []
         first = True
@@ -173,8 +174,13 @@ class ICCLLauncher:
                     )
                     sys.exit(1)
 
-            global_env = self.config.get("backend_env", {}) or {}
-            node_env = (node.get("backend_env") or {}).copy()
+            node_env = node.get("backend_env", {}).copy()
+
+            for concat_var in PATH_LIKE:
+                if concat_var in global_env and concat_var in node_env:
+                    node_env[concat_var] = (
+                        f"{node_env[concat_var]}:{global_env[concat_var]}"
+                    )
 
             merged_env = {**global_env, **node_env}
 
