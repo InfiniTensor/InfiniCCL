@@ -16,5 +16,5 @@ class OmpiBackend(BaseMpiBackend):
 
         return cmd
 
-    def get_env_args(self, env_key, env_val):
-        return ["-x", f"{env_key}={env_val}"]
+    def get_env_args(self, env_key):
+        return ["-x", env_key]

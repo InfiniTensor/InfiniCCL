@@ -34,11 +34,34 @@ class ICCLLauncher:
             self.infiniccl_root = os.path.abspath(os.path.join(script_dir, "../../.."))
 
     def _is_local(self, ip):
-        """Check if the IP address belongs to the local machine."""
+        """Check if the IP/hostname refers to the local machine."""
         try:
-            local_ips = socket.gethostbyname_ex(socket.gethostname())[2]
-            local_ips += ["127.0.0.1", "localhost"]
-            return ip in local_ips
+            local_ips = {"127.0.0.1", "localhost"}
+
+            # Add hostname-resolved IPs.
+            local_ips.update(socket.gethostbyname_ex(socket.gethostname())[2])
+
+            # Add all interface IPs via `hostname -I`.
+            try:
+                import subprocess
+
+                ips = (
+                    subprocess.check_output(["hostname", "-I"], text=True)
+                    .strip()
+                    .split()
+                )
+                local_ips.update(ips)
+            except Exception:
+                pass
+
+            # Resolve input to IP if possible.
+            try:
+                ip_resolved = socket.gethostbyname(ip)
+            except Exception:
+                ip_resolved = ip
+
+            return ip in local_ips or ip_resolved in local_ips
+
         except Exception:
             return False
 
@@ -51,7 +74,9 @@ class ICCLLauncher:
         for node in self.config["nodes"]:
             arch = node["type"]
             install_path = os.path.join(base_install, "install", arch)
-            user_cmake_flags = node.get("cmake_flags", self.config.get("cmake_flags", ""))
+            user_cmake_flags = node.get(
+                "cmake_flags", self.config.get("cmake_flags", "")
+            )
 
             # Build the library using YAML flags.
             lib_cmd = (
@@ -73,95 +98,138 @@ class ICCLLauncher:
 
             # Execute via SSH or locally.
             user = node.get("user", self.config.get("common_user", "root"))
-            exec_cmd = f"bash -l -c '{full_cmd}'"
             print(f"[*] Orchestrating {arch} on {node['ip']}...")
+
             if self._is_local(node["ip"]):
-                subprocess.run(exec_cmd, shell=True, check=True)
+                subprocess.run(["bash", "-l", "-c", full_cmd], check=True)
             else:
-                subprocess.run(["ssh", f"{user}@{node['ip']}", exec_cmd], check=True)
+                subprocess.run(
+                    ["ssh", f"{user}@{node['ip']}", f"bash -l -c '{full_cmd}'"],
+                    check=True,
+                )
 
         return self.ensure_launcher_exists()
 
     def ensure_launcher_exists(self):
-        # This must be an absolute path.
-        wrapper_path = os.path.abspath(
-            os.path.join(self.config["common_dir"], "build", "run_wrapper.sh")
-        )
+        common_dir = Path(self.config["common_dir"]).expanduser().resolve()
+        wrapper_path = str(common_dir / "build" / "run_wrapper.sh")
         os.makedirs(os.path.dirname(wrapper_path), exist_ok=True)
 
-        common_dir = Path(self.config["common_dir"]).expanduser().resolve()
         infiniccl_root_dir = Path(self.infiniccl_root).expanduser().resolve()
         is_internal = common_dir == infiniccl_root_dir
 
+        base_install = (
+            Path(self.config.get("install_dir", self.config["common_dir"]))
+            .expanduser()
+            .resolve()
+        )
+
         bin_sub = "examples/$1" if is_internal else "$1"
 
-        case_blocks = []
+        PATH_LIKE = {"LD_LIBRARY_PATH", "PATH", "CPATH", "LIBRARY_PATH"}
+
+        blocks = []
         first = True
 
         for node in self.config["nodes"]:
+            ip_or_host = node["ip"]
             n_type = node["type"]
-            n_env = node.get("backend_env", {})
+            install_lib = base_install / "install" / n_type / "lib"
 
-            # Generic environment injection from YAML.
-            exports = f'    export LD_LIBRARY_PATH="{self.infiniccl_root}/install/{n_type}/lib:${{LD_LIBRARY_PATH}}"\n'
+            resolved_ips = set()
 
-            for k, v in n_env.items():
-                if k == "LD_LIBRARY_PATH":
-                    v = f"{v}:${{LD_LIBRARY_PATH}}"
-                exports += f'    export {k}="{v}"\n'
+            if ip_or_host in ("localhost", "127.0.0.1"):
+                try:
+                    hostname = socket.gethostname()
+                    for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+                        ip = info[4][0]
+                        if not ip.startswith("127."):
+                            resolved_ips.add(ip)
 
-            condition = None
+                except Exception:
+                    pass
 
-            if n_type == "nvidia":
-                condition = '[ -c "/dev/nvidia0" ] || [ -x "$(command -v nvidia-smi)" ]'
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    resolved_ips.add(s.getsockname()[0])
+                    s.close()
+                except Exception:
+                    pass
 
-            elif n_type == "iluvatar":
-                condition = '[ -c "/dev/iluvatar0" ] || [ -x "$(command -v ixsmi)" ]'
+                if not resolved_ips:
+                    print("[ERROR] Failed to determine local machine IPs", file=sys.stderr)
+                    sys.exit(1)
 
-            elif n_type == "metax":
-                condition = (
-                    '[ -d "/opt/maca" ] || '
-                    'grep -l "9999" /sys/bus/pci/devices/*/vendor >/dev/null 2>&1'
-                )
+            else:
+                try:
+                    resolved_ips.add(socket.gethostbyname(ip_or_host))
+                except Exception:
+                    print(
+                        f"[ERROR] Failed to resolve node identifier '{ip_or_host}'",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
 
-            elif n_type == "moore":
-                condition = (
-                    '[ -c "/dev/mtgpu.0" ] || [ -x "$(command -v mthreads-gmi)" ]'
-                )
+            global_env = self.config.get("backend_env", {}) or {}
+            node_env = (node.get("backend_env") or {}).copy()
 
-            elif n_type == "cambricon":
-                condition = (
-                    '[ -n "${NEUWARE_HOME}" ] || command -v cnmon >/dev/null 2>&1'
-                )
+            merged_env = {**global_env, **node_env}
 
-            # Skip unknown platforms cleanly.
-            if condition is None:
-                continue
+            ip_conditions = [
+                f'[[ "$HOST_IPS" == *"{ip}"* ]]' for ip in sorted(resolved_ips)
+            ]
+
+            condition = " || ".join(ip_conditions)
+
+            export_lines = []
+            export_lines.append(
+                f'export LD_LIBRARY_PATH="{install_lib}:${{LD_LIBRARY_PATH:-}}"'
+            )
+
+            for k, v in merged_env.items():
+                if k in PATH_LIKE:
+                    v = f'{v}:${{{k}:-}}'
+
+                export_lines.append(f'export {k}="{v}"')
+
+            export_lines.append(f'ARCH="{n_type}"')
+
+            body = "\n".join(f"    {line}" for line in export_lines)
 
             keyword = "if" if first else "elif"
             first = False
 
-            case_blocks.append(
-                f'{keyword} {condition}; then\n{exports}    ARCH="{n_type}"\n'
-            )
+            blocks.append(f"{keyword} {condition}; then\n{body}\n")
 
-        # Fallback when no accelerator matched (or no platforms configured).
-        if case_blocks:
-            case_blocks.append('else\n    ARCH="cpu"\nfi\n')
-        else:
-            case_blocks.append('ARCH="cpu"\n')
+        script_lines = [
+            "#!/bin/bash",
+            "",
+            'HOST_IPS="$(hostname -I)"',
+            "",
+            "".join(blocks).rstrip(),
+            "else",
+            '    echo "[ERROR] Unknown host:"',
+            '    echo "HOSTNAME=$(hostname)"',
+            '    echo "HOST_IPS=$HOST_IPS"',
+            "    exit 1",
+            "fi",
+            "",
+            f'EXE="{common_dir}/build/$ARCH/{bin_sub}"',
+            "",
+            "shift",
+            "",
+            'exec "$EXE" "$@"',
+            "",
+        ]
 
-        content = f"""#!/bin/bash
-{"".join(case_blocks)}
-EXE="{self.config["common_dir"]}/build/$ARCH/{bin_sub}"
-shift
-exec "$EXE" "$@"
-    """
+        content = "\n".join(script_lines)
 
         with open(wrapper_path, "w") as f:
             f.write(content)
 
         os.chmod(wrapper_path, 0o755)
+
         return wrapper_path
 
     def launch(self, launcher_type, executable, args, launcher_obj):
@@ -169,7 +237,7 @@ exec "$EXE" "$@"
             from backends.ompi import OmpiBackend
 
             backend = OmpiBackend()
-            cmd = backend.get_launch_command(
+            cmd, env = backend.get_launch_command(
                 self.config, executable, args, launcher_obj
             )
 
@@ -177,7 +245,7 @@ exec "$EXE" "$@"
             from backends.mpich import MpichBackend
 
             backend = MpichBackend()
-            cmd = backend.get_launch_command(
+            cmd, env = backend.get_launch_command(
                 self.config, executable, args, launcher_obj
             )
 
@@ -186,10 +254,10 @@ exec "$EXE" "$@"
             if not launcher_script:
                 launcher_script = launcher_obj.ensure_launcher_exists()
 
-            cmd = [launcher_script, executable] + list(args)
+            cmd, env = [launcher_script, executable] + list(args), os.environ.copy()
 
         else:
             print(f"Error: Unsupported launcher environment '{launcher_type}'")
             sys.exit(1)
 
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, env=env, check=True)

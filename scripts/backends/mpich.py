@@ -9,6 +9,6 @@ class MpichBackend(BaseMpiBackend):
         # MPICH uses `-f` for hostfile, `-n` for slot allocations, no root check needed.
         return ["mpirun", "-f", hostfile_path, "-n", str(total_slots)]
 
-    def get_env_args(self, env_key, env_val):
+    def get_env_args(self, env_key):
         # MPICH/Hydra utilizes global `genv` flags.
-        return ["-genv", env_key, str(env_val)]
+        return ["-genvlist", env_key]

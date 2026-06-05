@@ -10,7 +10,7 @@ class BaseMpiBackend:
         """Must return the initial `mpirun` execution arguments list."""
         raise NotImplementedError
 
-    def get_env_args(self, env_key, env_val):
+    def get_env_args(self, env_key):
         """Must return the flags used to forward environment variables."""
         raise NotImplementedError
 
@@ -23,7 +23,9 @@ class BaseMpiBackend:
         hostfile_name = (
             f"hosts_{self.__class__.__name__.lower().replace('backend', '')}.txt"
         )
+
         hostfile_path = os.path.join(build_dir, hostfile_name)
+
         total_slots = 0
 
         with open(hostfile_path, "w") as f:
@@ -34,6 +36,7 @@ class BaseMpiBackend:
 
         # Shared Launcher Script Logic
         launcher_script = config.get("launcher_script")
+
         if not launcher_script:
             launcher_script = launcher_obj.ensure_launcher_exists()
 
@@ -46,15 +49,19 @@ class BaseMpiBackend:
                 if isinstance(values, list):
                     for val in values:
                         cmd.append(flag)
-                        cmd.extend(val.split())
+                        cmd.extend(str(val).split())
                 else:
                     cmd.append(flag)
                     cmd.extend(str(values).split())
 
-        # Environment Forwarding Loop
+        env = os.environ.copy()
+
         if "backend_env" in config and config["backend_env"]:
             for env_key, env_val in config["backend_env"].items():
-                cmd.extend(self.get_env_args(env_key, env_val))
+                env[env_key] = str(env_val)
+
+                cmd.extend(self.get_env_args(env_key))
 
         cmd.extend([launcher_script, executable])
-        return cmd + list(user_args)
+
+        return cmd + list(user_args), env
