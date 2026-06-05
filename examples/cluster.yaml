@@ -8,26 +8,18 @@
 common_dir: "/path/to/your/project"
 
 # [OPTIONAL] The common or default username for SSH access to remote nodes.
+# Can be overridden by node-specific `user` fields.
+# If not specified and no node-specific `user` is provided, `root` is used.
 common_user: "username"
 
-# [OPTIONAL] Base directory for library installation. 
-# Defaults to `common_dir/build` if not specified.
-# For internal examples, this should just be the `common_dir` since we build in-place.  
-install_dir: "/path/to/install/artifacts"
+# [OPTIONAL] Base directory for library installation.
+# If not specified, defaults to `common_dir`.
+# Libraries will be installed under: `<install_dir>/install/<arch>`.
+install_dir: "/path/to/install/artifacts" 
 
-# [REQUIRED] List of nodes participating in the job.
-nodes:
-  - ip: "localhost"           # IP address or hostname.
-    type: "nvidia"            # Architecture type.
-    slots: 8                  # Number of GPUs/Processes to run on this node.
-    cmake_flags: "-D..."      # Node-specific CMake options (e.g., `-DUSE_CUDA=ON`).
-    backend_env:              # Node-specific environment variables.
-      LD_LIBRARY_PATH: "/path/to/cuda/lib"
-
-  - ip: ""
-    type: "metax"
-    slots: 8
-    cmake_flags: "-D..."
+# [OPTIONAL] Global CMake flags applied to ALL nodes.
+# Can be overridden by node-specific `cmake_flags`.
+cmake_flags: "-D..."
 
 # [OPTIONAL] Global arguments passed to the backend launcher.
 # Format: `"flag": ["value1", "value2"]`.
@@ -38,6 +30,22 @@ backend_args:
 
 # [OPTIONAL] Global environment variables applied to ALL nodes.
 # Useful for network tuning or library paths shared across the cluster.
+# Note: node-specific `backend_env` entries override these values.
 backend_env:
   ENV_VAR1: "value1"
   ENV_VAR2: "value2"
+
+# [REQUIRED] List of nodes participating in the job.
+nodes:
+  - ip: "localhost"           # IP address or hostname.
+    user: "node1_username"    # [OPTIONAL] Overrides `common_user` for this node.
+    type: "nvidia"            # Architecture type.
+    slots: 8                  # Number of GPUs/Processes to run on this node.
+    cmake_flags: "-D..."      # [OPTIONAL] Node-specific CMake options (e.g., `-DUSE_CUDA=ON`).
+    backend_env:              # [OPTIONAL] Node-specific environment variables.
+      NODE1_ENV_VAR1: "value1"
+
+  - ip: ""
+    type: "metax"
+    slots: 8
+    cmake_flags: "-D..."
