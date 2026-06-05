@@ -158,7 +158,9 @@ class ICCLLauncher:
                     pass
 
                 if not resolved_ips:
-                    print("[ERROR] Failed to determine local machine IPs", file=sys.stderr)
+                    print(
+                        "[ERROR] Failed to determine local machine IPs", file=sys.stderr
+                    )
                     sys.exit(1)
 
             else:
@@ -189,7 +191,7 @@ class ICCLLauncher:
 
             for k, v in merged_env.items():
                 if k in PATH_LIKE:
-                    v = f'{v}:${{{k}:-}}'
+                    v = f"{v}:${{{k}:-}}"
 
                 export_lines.append(f'export {k}="{v}"')
 
