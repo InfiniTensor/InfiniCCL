@@ -2,6 +2,7 @@
 #define INFINI_CCL_OMPI_IMPL_REDUCE_SCATTER_H_
 
 #include <limits>
+#include <type_traits>
 
 #include "base/reduce_scatter.h"
 #include "communicator.h"
@@ -79,7 +80,14 @@ class ReduceScatterImpl<BackendType::kOmpi, device_type> {
         for (size_t i = 0; i < recv_count; ++i) {
           // TODO(lzm): should later use the unified `Cast` function instead of
           // static_cast to support CPU custom types.
-          typed_buf[i] *= static_cast<T>(scale);
+          if constexpr (std::is_integral_v<T>) {
+            // Scale in floating point first; casting `scale` to an integer
+            // type would truncate it to `0` and zero out the result.
+            typed_buf[i] =
+                static_cast<T>(static_cast<double>(typed_buf[i]) * scale);
+          } else {
+            typed_buf[i] *= static_cast<T>(scale);
+          }
         }
       });
     }
