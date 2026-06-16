@@ -19,7 +19,12 @@ AUTOGEN_HEADER = """/*
 """
 
 # Hardware traits to look for in device directories.
-DEVICE_TRAIT_HEADERS = ["device_.h", "runtime_.h", "data_type_.h"]
+DEVICE_TRAIT_FILES = {
+    "caster_": ["h", "cuh"],
+    "device_": ["h"],
+    "runtime_": ["h", "cuh"],
+    "data_type_": ["h", "cuh"],
+}
 
 # Map logical backend names (from CMake) to their internal source paths.
 BACKEND_PATH_MAP = {"ompi": "ompi/impl", "mpich": "ompi/impl", "nccl": "nvidia/nccl"}
@@ -97,11 +102,14 @@ def generate(project_root, output_dir, devices, backends):
         device_included = False
         manifest_lines.append(f"\n// --- DEVICE: {dev.upper()} ---")
 
-        for trait in DEVICE_TRAIT_HEADERS:
-            rel_path = f"{dev}/{trait}"
-            if os.path.exists(os.path.join(src_dir, rel_path)):
-                manifest_lines.append(f'#include "{rel_path}"')
-                device_included = True
+        for trait, extensions in DEVICE_TRAIT_FILES.items():
+            for ext in extensions:
+                rel_path = f"{dev}/{trait}.{ext}"
+
+                if os.path.exists(os.path.join(src_dir, rel_path)):
+                    manifest_lines.append(f'#include "{rel_path}"')
+                    device_included = True
+                    break
 
         if device_included:
             found_devices.append(f"Device::Type::k{dev.capitalize()}")

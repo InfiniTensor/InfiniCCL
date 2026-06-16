@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include "base/all_reduce.h"
+#include "caster.h"
 #include "communicator.h"
 #include "dispatcher.h"
 #include "logging.h"
@@ -66,15 +67,13 @@ class AllReduceImpl<BackendType::kOmpi, device_type> {
 
         // Simply do the averaging on the CPU before the H2D copy.
         for (size_t i = 0; i < count; ++i) {
-          // TODO(lzm): should later use the unified `Cast` function instead of
-          // static_cast to support CPU custom types.
           if constexpr (std::is_integral_v<T>) {
             // Scale in floating point first; casting `scale` to an integer
             // type would truncate it to `0` and zero out the result.
-            typed_buf[i] =
-                static_cast<T>(static_cast<double>(typed_buf[i]) * scale);
+            typed_buf[i] = Caster<kDev>::template Cast<T>(
+                Caster<kDev>::template Cast<double>(typed_buf[i]) * scale);
           } else {
-            typed_buf[i] *= static_cast<T>(scale);
+            typed_buf[i] *= Caster<kDev>::template Cast<T>(scale);
           }
         }
       });
