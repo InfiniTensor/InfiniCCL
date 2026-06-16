@@ -14,6 +14,7 @@ foreach(source_file ${EXAMPLE_SOURCES})
 
     if(WITH_METAX)
         target_link_libraries(${example_name} PRIVATE ${MACA_RUNTIME_LIB})
+        target_compile_options(${example_name} PRIVATE "-x" "maca")
     endif()
 
     if(WITH_MOORE)
