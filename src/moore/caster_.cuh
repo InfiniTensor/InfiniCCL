@@ -6,6 +6,14 @@
 
 namespace infini::ccl {
 
+// Explicitly tell the trait system that host-side math on these types is
+// unworkable on Moore.
+template <typename S, typename Op>
+struct SupportsOp<half, S, Op, void> : std::false_type {};
+
+template <typename S, typename Op>
+struct SupportsOp<__mt_bfloat16, S, Op, void> : std::false_type {};
+
 template <>
 struct HardwareCastImpl<Device::Type::kMoore, float, half> {
   __host__ __device__ static float Apply(half x) { return __half2float(x); }
