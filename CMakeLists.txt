@@ -38,7 +38,7 @@ if(AUTO_DETECT_DEVICES)
     # NVIDIA
     set(NVIDIA_FOUND FALSE)
 
-    file(GLOB NVIDIA_DEV_FILES "/dev/nvidia*")
+    file(GLOB NVIDIA_DEV_FILES "/dev/nvidia0")
 
     if(NVIDIA_DEV_FILES)
         set(NVIDIA_FOUND TRUE)
