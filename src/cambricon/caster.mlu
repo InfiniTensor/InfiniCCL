@@ -2,42 +2,48 @@
 
 namespace infini::ccl {
 
-float HardwareCastImpl<Device::Type::kCambricon, float, CambriconFP16>::Apply(CambriconFP16 x) {
-    const __half& native_x = *reinterpret_cast<const __half*>(&x.bits);
-    return __half2float(native_x);
+float HardwareCastImpl<Device::Type::kCambricon, float, CambriconFP16>::Apply(
+    CambriconFP16 x) {
+  const __half& native_x = *reinterpret_cast<const __half*>(&x.bits);
+  return __half2float(native_x);
 }
 
-CambriconFP16 HardwareCastImpl<Device::Type::kCambricon, CambriconFP16, float>::Apply(float x) {
-    __half native_res = __float2half__(x);
-    CambriconFP16 out;
-    out.bits = *reinterpret_cast<uint16_t*>(&native_res);
-    return out;
+CambriconFP16 HardwareCastImpl<Device::Type::kCambricon, CambriconFP16,
+                               float>::Apply(float x) {
+  __half native_res = __float2half__(x);
+  CambriconFP16 out;
+  out.bits = *reinterpret_cast<uint16_t*>(&native_res);
+  return out;
 }
 
-CambriconFP16 HardwareCastImpl<Device::Type::kCambricon, CambriconFP16, int>::Apply(int x) {
-    __half native_res = __int2half_rn__(x);
-    CambriconFP16 out;
-    out.bits = *reinterpret_cast<uint16_t*>(&native_res);
-    return out;
+CambriconFP16
+HardwareCastImpl<Device::Type::kCambricon, CambriconFP16, int>::Apply(int x) {
+  __half native_res = __int2half_rn__(x);
+  CambriconFP16 out;
+  out.bits = *reinterpret_cast<uint16_t*>(&native_res);
+  return out;
 }
 
-float HardwareCastImpl<Device::Type::kCambricon, float, CambriconBF16>::Apply(CambriconBF16 x) {
-    const bfloat16_t& native_x = *reinterpret_cast<const bfloat16_t*>(&x.bits);
-    return __bfloat162float__(native_x);
+float HardwareCastImpl<Device::Type::kCambricon, float, CambriconBF16>::Apply(
+    CambriconBF16 x) {
+  const bfloat16_t& native_x = *reinterpret_cast<const bfloat16_t*>(&x.bits);
+  return __bfloat162float__(native_x);
 }
 
-CambriconBF16 HardwareCastImpl<Device::Type::kCambricon, CambriconBF16, float>::Apply(float x) {
-    bfloat16_t native_res = __float2bfloat16__(x);
-    CambriconBF16 out;
-    out.bits = *reinterpret_cast<uint16_t*>(&native_res);
-    return out;
+CambriconBF16 HardwareCastImpl<Device::Type::kCambricon, CambriconBF16,
+                               float>::Apply(float x) {
+  bfloat16_t native_res = __float2bfloat16__(x);
+  CambriconBF16 out;
+  out.bits = *reinterpret_cast<uint16_t*>(&native_res);
+  return out;
 }
 
-CambriconBF16 HardwareCastImpl<Device::Type::kCambricon, CambriconBF16, int>::Apply(int x) {
-    bfloat16_t native_res = __int2bfloat16_rn__(x);
-    CambriconBF16 out;
-    out.bits = *reinterpret_cast<uint16_t*>(&native_res);
-    return out;
+CambriconBF16
+HardwareCastImpl<Device::Type::kCambricon, CambriconBF16, int>::Apply(int x) {
+  bfloat16_t native_res = __int2bfloat16_rn__(x);
+  CambriconBF16 out;
+  out.bits = *reinterpret_cast<uint16_t*>(&native_res);
+  return out;
 }
 
 }  // namespace infini::ccl
