@@ -65,6 +65,19 @@ struct Caster {
   }
 };
 
+// Convenience wrapper for casting between two types.
+// Otherwise, need to write `Caster<kDev>::template Cast<Target>(val)` every
+// time.
+template <Device::Type kDev, typename Target, typename Source>
+inline Target CastTo(Source&& val) {
+  return Caster<kDev>::template Cast<Target>(std::forward<Source>(val));
+}
+
+template <Device::Type kDev, typename Source>
+inline float ToFloat(Source&& val) {
+  return Caster<kDev>::template Cast<float>(std::forward<Source>(val));
+}
+
 }  // namespace infini::ccl
 
 #endif  // INFINI_CCL_CASTER_H_

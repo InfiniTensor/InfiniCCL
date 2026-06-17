@@ -79,10 +79,14 @@ class ReduceImpl<BackendType::kOmpi, device_type> {
             if constexpr (std::is_integral_v<T>) {
               // Scale in floating point first; casting `scale` to an integer
               // type would truncate it to `0` and zero out the result.
-              typed_buf[i] = Caster<kDev>::template Cast<T>(
-                  Caster<kDev>::template Cast<double>(typed_buf[i]) * scale);
+              typed_buf[i] =
+                  CastTo<kDev, T>(CastTo<kDev, double>(typed_buf[i]) * scale);
+            } else if constexpr (SupportsOpValue<T, decltype(scale),
+                                                 MulAssignOp>) {
+              typed_buf[i] *= scale;
             } else {
-              typed_buf[i] *= Caster<kDev>::template Cast<T>(scale);
+              float f_val = ToFloat<kDev>(typed_buf[i]) * scale;
+              typed_buf[i] = CastTo<kDev, T>(f_val);
             }
           }
         });

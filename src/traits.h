@@ -205,6 +205,54 @@ struct FilterList<Functor, std::tuple<Args...>, List<items...>> {
       typename Filter<Functor, std::tuple<Args...>, List<>, items...>::type;
 };
 
+// -----------------------------------------------------------------------------
+// Operator Expression Detection (SFINAE)
+// -----------------------------------------------------------------------------
+
+namespace detail {
+
+struct AddAssign {
+  template <typename T, typename S>
+  using apply_with_scale = decltype(std::declval<T&>() += std::declval<S>());
+};
+
+struct SubAssign {
+  template <typename T, typename S>
+  using apply_with_scale = decltype(std::declval<T&>() -= std::declval<S>());
+};
+
+struct MulAssign {
+  template <typename T, typename S>
+  using apply_with_scale = decltype(std::declval<T&>() *= std::declval<S>());
+};
+
+struct DivAssign {
+  template <typename T, typename S>
+  using apply_with_scale = decltype(std::declval<T&>() /= std::declval<S>());
+};
+
+}  // namespace detail
+
+using MulAssignOp = detail::MulAssign;
+using AddAssignOp = detail::AddAssign;
+using SubAssignOp = detail::SubAssign;
+using DivAssignOp = detail::DivAssign;
+
+// Check if a type natively supports a given mathematical, logical, or
+// relational expression. This allows dynamically querying type
+// capabilities and select the optimal path: either a fast, native hardware
+// instruction lane or a fallback conversion via bridge.
+template <typename T, typename S, typename Op, typename = void>
+struct SupportsOp : std::false_type {};
+
+template <typename T, typename S, typename Op>
+struct SupportsOp<T, S, Op,
+                  std::void_t<typename Op::template apply_with_scale<T, S>>>
+    : std::true_type {};
+
+template <typename T, typename S, typename Op>
+inline constexpr bool SupportsOpValue = SupportsOp<T, S, Op>::value;
+
 }  // namespace infini::ccl
 
 #endif  // INFINI_CCL_TRAITS_H_
