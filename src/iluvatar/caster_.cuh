@@ -3,8 +3,17 @@
 
 #include "caster.h"
 #include "data_type_.h"
+#include "traits.h"
 
 namespace infini::ccl {
+
+// Explicitly tell the trait system that host-side math on these types is
+// unworkable on Iluvatar.
+template <typename S, typename Op>
+struct SupportsOp<half, S, Op, void> : std::false_type {};
+
+template <typename S, typename Op>
+struct SupportsOp<__nv_bfloat16, S, Op, void> : std::false_type {};
 
 template <>
 struct HardwareCastImpl<Device::Type::kIluvatar, float, half> {
