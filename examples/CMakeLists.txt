@@ -8,8 +8,17 @@ foreach(source_file ${EXAMPLE_SOURCES})
     target_link_libraries(${example_name} PRIVATE infiniccl)
 
     # Add runtime and backend dependencies for direct runtime/backend usage.
-    if(WITH_NVIDIA OR WITH_ILUVATAR)
+    if(WITH_NVIDIA)
         target_link_libraries(${example_name} PRIVATE CUDA::cudart)
+    endif()
+
+    if(WITH_ILUVATAR)
+        set_source_files_properties(${source_file} PROPERTIES LANGUAGE CXX)
+        set_target_properties(${example_name} PROPERTIES
+            RULE_LAUNCH_COMPILE "${ILUVATAR_CUDA_COMPILER} "
+        )
+        target_compile_options(${example_name} PRIVATE ${ILUVATAR_CUDA_FLAGS} "-Wno-unused-command-line-argument")
+        target_link_libraries(${example_name} PRIVATE CUDA::cudart CUDA::cuda_driver)
     endif()
 
     if(WITH_METAX)

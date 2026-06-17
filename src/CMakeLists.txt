@@ -73,6 +73,8 @@ if(WITH_ILUVATAR)
     set_source_files_properties(${ILUVATAR_SOURCES} PROPERTIES 
         COMPILE_OPTIONS "${ILUVATAR_CUDA_FLAGS}"
     )
+    set(CMAKE_CXX_COMPILER "${ILUVATAR_CUDA_COMPILER}" CACHE FILEPATH "Iluvatar Compiler" FORCE)
+    target_compile_options(infiniccl PRIVATE ${ILUVATAR_CUDA_FLAGS})
 
     target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
 endif()
