@@ -155,6 +155,11 @@ struct DevicePriority<Device::Type::kCambricon> {
   static constexpr int value = 5;
 };
 
+enum class MemorySpace : uint8_t { kHost = 0, kDevice = 1, kUnknown };
+
+template <Device::Type kDev>
+MemorySpace GetMemorySpace(const void *ptr);
+
 }  // namespace infini::ccl
 
 #endif  // INFINI_CCL_DEVICE_H_
