@@ -11,13 +11,13 @@ template <BackendType backend_type, Device::Type device_type>
 struct GetUniqueIdImpl;
 
 class GetUniqueId : public Operation<GetUniqueId> {
-public:
+ public:
   template <BackendType backend_type, Device::Type device_type>
-  static ReturnStatus Execute(infiniUniqueId *id) {
+  static ReturnStatus Execute(infinicclUniqueId *id) {
     return GetUniqueIdImpl<backend_type, device_type>::Apply(id);
   }
 };
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_BASE_GET_UNIQUE_ID_H_
+#endif  // INFINI_CCL_BASE_GET_UNIQUE_ID_H_

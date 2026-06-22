@@ -11,10 +11,11 @@
 
 namespace infini::ccl {
 
-template <> class CommInitRankImpl<BackendType::kNccl, Device::Type::kNvidia> {
-public:
-  static ReturnStatus Apply(Communicator *comm, int nranks, infiniUniqueId id,
-                            int rank) {
+template <>
+class CommInitRankImpl<BackendType::kNccl, Device::Type::kNvidia> {
+ public:
+  static ReturnStatus Apply(Communicator *comm, int nranks,
+                            infinicclUniqueId id, int rank) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<CommInitRank>{});
     using Rt = Runtime<kDev>;
@@ -39,6 +40,6 @@ public:
 template <>
 struct BackendEnabled<CommInitRank, BackendType::kNccl> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
 #endif

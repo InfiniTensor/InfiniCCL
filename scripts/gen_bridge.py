@@ -156,7 +156,7 @@ def generate(project_root, output_dir, devices, backends):
 
     for s in sigs:
         op_filename = re.sub(
-            r"^infini_", "", re.sub(r"(?<!^)(?=[A-Z])", "_", s["name"])
+            r"^infiniccl_", "", re.sub(r"(?<!^)(?=[A-Z])", "_", s["name"])
         ).lower()
 
         # Check if this operation is supported by the compiled backend configuration
@@ -171,13 +171,13 @@ def generate(project_root, output_dir, devices, backends):
                 arg_type = parts[0]
                 arg_name = parts[-1].replace("*", "")
 
-            # Apply `static_cast` for specialized `Infini` types.
-            if arg_type == "infinicclDataType_t":
-                args_with_casts.append(f"static_cast<DataType>({arg_name})")
-            elif arg_type == "infinicclRedOp_t":
-                args_with_casts.append(f"static_cast<ReductionOpType>({arg_name})")
-            else:
-                args_with_casts.append(arg_name)
+                # Apply `static_cast` for specialized `Infini` types.
+                if arg_type == "infinicclDataType_t":
+                    args_with_casts.append(f"static_cast<DataType>({arg_name})")
+                elif arg_type == "infinicclRedOp_t":
+                    args_with_casts.append(f"static_cast<ReductionOpType>({arg_name})")
+                else:
+                    args_with_casts.append(arg_name)
 
             casted_args_str = ", ".join(args_with_casts)
             body = f"    return static_cast<{s['ret']}>(Operation<{s['key']}>::Call({casted_args_str}));"
