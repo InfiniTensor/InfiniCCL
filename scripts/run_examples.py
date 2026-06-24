@@ -4,7 +4,70 @@ import os
 import subprocess
 import sys
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
+
+
+# ==============================================================================
+# DISCOVERY UTILITIES
+# ==============================================================================
+def discover_available_examples(examples_root: Path) -> List[dict]:
+    """
+    Scans the `examples/` directory recursively to find all source files.
+    """
+    found = []
+    for path in examples_root.rglob("*.cc"):
+        rel_path = path.relative_to(examples_root)
+        
+        file_dir = rel_path.parent
+        file_we = rel_path.stem
+        
+        category = str(file_dir).replace(os.sep, "/") if str(file_dir) != "." else ""
+        
+        binary_rel_path = f"{category}/{file_we}" if category else file_we
+
+        found.append({
+            "absolute_path": path,
+            "relative_path": str(rel_path).replace(os.sep, "/"), 
+            "category": category,                                
+            "name_we": file_we,                                  
+            "binary_path": binary_rel_path,
+        })
+    return found
+
+
+def resolve_targets(input_strings: List[str], available: List[dict]) -> List[dict]:
+    """
+    Resolves user-provided strings into targets.
+    Supports filtering by:
+      1. Category directory (e.g. 'mpi') -> Runs everything inside
+      2. Exact relative path (e.g. 'mpi/all_reduce')
+      3. Short program name matching (e.g. 'all_reduce') -> Runs all instances
+    """
+    resolved = []
+    seen_binaries = set()
+
+    for query in input_strings:
+        query = query.strip().replace(os.sep, "/")
+        if not query:
+            continue
+        
+        matched_any = False
+        for item in available:
+            if (query == item["category"] or 
+                query == item["relative_path"] or 
+                query == item["binary_path"] or
+                query == item["name_we"]):
+                
+                if item["binary_path"] not in seen_binaries:
+                    seen_binaries.add(item["binary_path"])
+                    resolved.append(item)
+                matched_any = True
+        
+        if not matched_any:
+            print(f"⚠️  Warning: Input pattern '{query}' did not match any discovered examples.")
+
+    return resolved
 
 
 # ==============================================================================
@@ -19,7 +82,7 @@ def setup_log_directory(directory: str) -> str:
 
 
 def run_iccl_example(
-    example_name: str,
+    target_info: dict,
     config_path: str,
     launcher_opt: Optional[str],
     log_dir: str,
@@ -28,14 +91,16 @@ def run_iccl_example(
     timeout_duration: int,
 ) -> bool:
     """Executes an example via `icclrun` orchestration framework."""
-    log_file_path = os.path.join(log_dir, f"{example_name}.log")
+    binary_path = target_info["binary_path"]
+    safe_log_name = binary_path.replace("/", "_")
+    log_file_path = os.path.join(log_dir, f"{safe_log_name}.log")
 
     status_msg = (
         "🚀 Running via `icclrun` (with build):"
         if trigger_build
         else "🚀 Running via `icclrun`:             "
     )
-    print(f"{status_msg:<35} {example_name:<20}", end="", flush=True)
+    print(f"{status_msg:<35} {binary_path:<30}", end="", flush=True)
 
     # Base Command Assembly
     cmd = ["icclrun", "--config", config_path]
@@ -43,12 +108,9 @@ def run_iccl_example(
         cmd.extend(["--launcher", launcher_opt.strip()])
 
     if trigger_build:
-        cmd.extend(["--build", example_name])
+        cmd.extend(["--build", binary_path])
     else:
-        cmd.append(example_name)
-
-    # Format the exact command as a clean string for log documentation.
-    exact_command_str = " ".join(cmd)
+        cmd.append(binary_path)
 
     # Force environment unbuffered stream states for sub-python instances.
     custom_env = os.environ.copy()
@@ -56,13 +118,12 @@ def run_iccl_example(
 
     try:
         with open(log_file_path, "w", buffering=1) as log_file:
-            # Write the exact underlying command as the absolute first line of the log.
-            log_file.write(f"[COMMAND]: {exact_command_str}\n")
+            log_file.write(f"[COMMAND]: {' '.join(cmd)}\n")
             log_file.write("=" * 80 + "\n\n")
             log_file.flush()
 
             if verbose:
-                print(f"\n--- [VERBOSE OUTPUT START: `{example_name}`] ---")
+                print(f"\n--- [VERBOSE OUTPUT START: `{binary_path}`] ---")
 
                 # Execute with `Popen` to stream `stdout`/`stderr` live to both terminal and file.
                 process = subprocess.Popen(
@@ -80,7 +141,7 @@ def run_iccl_example(
                 process.wait(timeout=timeout_duration)
                 return_code = process.returncode
                 print(
-                    f"--- [VERBOSE OUTPUT END: `{example_name}`] ---\n" + " " * 56,
+                    f"--- [VERBOSE OUTPUT END: `{binary_path}`] ---\n" + " " * 66,
                     end="",
                 )
             else:
@@ -105,9 +166,7 @@ def run_iccl_example(
     except subprocess.TimeoutExpired:
         print(f" ❌ TIMEOUT (Exceeded {timeout_duration} seconds)")
         with open(log_file_path, "a") as f:
-            f.write(
-                f"\n[RUNNER ERROR]: Distributed `icclrun` harness timed out after {timeout_duration} seconds.\n"
-            )
+            f.write(f"\n[RUNNER ERROR]: Harness timed out after {timeout_duration} seconds.\n")
         return False
     except FileNotFoundError:
         print(" ❌ ERROR   (`icclrun` executable not found in `PATH`)")
@@ -142,8 +201,8 @@ def main():
         "-e",
         "--examples",
         type=str,
-        default="all_reduce",
-        help="Comma-separated list of example target names to execute.",
+        default="mpi",
+        help="Comma-separated paths, categories, or short names (fuzzy match). E.g. 'mpi', 'mpi/all_reduce', or 'all_reduce'.",
     )
     parser.add_argument(
         "-o",
@@ -168,18 +227,26 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse and clean the comma-separated examples list.
-    examples_to_run = [ex.strip() for ex in args.examples.split(",") if ex.strip()]
+    script_dir = Path(__file__).parent.resolve()
+    examples_root = script_dir / "../examples"
+    if not examples_root.exists():
+        examples_root = Path("examples").resolve()
 
-    # Sanity Checks
+    if not examples_root.exists():
+        print("❌ Error: Could not locate 'examples/' directory tree.")
+        sys.exit(1)
+
+    all_available = discover_available_examples(examples_root)
+
+    input_queries = [ex.strip() for ex in args.examples.split(",") if ex.strip()]
+    targets_to_run = resolve_targets(input_queries, all_available)
+
     if not os.path.exists(args.config):
         print(f"❌ Error: Config file matching '{args.config}' could not be located.")
         sys.exit(1)
 
-    if not examples_to_run:
-        print(
-            "❌ Error: No target programs defined. Please check your `--examples` list."
-        )
+    if not targets_to_run:
+        print("❌ Error: No valid targets resolved. Please check your `--examples` query configurations.")
         sys.exit(1)
 
     # Initialize Log Infrastructure
@@ -199,9 +266,9 @@ def main():
     failed_programs = []
     is_first_run = True
 
-    for example in examples_to_run:
+    for target in targets_to_run:
         success = run_iccl_example(
-            example_name=example,
+            target_info=target,
             config_path=args.config,
             launcher_opt=args.launcher,
             log_dir=current_run_log_dir,
@@ -216,12 +283,9 @@ def main():
             passed_count += 1
         else:
             failed_count += 1
-            failed_programs.append(example)
+            failed_programs.append(target["binary_path"])
 
-    # ==============================================================================
-    # METRICS REPORTING
-    # ==============================================================================
-    total_programs = len(examples_to_run)
+    total_programs = len(targets_to_run)
     success_rate = (passed_count / total_programs) * 100
 
     print("\n==================================================================")
@@ -234,9 +298,7 @@ def main():
     print("==================================================================")
 
     if failed_count > 0:
-        print(
-            f"⚠️  The following collective validation targets failed: {', '.join(failed_programs)}"
-        )
+        print(f"⚠️  The following collective validation targets failed: {', '.join(failed_programs)}")
         sys.exit(1)
     else:
         print("🎉 All targets executed successfully!")
