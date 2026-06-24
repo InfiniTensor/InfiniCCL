@@ -18,21 +18,23 @@ def discover_available_examples(examples_root: Path) -> List[dict]:
     found = []
     for path in examples_root.rglob("*.cc"):
         rel_path = path.relative_to(examples_root)
-        
+
         file_dir = rel_path.parent
         file_we = rel_path.stem
-        
+
         category = str(file_dir).replace(os.sep, "/") if str(file_dir) != "." else ""
-        
+
         binary_rel_path = f"{category}/{file_we}" if category else file_we
 
-        found.append({
-            "absolute_path": path,
-            "relative_path": str(rel_path).replace(os.sep, "/"), 
-            "category": category,                                
-            "name_we": file_we,                                  
-            "binary_path": binary_rel_path,
-        })
+        found.append(
+            {
+                "absolute_path": path,
+                "relative_path": str(rel_path).replace(os.sep, "/"),
+                "category": category,
+                "name_we": file_we,
+                "binary_path": binary_rel_path,
+            }
+        )
     return found
 
 
@@ -51,21 +53,24 @@ def resolve_targets(input_strings: List[str], available: List[dict]) -> List[dic
         query = query.strip().replace(os.sep, "/")
         if not query:
             continue
-        
+
         matched_any = False
         for item in available:
-            if (query == item["category"] or 
-                query == item["relative_path"] or 
-                query == item["binary_path"] or
-                query == item["name_we"]):
-                
+            if (
+                query == item["category"]
+                or query == item["relative_path"]
+                or query == item["binary_path"]
+                or query == item["name_we"]
+            ):
                 if item["binary_path"] not in seen_binaries:
                     seen_binaries.add(item["binary_path"])
                     resolved.append(item)
                 matched_any = True
-        
+
         if not matched_any:
-            print(f"⚠️  Warning: Input pattern '{query}' did not match any discovered examples.")
+            print(
+                f"⚠️  Warning: Input pattern '{query}' did not match any discovered examples."
+            )
 
     return resolved
 
@@ -166,7 +171,9 @@ def run_iccl_example(
     except subprocess.TimeoutExpired:
         print(f" ❌ TIMEOUT (Exceeded {timeout_duration} seconds)")
         with open(log_file_path, "a") as f:
-            f.write(f"\n[RUNNER ERROR]: Harness timed out after {timeout_duration} seconds.\n")
+            f.write(
+                f"\n[RUNNER ERROR]: Harness timed out after {timeout_duration} seconds.\n"
+            )
         return False
     except FileNotFoundError:
         print(" ❌ ERROR   (`icclrun` executable not found in `PATH`)")
@@ -246,7 +253,9 @@ def main():
         sys.exit(1)
 
     if not targets_to_run:
-        print("❌ Error: No valid targets resolved. Please check your `--examples` query configurations.")
+        print(
+            "❌ Error: No valid targets resolved. Please check your `--examples` query configurations."
+        )
         sys.exit(1)
 
     # Initialize Log Infrastructure
@@ -298,7 +307,9 @@ def main():
     print("==================================================================")
 
     if failed_count > 0:
-        print(f"⚠️  The following collective validation targets failed: {', '.join(failed_programs)}")
+        print(
+            f"⚠️  The following collective validation targets failed: {', '.join(failed_programs)}"
+        )
         sys.exit(1)
     else:
         print("🎉 All targets executed successfully!")
