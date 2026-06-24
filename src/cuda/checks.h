@@ -1,5 +1,5 @@
-#ifndef INFINI_CCL_NVIDIA_CHECKS_H_
-#define INFINI_CCL_NVIDIA_CHECKS_H_
+#ifndef INFINI_CCL_CUDA_CHECKS_H_
+#define INFINI_CCL_CUDA_CHECKS_H_
 
 #include <cuda_runtime.h>
 
@@ -29,4 +29,4 @@ inline ReturnStatus CheckCudaImpl(cudaError_t cuda_result, const char *file,
 
 }  // namespace infini::ccl
 
-#endif  // INFINI_CCL_NVIDIA_CHECKS_H_
+#endif  // INFINI_CCL_CUDA_CHECKS_H_

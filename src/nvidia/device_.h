@@ -3,7 +3,7 @@
 
 #include <cuda_runtime.h>
 
-#include "checks.h"
+#include "cuda/checks.h"
 #include "device.h"
 
 namespace infini::ccl {
