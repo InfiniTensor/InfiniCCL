@@ -173,18 +173,27 @@ After having a successful build and a complete `cluster.yaml`, we are ready for 
 ### 1. Run Internal Examples
 
 #### 1.1. Run a Single Example
-To run an internal example program (e.g., `examples/all_reduce.cc`), just run: 
+The repository organizes test profiles and example suites by collective paradigm layout under `examples/`:
+```text
+examples/
+├── benmark/           # Performance profiling tools
+├── ccl/               # Standalone or Pure CCL test suites
+├── ccl_mpi_hybrid/    # Hybrid architecture benchmarks
+└── mpi/               # Standard MPI sanity validations
+```
+
+To run an internal example program (e.g., `examples/mpi/all_reduce.cc`), just run: 
 
 ```bash
 # Build and run the executable across the cluster based on the config specified in your `cluster.yaml`
-icclrun --config [path-to-your-cluster.yaml] --build all_reduce [program args]
+icclrun --config [path-to-your-cluster.yaml] --build mpi/all_reduce [program args]
 ```
 
 - `--config / -c` : Path to the cluster YAML file.
 - `--build` : Instructs `icclrun` to compile the library on each node before execution. If omitted, `icclrun` assumes the library is already installed at a consistent location.
 - `--launcher` : Specify the backend launcher to be used. Default to `ompi`.
 
-The executable (e.g., `all_reduce`) and its arguments follow the options.
+The executable (e.g., `mpi/all_reduce`) and its arguments follow the options.
 
 For more details, run:
 
@@ -207,7 +216,7 @@ chmod +x ./scripts/run_examples.sh
 For all the options of the script, see:
 
 ```bash
-./run_examples --help
+./scripts/run_examples.py --help
 ```
 
 ### 2. Run a Custom User Program
