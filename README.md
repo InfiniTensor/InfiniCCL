@@ -212,19 +212,45 @@ For all the options of the script, see:
 
 ### 2. Run a Custom User Program
 
-InfiniCCL does not yet provide a CMake config package (e.g., `find_package(InfiniCCL)`). Until then, the recommended way to link your own programs is to:
-
-1. **Set an environment variable** `INFINICCL_INSTALL` pointing to the InfiniCCL installation directory (e.g., `~/.infini` or a shared NFS path), and/or set the installed library path to `LD_LIBRARY_PATH`.  
-
-2. **Link directly** to the library, headers, and required dependencies (MPI, GPU runtime).
-
 Within the program, just include:
 
 ```cpp
 #include <infiniccl/infiniccl.h>
 ```
 
-### Minimal `CMakeLists.txt` Example
+#### Recommended: `find_package(InfiniCCL)`
+
+The simplest way to consume InfiniCCL is through `find_package`. This pulls in the
+imported target `InfiniCCL::infiniccl`, and there is no need to hand-wire include
+paths, the `.so`, or the RPATH yourself.
+
+```cmake
+cmake_minimum_required(VERSION 3.18)
+project(UserApp LANGUAGES CXX)
+
+find_package(InfiniCCL REQUIRED)
+
+add_executable(app main.cc)
+target_link_libraries(app PRIVATE InfiniCCL::infiniccl)
+```
+
+Point CMake at the InfiniCCL install prefix with any of the usual mechanisms:
+
+```bash
+cmake -B build -DCMAKE_PREFIX_PATH=/path/to/install   # e.g. ~/.infini
+# or:  -DInfiniCCL_ROOT=/path/to/install
+```
+
+There is no need to resolve hardware/backend dependencies (e.g., CUDA, MPI, NCCL, …)
+just to use InfiniCCL. However, if your own program calls those APIs directly
+(e.g. allocating GPU buffers or calling MPI), you must link them in addition to
+`InfiniCCL::infiniccl`.
+
+#### Alternative: manual linking
+
+If you prefer not to use the config package, set the environment variable
+`INFINICCL_INSTALL` to the InfiniCCL installation directory (e.g. `~/.infini` or
+a shared NFS path) and link directly to the library and headers:
 
 ```cmake
 cmake_minimum_required(VERSION 3.18)

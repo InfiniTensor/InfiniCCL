@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(InfiniCCL LANGUAGES C CXX)
+project(InfiniCCL VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -379,11 +379,52 @@ file(CHMOD "${CMAKE_BINARY_DIR}/icclrun"
 # For Production/System Install
 include(GNUInstallDirs)
 
-install(TARGETS infiniccl DESTINATION ${CMAKE_INSTALL_LIBDIR})
+# Install the library and record it in an export set so that downstream
+# projects can pull in `InfiniCCL::infiniccl` via `find_package(InfiniCCL)`.
+# All hardware/backend dependencies (CUDA, MPI, NCCL, ...) are linked PRIVATE
+# into this shared library, so they are NOT propagated as usage requirements.
+install(TARGETS infiniccl
+    EXPORT InfiniCCLTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/infiniccl)
 
 install(PROGRAMS scripts/icclrun.py DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME icclrun)
+
+# =========================================================
+# --- CMake Package Config (`find_package(InfiniCCL)`) ---
+# =========================================================
+set(INFINICCL_CMAKE_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/InfiniCCL)
+
+# Export the imported target definition (`InfiniCCL::infiniccl`).
+install(EXPORT InfiniCCLTargets
+    FILE InfiniCCLTargets.cmake
+    NAMESPACE InfiniCCL::
+    DESTINATION ${INFINICCL_CMAKE_DIR}
+)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/InfiniCCLConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/InfiniCCLConfig.cmake"
+    INSTALL_DESTINATION ${INFINICCL_CMAKE_DIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/InfiniCCLConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/InfiniCCLConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/InfiniCCLConfigVersion.cmake"
+    DESTINATION ${INFINICCL_CMAKE_DIR}
+)
 
 # Install the supporting logic to a private folder.
 set(ICCL_PRIVATE_LIB ${CMAKE_INSTALL_LIBDIR}/infiniccl)
