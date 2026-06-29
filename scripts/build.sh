@@ -12,6 +12,19 @@ DEFAULT_INSTALL_PATH="$HOME/.infini"
 INSTALL_PREFIX="${INSTALL_PREFIX:-$DEFAULT_INSTALL_PATH}"
 BUILD_DIR="${BUILD_DIR:-build}"
 
+update_bashrc_export() {
+    local name="$1"
+    local value="$2"
+    local escaped_value
+    escaped_value=$(printf '%s' "$value" | sed 's/[\\&|]/\\&/g')
+
+    if grep -q "^export ${name}=" "$HOME/.bashrc"; then
+        sed -i "s|^export ${name}=.*|export ${name}=\"$escaped_value\"|" "$HOME/.bashrc"
+    else
+        echo "export ${name}=\"$value\"" >> "$HOME/.bashrc"
+    fi
+}
+
 echo "========================================================"
 echo " Starting InfiniCCL Build"
 echo " Build Directory:  $BUILD_DIR"
@@ -46,19 +59,14 @@ if ! grep -q "$BIN_PATH" "$HOME/.bashrc"; then
     echo "--> Updating ~/.bashrc with InfiniCCL paths..."
     echo "" >> "$HOME/.bashrc"
     echo "# InfiniCCL Paths" >> "$HOME/.bashrc"
-    echo "export INFINICCL_ROOT=\"$PROJECT_ROOT\"" >> "$HOME/.bashrc"
-    echo "export InfiniCCL_ROOT=\"$PROJECT_ROOT\"" >> "$HOME/.bashrc"
     echo "export PATH=\"$BIN_PATH:\$PATH\"" >> "$HOME/.bashrc"
     echo "export LD_LIBRARY_PATH=\"$LIB_PATH:\$LD_LIBRARY_PATH\"" >> "$HOME/.bashrc"
     echo "Successfully updated ~/.bashrc. Please run 'source ~/.bashrc' or restart your terminal."
 fi
 
-# Update `INFINICCL_ROOT` if it already exists but points to a different project.
-if [[ -n "${INFINICCL_ROOT:-}" && "$INFINICCL_ROOT" != "$PROJECT_ROOT" ]]; then
-    echo "--> Updating INFINICCL_ROOT in ~/.bashrc..."
-    sed -i "s|^export INFINICCL_ROOT=.*|export INFINICCL_ROOT=\"$PROJECT_ROOT\"|" "$HOME/.bashrc"
-    sed -i "s|^export InfiniCCL_ROOT=.*|export InfiniCCL_ROOT=\"$PROJECT_ROOT\"|" "$HOME/.bashrc"
-fi
+echo "--> Updating INFINICCL_ROOT in ~/.bashrc..."
+update_bashrc_export "INFINICCL_ROOT" "$PROJECT_ROOT"
+update_bashrc_export "InfiniCCL_ROOT" "$PROJECT_ROOT"
 
 echo "========================================================"
 echo " Build and Install Finished!"
