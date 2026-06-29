@@ -173,14 +173,7 @@ After having a successful build and a complete `cluster.yaml`, we are ready for 
 ### 1. Run Internal Examples
 
 #### 1.1. Run a Single Example
-The repository organizes test profiles and example suites by collective paradigm layout under `examples/`:
-```text
-examples/
-├── benmark/           # Performance profiling tools
-├── ccl/               # Standalone or Pure CCL test suites
-├── ccl_mpi_hybrid/    # Hybrid architecture benchmarks
-└── mpi/               # Standard MPI sanity validations
-```
+The repository organizes example suites by collective paradigm layout under `examples/`.
 
 To run an internal example program (e.g., `examples/mpi/all_reduce.cc`), just run: 
 
