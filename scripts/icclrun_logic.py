@@ -1,10 +1,23 @@
 import os
+import re
 import socket
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
+
+PATH_LIKE = {"LD_LIBRARY_PATH", "PATH", "CPATH", "LIBRARY_PATH"}
+
+
+def _is_infiniccl_source_dir(path):
+    cmake_path = Path(path).expanduser() / "CMakeLists.txt"
+    try:
+        cmake_text = cmake_path.read_text(errors="ignore")
+    except OSError:
+        return False
+
+    return re.search(r"project\s*\(\s*InfiniCCL(?:\s|\))", cmake_text) is not None
 
 
 class ICCLLauncher:
@@ -24,13 +37,39 @@ class ICCLLauncher:
                 break
 
         if not self.config:
-            print("Error: cluster.yaml not found.")
+            print("Error: `cluster.yaml` not found.")
             sys.exit(1)
 
-        # Detect InfiniCCL Root
-        self.infiniccl_root = os.environ.get("INFINICCL_ROOT")
-        if not self.infiniccl_root:
-            script_dir = os.path.dirname(os.path.realpath(__file__))
+        # Detect the InfiniCCL source root. Prefer the configured tree
+        # checkout before environment variables, which may point at stale installs.
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        candidates = []
+        common_dir = self.config.get("common_dir")
+        if common_dir:
+            common_dir = os.path.expanduser(common_dir)
+            candidates.extend([common_dir])
+        candidates.extend(
+            root
+            for root in [
+                os.environ.get("INFINICCL_ROOT"),
+                os.environ.get("InfiniCCL_ROOT"),
+            ]
+            if root
+        )
+        candidates.extend(
+            [
+                os.path.join(script_dir, ".."),
+                os.path.join(script_dir, "../.."),
+                os.path.join(script_dir, "../../.."),
+            ]
+        )
+
+        for candidate in candidates:
+            root = os.path.abspath(os.path.expanduser(candidate))
+            if _is_infiniccl_source_dir(root):
+                self.infiniccl_root = root
+                break
+        else:
             self.infiniccl_root = os.path.abspath(os.path.join(script_dir, "../../.."))
 
     def _is_local(self, ip):
@@ -66,41 +105,55 @@ class ICCLLauncher:
             return False
 
     def orchestrate_build(self):
-        common_dir = self.config["common_dir"]
+        global_common_dir = self.config["common_dir"]
         infiniccl_root = self.infiniccl_root
-        is_internal = os.path.abspath(common_dir) == os.path.abspath(infiniccl_root)
-        base_install = self.config.get("install_dir", common_dir)
 
         for node in self.config["nodes"]:
+            node_common_dir = node.get("dir", global_common_dir)
+            node_is_local = self._is_local(node["ip"])
+            base_install = self.config.get("install_dir", node_common_dir)
+
             arch = node["type"]
             install_path = os.path.join(base_install, "install", arch)
             user_cmake_flags = node.get(
                 "cmake_flags", self.config.get("cmake_flags", "")
             )
 
-            # Build the library using YAML flags.
+            internal_cmd = (
+                f"mkdir -p {node_common_dir}/build/{arch} && cd {node_common_dir}/build/{arch} && "
+                f"cmake -DCMAKE_INSTALL_PREFIX={install_path} {user_cmake_flags} {node_common_dir} && "
+                f"make -j$(nproc) install"
+            )
             lib_cmd = (
                 f"mkdir -p {infiniccl_root}/build/{arch} && cd {infiniccl_root}/build/{arch} && "
                 f"cmake -DCMAKE_INSTALL_PREFIX={install_path} {user_cmake_flags} {infiniccl_root} && "
                 f"make -j$(nproc) install"
             )
+            app_cmd = (
+                f"export INFINICCL_INSTALL={install_path} && "
+                f"mkdir -p {node_common_dir}/build/{arch} && cd {node_common_dir}/build/{arch} && "
+                f"cmake {user_cmake_flags} {node_common_dir} && "
+                f"make -j$(nproc)"
+            )
+            external_cmd = f"{lib_cmd} && {app_cmd}"
 
-            if is_internal:
-                full_cmd = lib_cmd
-            else:
-                app_cmd = (
-                    f"export INFINICCL_INSTALL={install_path} && "
-                    f"mkdir -p {common_dir}/build/{arch} && cd {common_dir}/build/{arch} && "
-                    f"cmake {user_cmake_flags} {common_dir} && "
-                    f"make -j$(nproc)"
+            if node_is_local:
+                full_cmd = (
+                    internal_cmd
+                    if _is_infiniccl_source_dir(node_common_dir)
+                    else external_cmd
                 )
-                full_cmd = f"{lib_cmd} && {app_cmd}"
+            else:
+                full_cmd = (
+                    f'if grep -Eq "project[[:space:]]*\\([[:space:]]*InfiniCCL([[:space:]]|\\))" {node_common_dir}/CMakeLists.txt 2>/dev/null; '
+                    f"then {internal_cmd}; else {external_cmd}; fi"
+                )
 
             # Execute via SSH or locally.
             user = node.get("user", self.config.get("common_user", "root"))
             print(f"[*] Orchestrating {arch} on {node['ip']}...")
 
-            if self._is_local(node["ip"]):
+            if node_is_local:
                 subprocess.run(["bash", "-l", "-c", full_cmd], check=True)
             else:
                 subprocess.run(
@@ -111,22 +164,10 @@ class ICCLLauncher:
         return self.ensure_launcher_exists()
 
     def ensure_launcher_exists(self):
-        common_dir = Path(self.config["common_dir"]).expanduser().resolve()
-        wrapper_path = str(common_dir / "build" / "run_wrapper.sh")
+        global_common_dir = Path(self.config["common_dir"]).expanduser().resolve()
+        wrapper_path = str(global_common_dir / "build" / "run_wrapper.sh")
         os.makedirs(os.path.dirname(wrapper_path), exist_ok=True)
 
-        infiniccl_root_dir = Path(self.infiniccl_root).expanduser().resolve()
-        is_internal = common_dir == infiniccl_root_dir
-
-        base_install = (
-            Path(self.config.get("install_dir", self.config["common_dir"]))
-            .expanduser()
-            .resolve()
-        )
-
-        bin_sub = "examples/$1" if is_internal else "$1"
-
-        PATH_LIKE = {"LD_LIBRARY_PATH", "PATH", "CPATH", "LIBRARY_PATH"}
         global_env = self.config.get("backend_env", {})
 
         blocks = []
@@ -135,7 +176,23 @@ class ICCLLauncher:
         for node in self.config["nodes"]:
             ip_or_host = node["ip"]
             n_type = node["type"]
-            install_lib = base_install / "install" / n_type / "lib"
+
+            node_common_dir_str = node.get("dir", self.config["common_dir"])
+            node_is_local = self._is_local(ip_or_host)
+            node_common_dir = (
+                str(Path(node_common_dir_str).expanduser().resolve())
+                if node_is_local
+                else node_common_dir_str
+            )
+
+            base_install_str = self.config.get("install_dir", node_common_dir_str)
+            base_install = (
+                str(Path(base_install_str).expanduser().resolve())
+                if node_is_local
+                else base_install_str
+            )
+
+            install_lib = os.path.join(base_install, "install", n_type, "lib")
 
             resolved_ips = set()
 
@@ -174,15 +231,14 @@ class ICCLLauncher:
                     )
                     sys.exit(1)
 
-            node_env = node.get("backend_env", {}).copy()
+            node_env = node.get("backend_env", {})
+            merged_env = global_env.copy()
 
-            for concat_var in PATH_LIKE:
-                if concat_var in global_env and concat_var in node_env:
-                    node_env[concat_var] = (
-                        f"{node_env[concat_var]}:{global_env[concat_var]}"
-                    )
-
-            merged_env = {**global_env, **node_env}
+            for env_key, env_value in node_env.items():
+                if env_key in PATH_LIKE and env_key in merged_env:
+                    merged_env[env_key] = f"{env_value}:{merged_env[env_key]}"
+                else:
+                    merged_env[env_key] = env_value
 
             ip_conditions = [
                 f'[[ "$HOST_IPS" == *"{ip}"* ]]' for ip in sorted(resolved_ips)
@@ -191,8 +247,9 @@ class ICCLLauncher:
             condition = " || ".join(ip_conditions)
 
             export_lines = []
+            export_lines.append(f'INSTALL_LIB="$(expand_path "{install_lib}")"')
             export_lines.append(
-                f'export LD_LIBRARY_PATH="{install_lib}:${{LD_LIBRARY_PATH:-}}"'
+                'export LD_LIBRARY_PATH="$INSTALL_LIB:${LD_LIBRARY_PATH:-}"'
             )
 
             for k, v in merged_env.items():
@@ -202,6 +259,14 @@ class ICCLLauncher:
                 export_lines.append(f'export {k}="{v}"')
 
             export_lines.append(f'ARCH="{n_type}"')
+            export_lines.append(f'NODE_COMMON_DIR="$(expand_path "{node_common_dir}")"')
+            export_lines.append(
+                'if grep -Eq "project[[:space:]]*\\([[:space:]]*InfiniCCL([[:space:]]|\\))" "$NODE_COMMON_DIR/CMakeLists.txt" 2>/dev/null; then'
+            )
+            export_lines.append('    BIN_SUB="examples/$1"')
+            export_lines.append("else")
+            export_lines.append('    BIN_SUB="$1"')
+            export_lines.append("fi")
 
             body = "\n".join(f"    {line}" for line in export_lines)
 
@@ -213,6 +278,14 @@ class ICCLLauncher:
         script_lines = [
             "#!/bin/bash",
             "",
+            "expand_path() {",
+            '    case "$1" in',
+            '        "~") printf "%s\\n" "$HOME" ;;',
+            '        "~/"*) printf "%s\\n" "$HOME/${1#~/}" ;;',
+            '        *) printf "%s\\n" "$1" ;;',
+            "    esac",
+            "}",
+            "",
             'HOST_IPS="$(hostname -I)"',
             "",
             "".join(blocks).rstrip(),
@@ -223,7 +296,11 @@ class ICCLLauncher:
             "    exit 1",
             "fi",
             "",
-            f'EXE="{common_dir}/build/$ARCH/{bin_sub}"',
+            'EXE="$NODE_COMMON_DIR/build/$ARCH/$BIN_SUB"',
+            'if [[ ! -x "$EXE" ]]; then',
+            '    echo "[ERROR] Executable not found or not executable: $EXE"',
+            "    exit 1",
+            "fi",
             "",
             "shift",
             "",

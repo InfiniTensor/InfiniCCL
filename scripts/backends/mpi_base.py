@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 
 class BaseMpiBackend:
@@ -39,6 +40,30 @@ class BaseMpiBackend:
 
         if not launcher_script:
             launcher_script = launcher_obj.ensure_launcher_exists()
+
+            # If any node-specific `dir` is given, stage the generated wrapper at one identical '/tmp' path on all nodes.
+            # Node-specific dirs may differ, but 'mpirun' can launch only one script path.
+            if any("dir" in node for node in config["nodes"]):
+                remote_launcher = f"/tmp/infiniccl_{os.path.basename(launcher_script)}"
+                subprocess.run(["cp", launcher_script, remote_launcher], check=True)
+                os.chmod(remote_launcher, 0o755)
+
+                for node in config["nodes"]:
+                    user = node.get("user", config.get("common_user", "root"))
+
+                    if launcher_obj._is_local(node["ip"]):
+                        continue
+
+                    subprocess.run(
+                        [
+                            "scp",
+                            launcher_script,
+                            f"{user}@{node['ip']}:{remote_launcher}",
+                        ],
+                        check=True,
+                    )
+
+                launcher_script = remote_launcher
 
         # Fetch specific base runner flags (OMPI vs MPICH).
         cmd = self.get_base_mpi_args(hostfile_path, total_slots)
