@@ -170,6 +170,35 @@ To achieve this, a `cluster.yaml` is required to be filled. This is the configur
 
 After having a successful build and a complete `cluster.yaml`, we are ready for compiling and executing a distributed program across the cluster. 
 
+<details>
+<summary><b>📋 Full list of `cluster.yaml` fields (Click to expand)</b></summary>
+
+| Field | Required | Scope | Available Values / Meaning |
+|-------|----------|-------|----------------------------|
+| `common_dir` | Yes | Global | Root directory of the project source tree. For internal examples, set this to the InfiniCCL source root. For external programs, set this to the external project root. |
+| `common_user` | No | Global | Default SSH user for remote nodes. If omitted and no node-level `user` is set, `root` is used. |
+| `install_dir` | No | Global | Base directory for InfiniCCL installation artifacts. If omitted, `common_dir` is used. Libraries are installed under `<install_dir>/install/<type>`. |
+| `cmake_flags` | No | Global | CMake options applied to every node during `--build`, such as `-DAUTO_DETECT_BACKENDS=OFF`. Node-level `cmake_flags` override this value for that node. |
+| `backend_args` | No | Global | Extra arguments passed to the selected backend launcher. Use a YAML mapping from a flag to a scalar or list of values, for example `--mca: ["pml ucx", "btl ^openib"]` for OpenMPI. |
+| `backend_env` | No | Global | Environment variables exported for launcher/runtime setup on every node. Node-level `backend_env` overrides these values; path-like variables (`LD_LIBRARY_PATH`, `PATH`, `CPATH`, `LIBRARY_PATH`) are prepended to the global value. |
+| `launcher_script` | No | Global | Path to a custom wrapper script. If omitted, `icclrun` generates `build/run_wrapper.sh` from `cluster.yaml`. For MPI launchers, the script path must be executable from every participating node. |
+| `nodes` | Yes | Global | List of participating nodes. Each entry describes one host and its build/runtime settings. |
+| `nodes[].ip` | Yes | Node | Node IP address or hostname. Use `localhost` or `127.0.0.1` for the local node. |
+| `nodes[].user` | No | Node | SSH user for this node. Overrides `common_user`. |
+| `nodes[].dir` | No | Node | Node-specific project source directory. Overrides `common_dir` for this node and is useful when the project path differs across hosts. |
+| `nodes[].type` | Yes | Node | Architecture/build label used in build, install, and wrapper paths. Common values include `cpu`, `nvidia`, `iluvatar`, `metax`, `moore`, and `cambricon`. |
+| `nodes[].slots` | No | Node | Number of processes to launch on this node. This usually matches the number of devices assigned to the node. Defaults to `8`. |
+| `nodes[].cmake_flags` | No | Node | Node-specific CMake options used during `--build`, such as `-DUSE_CUDA=ON` or `-DUSE_MACA=ON`. Overrides global `cmake_flags` for this node. |
+| `nodes[].backend_env` | No | Node | Node-specific runtime environment variables, such as `CUDA_VISIBLE_DEVICES`, `UCX_TLS`, or `UCX_NET_DEVICES`. Overrides or prepends to global `backend_env` values for this node. |
+
+> **Notes**:
+> - `backend_args` and launcher-level environment forwarding are used by `--launcher ompi` and `--launcher mpich`.
+> - `--launcher none` still uses the generated or configured wrapper script, but does not invoke `mpirun`.
+> - Unknown YAML keys are ignored by the current launcher implementation.
+
+</details>
+
+
 ### 1. Run Internal Examples
 
 #### 1.1. Run a Single Example
