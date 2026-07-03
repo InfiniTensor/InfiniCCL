@@ -39,13 +39,15 @@ backend_env:
 nodes:
   - ip: "localhost"           # IP address or hostname.
     user: "node1_username"    # [OPTIONAL] Overrides `common_user` for this node.
+    dir: "path/to/project"    # [OPTIONAL] Node-specific path to the project, overrides `common_dir`.
     type: "nvidia"            # Architecture type.
     slots: 8                  # Number of GPUs/Processes to run on this node.
     cmake_flags: "-D..."      # [OPTIONAL] Node-specific CMake options (e.g., `-DUSE_CUDA=ON`).
     backend_env:              # [OPTIONAL] Node-specific environment variables.
       NODE1_ENV_VAR1: "value1"
 
+  # Add more nodes as needed, following the same structure.
   - ip: ""
-    type: "metax"
+    type: "..."
     slots: 8
     cmake_flags: "-D..."
