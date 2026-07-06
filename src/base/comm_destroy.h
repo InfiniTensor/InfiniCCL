@@ -25,7 +25,6 @@ class CommDestroy : public Operation<CommDestroy> {
         CommDestroyImpl<backend_type, device_type>::Apply(comm_handle);
 
     if (status == ReturnStatus::kSuccess) {
-      // Pair with the `new` in `CommInitAll`.
       delete static_cast<Communicator *>(comm_handle);
     }
 

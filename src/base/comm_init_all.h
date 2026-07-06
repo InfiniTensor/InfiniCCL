@@ -17,16 +17,18 @@ class CommInitAll : public Operation<CommInitAll> {
             typename... Args>
   static ReturnStatus Execute(void **comm_handle, Args &&...args) {
     Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
-    if (comm) {
+    if (comm && comm->inter_comm()) {
       // TODO(lzm): change to use `glog`.
-      LOG("Invalid communicator handle for CommInitAll.");
+      LOG("Invalid communicator handle for `CommInitAll`.");
       return ReturnStatus::kInvalidArgument;
     }
 
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
 
-    comm = new Communicator(kDev, 0);
+    if (!comm) {
+      comm = new Communicator(kDev, 0);
+    }
 
     return CommInitAllImpl<backend_type, device_type>::Apply(
         comm, std::forward<Args>(args)...);

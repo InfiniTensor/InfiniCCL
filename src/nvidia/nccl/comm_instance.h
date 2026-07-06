@@ -3,13 +3,23 @@
 
 #include <nccl.h>
 
+#include "checks.h"
 #include "communicator.h"
 
 namespace infini::ccl {
 
 struct NcclInstance : public BackendCommInstance {
-  ncclComm_t handle;
+  ncclComm_t handle = nullptr;
+
   NcclInstance() { type = BackendType::kNccl; }
+  ~NcclInstance() override { Destroy(); }
+
+  void Destroy() {
+    if (handle != nullptr) {
+      INFINI_CHECK_NCCL(ncclCommDestroy(handle));
+      handle = nullptr;
+    }
+  }
 };
 
 }  // namespace infini::ccl

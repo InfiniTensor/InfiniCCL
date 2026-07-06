@@ -14,7 +14,8 @@ typedef enum {
   infinicclInvalidUsage = 5,
   infinicclRemoteError = 6,
   infinicclInProgress = 7,
-  infinicclNumResults = 8
+  infinicclNotSupported = 8,
+  infinicclNumResults = 9
 } infinicclResult_t;
 
 #ifdef __cplusplus
