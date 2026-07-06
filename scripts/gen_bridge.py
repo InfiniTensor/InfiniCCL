@@ -89,6 +89,7 @@ def generate(project_root, output_dir, devices, backends):
     )
     sigs = parse_signatures(header_path)
 
+    # 1. Generate `backend_manifest.h`.
     implemented_ops = set()
     manifest_lines = [
         AUTOGEN_HEADER,
