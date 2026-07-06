@@ -127,7 +127,7 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
                             Rt::MemcpyDeviceToHost));
   }
 
-  double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+  double elapsed = timer.ElapsedMs() / static_cast<double>(profile_iter);
 
   if (rank == kReceiver) {
     bool correct = Validator::ValidateResult(

@@ -120,7 +120,7 @@ void RunAllToAllExample(int argc, char **argv, int warmup_iter,
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, total_bytes,
                           Rt::MemcpyDeviceToHost));
-  double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+  double elapsed = timer.ElapsedMs() / static_cast<double>(profile_iter);
 
   // Result Validation
   // recv `block[src]` on rank r should come from `src`'s send `block[dst=r]`.

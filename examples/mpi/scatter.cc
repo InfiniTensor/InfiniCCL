@@ -114,7 +114,7 @@ void RunScatterExample(int argc, char **argv, int warmup_iter, int profile_iter,
   }
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+  double elapsed = timer.ElapsedMs() / static_cast<double>(profile_iter);
 
   // Result Validation: every rank should receive its own `(rank + 1)` block.
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, recv_bytes,

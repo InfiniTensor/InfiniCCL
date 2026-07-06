@@ -28,7 +28,7 @@ class Timer {
 
  public:
   Timer() : start(std::chrono::high_resolution_clock::now()) {}
-  double elapsed_ms() const {
+  double ElapsedMs() const {
     auto end = std::chrono::high_resolution_clock::now();
     return std::chrono::duration<double, std::milli>(end - start).count();
   }

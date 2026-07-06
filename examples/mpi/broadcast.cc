@@ -113,7 +113,7 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
       CHECK_INFINI(collective_call());
     }
     CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-    double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+    double elapsed = timer.ElapsedMs() / static_cast<double>(profile_iter);
 
     // Validation
     Validator::ValidateResult(h_recv.data(), kNumElements, kRootMagicValue,

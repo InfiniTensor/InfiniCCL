@@ -113,7 +113,7 @@ void RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
   }
 
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  double elapsed = timer.elapsed_ms() / static_cast<double>(profile_iter);
+  double elapsed = timer.ElapsedMs() / static_cast<double>(profile_iter);
 
   // Result Validation (only meaningful on `root`).
   if (rank == kRoot) {
