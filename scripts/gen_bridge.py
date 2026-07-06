@@ -27,7 +27,11 @@ DEVICE_TRAIT_FILES = {
 }
 
 # Map logical backend names (from CMake) to their internal source paths.
-BACKEND_PATH_MAP = {"ompi": "ompi/impl", "mpich": "ompi/impl", "nccl": "nvidia/nccl/impl"}
+BACKEND_PATH_MAP = {
+    "ompi": "ompi/impl",
+    "mpich": "ompi/impl",
+    "nccl": "nvidia/nccl/impl",
+}
 
 # =================================================================
 # LOGIC
