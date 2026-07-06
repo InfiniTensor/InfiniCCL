@@ -90,6 +90,7 @@ def run_iccl_example(
     target_info: dict,
     config_path: str,
     launcher_opt: Optional[str],
+    executable_args: List[str],
     log_dir: str,
     trigger_build: bool,
     verbose: bool,
@@ -116,6 +117,8 @@ def run_iccl_example(
         cmd.extend(["--build", binary_path])
     else:
         cmd.append(binary_path)
+
+    cmd.extend(executable_args)
 
     # Force environment unbuffered stream states for sub-python instances.
     custom_env = os.environ.copy()
@@ -231,8 +234,16 @@ def main():
         action="store_true",
         help="Enable verbose mode: stream execution `stdout`/`stderr` directly to terminal while logging.",
     )
+    parser.add_argument(
+        "executable_args",
+        nargs=argparse.REMAINDER,
+        help="Arguments forwarded to each selected executable. Use `--` before these args, e.g. `-- -g 4 -n 1024`.",
+    )
 
     args = parser.parse_args()
+    executable_args = args.executable_args
+    if executable_args and executable_args[0] == "--":
+        executable_args = executable_args[1:]
 
     script_dir = Path(__file__).parent.resolve()
     examples_root = script_dir / "../examples"
@@ -280,6 +291,7 @@ def main():
             target_info=target,
             config_path=args.config,
             launcher_opt=args.launcher,
+            executable_args=executable_args,
             log_dir=current_run_log_dir,
             trigger_build=is_first_run,
             verbose=args.verbose,
