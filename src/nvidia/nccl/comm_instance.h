@@ -9,8 +9,10 @@
 namespace infini::ccl {
 
 struct NcclInstance : public BackendCommInstance {
-  ncclComm_t handle;
+  ncclComm_t handle = nullptr;
+
   NcclInstance() { type = BackendType::kNccl; }
+  ~NcclInstance() override { Destroy(); }
 
   void Destroy() {
     if (handle != nullptr) {

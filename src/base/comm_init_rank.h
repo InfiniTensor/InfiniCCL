@@ -29,7 +29,11 @@ class CommInitRank : public Operation<CommInitRank> {
     int current_dev = 0;
     CHECK_STATUS(Rt, Rt::GetDevice(&current_dev));
 
-    comm = new Communicator(kDev, current_dev);
+    if (!comm) {
+      comm = new Communicator(kDev, current_dev);
+    } else {
+      comm->set_device_id(current_dev);
+    }
 
     return CommInitRankImpl<backend_type, device_type>::Apply(
         comm, std::forward<Args>(args)...);
