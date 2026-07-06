@@ -8,8 +8,9 @@
 
 namespace infini::ccl {
 
-template <> class CommDestroyImpl<BackendType::kNccl, Device::Type::kNvidia> {
-public:
+template <>
+class CommDestroyImpl<BackendType::kNccl, Device::Type::kNvidia> {
+ public:
   static ReturnStatus Apply(void *comm) {
     auto *comm_internal = static_cast<Communicator *>(comm);
     if (!comm_internal) {
@@ -30,6 +31,6 @@ public:
 template <>
 struct BackendEnabled<CommDestroy, BackendType::kNccl> : std::true_type {};
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_NVIDIA_NCCL_IMPL_COMM_DESTROY_H_
+#endif  // INFINI_CCL_NVIDIA_NCCL_IMPL_COMM_DESTROY_H_

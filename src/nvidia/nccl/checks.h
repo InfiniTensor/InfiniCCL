@@ -1,13 +1,13 @@
 #ifndef INFINI_CCL_NVIDIA_NCCL_CHECKS_H_
 #define INFINI_CCL_NVIDIA_NCCL_CHECKS_H_
 
-#include <iostream>
-
 #include <nccl.h>
+
+#include <iostream>
 
 #include "return_status_impl.h"
 
-#define INFINI_CHECK_NCCL(result)                                              \
+#define INFINI_CHECK_NCCL(result) \
   ::infini::ccl::detail::CheckNcclImpl((result), __FILE__, __LINE__)
 
 namespace infini::ccl {
@@ -24,8 +24,8 @@ inline ReturnStatus CheckNcclImpl(ncclResult_t nccl_result, const char *file,
   return ReturnStatus::kSuccess;
 }
 
-} // namespace detail
+}  // namespace detail
 
-} // namespace infini::ccl
+}  // namespace infini::ccl
 
-#endif // INFINI_CCL_NVIDIA_NCCL_CHECKS_H_
+#endif  // INFINI_CCL_NVIDIA_NCCL_CHECKS_H_
