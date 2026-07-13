@@ -26,11 +26,15 @@ DEVICE_TRAIT_FILES = {
     "data_type_": ["h", "cuh"],
 }
 
-# Map logical backend names (from CMake) to their internal source paths.
-BACKEND_PATH_MAP = {
-    "ompi": "ompi/impl",
-    "mpich": "ompi/impl",
-    "nccl": "nvidia/nccl/impl",
+# Map logical backend names (from CMake) to their internal implementation paths.
+BACKEND_IMPL_PATH_MAP = {
+    "ompi": ["backends/mpi/ompi/impl"],
+    "mpich": ["backends/mpi/ompi/impl"],
+    "nccl": ["backends/ccl/nccl/impl"],
+}
+
+BACKEND_COMMON_HEADERS = {
+    "nccl": ["backends/ccl/nccl/type_map.h"],
 }
 
 # =================================================================
@@ -109,7 +113,7 @@ def generate(project_root, output_dir, devices, backends):
 
         for trait, extensions in DEVICE_TRAIT_FILES.items():
             for ext in extensions:
-                rel_path = f"{dev}/{trait}.{ext}"
+                rel_path = f"devices/{dev}/{trait}.{ext}"
 
                 if os.path.exists(os.path.join(src_dir, rel_path)):
                     manifest_lines.append(f'#include "{rel_path}"')
@@ -121,17 +125,30 @@ def generate(project_root, output_dir, devices, backends):
 
     # Process Active Backends
     for bb in backends:
-        if not bb or bb not in BACKEND_PATH_MAP:
+        if not bb or bb not in BACKEND_IMPL_PATH_MAP:
             continue
 
         manifest_lines.append(f"\n// --- BACKEND: {bb.upper()} ---")
-        impl_subpath = BACKEND_PATH_MAP[bb]
 
-        for op in ops_in_base:
-            rel_path = f"{impl_subpath}/{op}.h"
+        if bb == "nccl":
+            for dev in devices:
+                provider_path = f"backends/ccl/nccl/{dev}/api.h"
+                if os.path.exists(os.path.join(src_dir, provider_path)):
+                    manifest_lines.append(f'#include "{provider_path}"')
+
+        for rel_path in BACKEND_COMMON_HEADERS.get(bb, []):
             if os.path.exists(os.path.join(src_dir, rel_path)):
                 manifest_lines.append(f'#include "{rel_path}"')
-                implemented_ops.add(op)
+
+        for impl_subpath in BACKEND_IMPL_PATH_MAP[bb]:
+            if not os.path.exists(os.path.join(src_dir, impl_subpath)):
+                continue
+
+            for op in ops_in_base:
+                rel_path = f"{impl_subpath}/{op}.h"
+                if os.path.exists(os.path.join(src_dir, rel_path)):
+                    manifest_lines.append(f'#include "{rel_path}"')
+                    implemented_ops.add(op)
 
     # Add the Type Alias `EnabledDevices`
     manifest_lines.append("\nnamespace infini::ccl {\n")

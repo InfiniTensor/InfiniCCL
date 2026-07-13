@@ -17,8 +17,8 @@ set(AUTOGEN_WARNING [[/*
 file(GLOB CORE_SRCS "*.cc")
 file(GLOB_RECURSE BASE_IMPL_SRCS "base/*.cc")
 
-target_sources(infiniccl PRIVATE 
-    ${CORE_SRCS} 
+target_sources(infiniccl PRIVATE
+    ${CORE_SRCS}
     ${BASE_IMPL_SRCS}
 )
 
@@ -27,7 +27,7 @@ target_sources(infiniccl PRIVATE
 # =========================================================
 
 # CPU (Always On as the base architecture)
-file(GLOB_RECURSE CPU_SRCS "cpu/*.cc")
+file(GLOB_RECURSE CPU_SRCS "devices/cpu/*.cc")
 target_sources(infiniccl PRIVATE ${CPU_SRCS})
 
 # NVIDIA
@@ -35,12 +35,12 @@ if(WITH_NVIDIA)
     list(APPEND DEVICE_LIST "nvidia")
 
     set(NVIDIA_PATTERNS
-        "cuda/*.cc"
-        "cuda/*.cpp"
-        "cuda/*.cu"
-        "nvidia/*.cc"
-        "nvidia/*.cpp"
-        "nvidia/*.cu"
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/cuda/*.cu"
+        "devices/nvidia/*.cc"
+        "devices/nvidia/*.cpp"
+        "devices/nvidia/*.cu"
     )
     file(GLOB NVIDIA_SOURCES ${NVIDIA_PATTERNS})
 
@@ -58,19 +58,19 @@ if(WITH_ILUVATAR)
     list(APPEND DEVICE_LIST "iluvatar")
 
     set(ILUVATAR_PATTERNS
-        "cuda/*.cc"
-        "cuda/*.cpp"
-        "cuda/*.cu"
-        "iluvatar/*.cc"
-        "iluvatar/*.cpp"
-        "iluvatar/*.cu"
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/cuda/*.cu"
+        "devices/iluvatar/*.cc"
+        "devices/iluvatar/*.cpp"
+        "devices/iluvatar/*.cu"
     )
     file(GLOB_RECURSE ILUVATAR_SOURCES ${ILUVATAR_PATTERNS})
     target_sources(infiniccl PRIVATE ${ILUVATAR_SOURCES})
 
     target_include_directories(infiniccl PRIVATE "${ILUVATAR_INCLUDE_DIR}")
 
-    set_source_files_properties(${ILUVATAR_SOURCES} PROPERTIES 
+    set_source_files_properties(${ILUVATAR_SOURCES} PROPERTIES
         COMPILE_OPTIONS "${ILUVATAR_CUDA_FLAGS}"
     )
     set(CMAKE_CXX_COMPILER "${ILUVATAR_CUDA_COMPILER}" CACHE FILEPATH "Iluvatar Compiler" FORCE)
@@ -84,16 +84,16 @@ if(WITH_METAX)
     list(APPEND DEVICE_LIST "metax")
 
     set(METAX_PATTERNS
-        "cuda/*.cc"
-        "cuda/*.cpp"
-        "metax/*.cc"
-        "metax/*.cpp"
-        "metax/*.maca"
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/metax/*.cc"
+        "devices/metax/*.cpp"
+        "devices/metax/*.maca"
     )
     file(GLOB METAX_SOURCES ${METAX_PATTERNS})
 
     set_source_files_properties(${METAX_SOURCES} PROPERTIES LANGUAGE CXX)
-    
+
     target_sources(infiniccl PRIVATE ${METAX_SOURCES})
     target_include_directories(infiniccl PRIVATE "${MACA_PATH}/include")
     target_link_libraries(infiniccl PRIVATE ${MACA_RUNTIME_LIB})
@@ -105,11 +105,11 @@ if(WITH_MOORE)
     list(APPEND DEVICE_LIST "moore")
 
     set(MOORE_PATTERNS
-        "cuda/*.cc"
-        "cuda/*.cpp"
-        "moore/*.cc"
-        "moore/*.cpp"
-        "moore/*.mu"
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/moore/*.cc"
+        "devices/moore/*.cpp"
+        "devices/moore/*.mu"
     )
     file(GLOB MOORE_SOURCES ${MOORE_PATTERNS})
 
@@ -128,9 +128,9 @@ if(WITH_CAMBRICON)
     list(APPEND DEVICE_LIST "cambricon")
 
     set(CAMBRICON_PATTERNS
-        "cambricon/*.cc"
-        "cambricon/*.cpp"
-        "cambricon/*.mlu"
+        "devices/cambricon/*.cc"
+        "devices/cambricon/*.cpp"
+        "devices/cambricon/*.mlu"
     )
     file(GLOB CAMBRICON_SOURCES ${CAMBRICON_PATTERNS})
 
@@ -143,7 +143,7 @@ if(WITH_CAMBRICON)
             OUTPUT_VARIABLE CNCC_INTERNAL_INC_DIR
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        
+
         set(MLU_COMPILE_OPTS
             -c --bang-mlu-arch=mtp_592 -O3 -fPIC -Wall -Werror -std=c++17 -pthread
             -I${PROJECT_SOURCE_DIR}
@@ -159,7 +159,7 @@ if(WITH_CAMBRICON)
             get_filename_component(path ${src_file} DIRECTORY)
             set(out_file "${CMAKE_CURRENT_BINARY_DIR}/${path}/${name}.o")
             file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${path}")
-            
+
             add_custom_command(OUTPUT ${out_file}
                 COMMAND ${CNCC_COMPILER} ${MLU_COMPILE_OPTS} -c ${src_file} -o ${out_file}
                 DEPENDS ${src_file}
@@ -190,11 +190,11 @@ if(WITH_CAMBRICON)
     endforeach()
 
     target_include_directories(infiniccl PRIVATE "${NEUWARE_HOME}/include")
-    
-    target_link_libraries(infiniccl PRIVATE 
-        ${CAMBRICON_RUNTIME_LIB} 
-        ${CAMBRICON_CNNL_LIB} 
-        ${CAMBRICON_CNNL_EXTRA_LIB} 
+
+    target_link_libraries(infiniccl PRIVATE
+        ${CAMBRICON_RUNTIME_LIB}
+        ${CAMBRICON_CNNL_LIB}
+        ${CAMBRICON_CNNL_EXTRA_LIB}
         ${CAMBRICON_PAPI_LIB}
     )
 endif()
@@ -206,9 +206,9 @@ endif()
 # OpenMPI
 if(WITH_OMPI)
     list(APPEND BACKEND_LIST "ompi")
-    file(GLOB_RECURSE OMPI_SRCS "ompi/*.cc" "ompi/*.cpp")
+    file(GLOB_RECURSE OMPI_SRCS "backends/mpi/ompi/*.cc" "backends/mpi/ompi/*.cpp")
     target_sources(infiniccl PRIVATE ${OMPI_SRCS})
-    
+
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
     endif()
@@ -218,7 +218,7 @@ if(WITH_MPICH)
     list(APPEND BACKEND_LIST "mpich")
     # Note: MPICH shares the same internal implementation as OMPI, so we reuse the `ompi/impl` sources for both.
     # However, later there may be MPICH-specific sources added to the `mpich/` directory.
-    file(GLOB_RECURSE MPICH_SRCS "mpich/*.cc" "mpich/*.cpp" "ompi/*.cc" "ompi/*.cpp") 
+    file(GLOB_RECURSE MPICH_SRCS "backends/mpi/mpich/*.cc" "backends/mpi/mpich/*.cpp" "backends/mpi/ompi/*.cc" "backends/mpi/ompi/*.cpp")
     target_sources(infiniccl PRIVATE ${MPICH_SRCS})
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
@@ -228,10 +228,7 @@ endif()
 # NCCL
 if(WITH_NCCL)
     list(APPEND BACKEND_LIST "nccl")
-
-    if (WITH_NVIDIA)
-        file(GLOB_RECURSE NCCL_SRCS "nvidia/nccl/*.cc" "nvidia/nccl/*.cpp" "nvidia/nccl/*.cu")
-    endif()
+    file(GLOB_RECURSE NCCL_SRCS "backends/ccl/nccl/*.cc" "backends/ccl/nccl/*.cpp" "backends/ccl/nccl/*.cu")
 
     target_sources(infiniccl PRIVATE ${NCCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${NCCL_INC})
@@ -266,8 +263,8 @@ set(BACK_STR "${BACKEND_LIST}")
 
 add_custom_command(
     OUTPUT "${GENERATED_BRIDGE}" "${GENERATED_MANIFEST}"
-    COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/scripts/gen_bridge.py" 
-            "${PROJECT_SOURCE_DIR}" 
+    COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/scripts/gen_bridge.py"
+            "${PROJECT_SOURCE_DIR}"
             "${CMAKE_CURRENT_BINARY_DIR}"
             "${DEV_STR}"
             "${BACK_STR}"
@@ -286,7 +283,7 @@ target_include_directories(infiniccl PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 # =========================================================
 
 target_include_directories(infiniccl
-    PUBLIC 
+    PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
