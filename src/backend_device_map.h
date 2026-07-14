@@ -17,6 +17,10 @@ template <>
 struct IsSupportedCombination<BackendType::kNccl, Device::Type::kNvidia>
     : std::true_type {};
 
+template <>
+struct IsSupportedCombination<BackendType::kNccl, Device::Type::kIluvatar>
+    : std::true_type {};
+
 };  // namespace infini::ccl
 
 #endif  // INFINI_CCL_BACKEND_DEVICE_MAP_H_
