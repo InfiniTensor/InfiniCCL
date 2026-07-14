@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_INIT_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_INIT_H_
 
-#include "base/init.h"
 #include "backends/mpi/ompi/checks.h"
+#include "base/init.h"
 
 namespace infini::ccl {
 

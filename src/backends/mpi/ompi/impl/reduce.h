@@ -5,14 +5,14 @@
 #include <limits>
 #include <type_traits>
 
+#include "backends/mpi/ompi/checks.h"
+#include "backends/mpi/ompi/comm_instance.h"
+#include "backends/mpi/ompi/type_map.h"
 #include "base/reduce.h"
 #include "communicator.h"
 #include "data_type_impl.h"
 #include "dispatcher.h"
 #include "logging.h"
-#include "backends/mpi/ompi/checks.h"
-#include "backends/mpi/ompi/comm_instance.h"
-#include "backends/mpi/ompi/type_map.h"
 #include "runtime.h"
 
 namespace infini::ccl {

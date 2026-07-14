@@ -3,13 +3,13 @@
 
 #include <limits>
 
+#include "backends/mpi/ompi/checks.h"
+#include "backends/mpi/ompi/comm_instance.h"
+#include "backends/mpi/ompi/type_map.h"
 #include "base/all_to_all.h"
 #include "communicator.h"
 #include "dispatcher.h"
 #include "logging.h"
-#include "backends/mpi/ompi/checks.h"
-#include "backends/mpi/ompi/comm_instance.h"
-#include "backends/mpi/ompi/type_map.h"
 
 namespace infini::ccl {
 

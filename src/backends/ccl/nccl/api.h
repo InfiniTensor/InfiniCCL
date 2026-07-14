@@ -1,9 +1,9 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 
-#include <cstddef>
-
 #include <nccl.h>
+
+#include <cstddef>
 
 #include "backends/ccl/common/api.h"
 #include "logging.h"
@@ -32,17 +32,13 @@ struct NcclApi {
     return ReturnStatus::kSuccess;
   }
 
-  static Result GetUniqueId(UniqueId *id) {
-    return ncclGetUniqueId(id);
-  }
+  static Result GetUniqueId(UniqueId *id) { return ncclGetUniqueId(id); }
 
   static Result CommInitRank(Comm *comm, int nranks, UniqueId id, int rank) {
     return ncclCommInitRank(comm, nranks, id, rank);
   }
 
-  static Result CommDestroy(Comm comm) {
-    return ncclCommDestroy(comm);
-  }
+  static Result CommDestroy(Comm comm) { return ncclCommDestroy(comm); }
 
   static Result AllReduce(const void *send_buff, void *recv_buff, size_t count,
                           DataType data_type, RedOp op, Comm comm,
@@ -51,7 +47,6 @@ struct NcclApi {
                          stream);
   }
 };
-
 
 }  // namespace infini::ccl
 

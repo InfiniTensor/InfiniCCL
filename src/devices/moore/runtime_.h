@@ -8,8 +8,8 @@
 // clang-format on
 
 #include "devices/cuda/runtime_.h"
-#include "logging.h"
 #include "devices/moore/device_.h"
+#include "logging.h"
 #include "return_status_impl.h"
 
 namespace infini::ccl {

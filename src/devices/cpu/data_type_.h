@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_DEVICES_CPU_DATA_TYPE_H_
 #define INFINI_CCL_DEVICES_CPU_DATA_TYPE_H_
 
-#include "devices/cpu/device_.h"
 #include "data_type_impl.h"
+#include "devices/cpu/device_.h"
 
 namespace infini::ccl {
 

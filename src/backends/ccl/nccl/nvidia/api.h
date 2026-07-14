@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_NVIDIA_API_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_NVIDIA_API_H_
 
-#include "devices/nvidia/runtime_.h"
 #include "backends/ccl/nccl/api.h"
+#include "devices/nvidia/runtime_.h"
 
 namespace infini::ccl {
 

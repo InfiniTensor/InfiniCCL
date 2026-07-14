@@ -1,11 +1,11 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_INIT_ALL_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_INIT_ALL_H_
 
+#include "backends/mpi/ompi/checks.h"
+#include "backends/mpi/ompi/comm_instance.h"
 #include "base/comm_init_all.h"
 #include "communicator.h"
 #include "logging.h"
-#include "backends/mpi/ompi/checks.h"
-#include "backends/mpi/ompi/comm_instance.h"
 
 namespace infini::ccl {
 

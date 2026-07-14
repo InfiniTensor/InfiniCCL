@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_FINALIZE_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_FINALIZE_H_
 
-#include "base/finalize.h"
 #include "backends/mpi/ompi/checks.h"
+#include "base/finalize.h"
 
 namespace infini::ccl {
 

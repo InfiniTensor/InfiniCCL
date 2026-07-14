@@ -44,6 +44,8 @@ struct Runtime<Device::Type::kIluvatar>
 
   static constexpr auto Memset = cudaMemset;
 
+  static constexpr auto GetDevice = cudaGetDevice;
+
   static constexpr auto SetDevice = cudaSetDevice;
 
   static constexpr auto DeviceSynchronize = cudaDeviceSynchronize;

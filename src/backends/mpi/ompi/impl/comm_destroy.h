@@ -1,10 +1,10 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_DESTROY_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_DESTROY_H_
 
-#include "base/comm_destroy.h"
-#include "communicator.h"
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
+#include "base/comm_destroy.h"
+#include "communicator.h"
 
 namespace infini::ccl {
 

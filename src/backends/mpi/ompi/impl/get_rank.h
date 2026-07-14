@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_GET_RANK_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_GET_RANK_H_
 
-#include "base/get_rank.h"
 #include "backends/mpi/ompi/checks.h"
+#include "base/get_rank.h"
 
 namespace infini::ccl {
 

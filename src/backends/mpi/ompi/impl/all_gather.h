@@ -1,13 +1,13 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 
+#include "backends/mpi/ompi/checks.h"
+#include "backends/mpi/ompi/comm_instance.h"
+#include "backends/mpi/ompi/type_map.h"
 #include "base/all_gather.h"
 #include "communicator.h"
 #include "dispatcher.h"
 #include "logging.h"
-#include "backends/mpi/ompi/checks.h"
-#include "backends/mpi/ompi/comm_instance.h"
-#include "backends/mpi/ompi/type_map.h"
 
 namespace infini::ccl {
 

@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_GET_SIZE_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_GET_SIZE_H_
 
-#include "base/get_size.h"
 #include "backends/mpi/ompi/checks.h"
+#include "base/get_size.h"
 
 namespace infini::ccl {
 

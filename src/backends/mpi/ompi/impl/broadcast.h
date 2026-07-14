@@ -4,12 +4,12 @@
 #include <cstdlib>
 #include <limits>
 
+#include "backends/mpi/ompi/checks.h"
+#include "backends/mpi/ompi/comm_instance.h"
 #include "base/broadcast.h"
 #include "communicator.h"
 #include "data_type_impl.h"
 #include "logging.h"
-#include "backends/mpi/ompi/checks.h"
-#include "backends/mpi/ompi/comm_instance.h"
 #include "runtime.h"
 
 namespace infini::ccl {
