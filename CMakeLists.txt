@@ -210,9 +210,14 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect NCCL Dependencies
-    if(WITH_NVIDIA)
-        find_path(AUTO_NCCL_INC NAMES nccl.h QUIET)
-        find_library(AUTO_NCCL_LIB NAMES nccl QUIET)
+    if(WITH_NVIDIA OR WITH_ILUVATAR)
+        if (WITH_ILUVATAR)
+            set(_NCCL_HINTS /usr/local/corex)
+            message(STATUS "Iluvatar detected. Searching for NCCL in ${_NCCL_HINTS}")
+        endif()
+
+        find_path(AUTO_NCCL_INC NAMES nccl.h HINTS ${_NCCL_HINTS} PATH_SUFFIXES include QUIET)
+        find_library(AUTO_NCCL_LIB NAMES nccl HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 QUIET)
 
         if(AUTO_NCCL_INC AND AUTO_NCCL_LIB)
             set(WITH_NCCL ON)
@@ -334,12 +339,12 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA GPU support. Please enable WITH_NVIDIA.")
+    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR)
+        message(FATAL_ERROR "NCCL backend requires NVIDIA or Iluvatar GPU support. Please enable `WITH_NVIDIA` or `WITH_ILUVATAR`.")
     endif()
 
-    find_library(NCCL_LIB NAMES nccl REQUIRED)
-    find_path(NCCL_INC NAMES nccl.h REQUIRED)
+    find_library(NCCL_LIB NAMES nccl HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 REQUIRED)
+    find_path(NCCL_INC NAMES nccl.h HINTS ${_NCCL_HINTS} PATH_SUFFIXES include REQUIRED)
 
     include_directories(${NCCL_INC})
 endif()
