@@ -142,6 +142,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
 | `WITH_NCCL`   | Enable NCCL backend | `OFF` |
+| `WITH_MCCL`   | Enable MCCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
 | `AUTO_DETECT_BACKENDS` | Automatically detect available communication backends and enable corresponding support | `OFF` |
@@ -353,6 +354,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA or Iluvatar NCCL. Currently available when `WITH_NVIDIA=ON` or `WITH_ILUVATAR=ON`.|
+| **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX's MCCL. Currently only available when `WITH_METAX=ON`.|
 
 </details>
 

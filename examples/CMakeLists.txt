@@ -57,6 +57,10 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE "${NCCL_LIB}")
     endif()
 
+    if(WITH_MCCL)
+        target_link_libraries(${target_name} PRIVATE "${MCCL_LIB}")
+    endif()
+
     # Explicitly allow examples to "peek" into the internal `src` and binary dirs.
     # This is necessary because these were marked `PRIVATE` in the library's CMake.
     target_include_directories(${target_name} PRIVATE 

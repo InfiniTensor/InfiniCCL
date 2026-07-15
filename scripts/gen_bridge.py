@@ -31,10 +31,17 @@ BACKEND_IMPL_PATH_MAP = {
     "ompi": ["backends/mpi/ompi/impl"],
     "mpich": ["backends/mpi/ompi/impl"],
     "nccl": ["backends/ccl/nccl/impl"],
+    "mccl": ["backends/ccl/mccl/impl"],
 }
 
 BACKEND_COMMON_HEADERS = {
     "nccl": ["backends/ccl/nccl/type_map.h"],
+    "mccl": ["backends/ccl/mccl/type_map.h"],
+}
+
+CCL_PROVIDER_BACKENDS = {
+    "nccl": "backends/ccl/nccl",
+    "mccl": "backends/ccl/mccl",
 }
 
 # =================================================================
@@ -130,9 +137,10 @@ def generate(project_root, output_dir, devices, backends):
 
         manifest_lines.append(f"\n// --- BACKEND: {bb.upper()} ---")
 
-        if bb == "nccl":
+        provider_root = CCL_PROVIDER_BACKENDS.get(bb)
+        if provider_root:
             for dev in devices:
-                provider_path = f"backends/ccl/nccl/{dev}/api.h"
+                provider_path = f"{provider_root}/{dev}/api.h"
                 if os.path.exists(os.path.join(src_dir, provider_path)):
                     manifest_lines.append(f'#include "{provider_path}"')
 
