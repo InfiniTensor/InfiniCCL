@@ -64,6 +64,7 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] OpenMPI
 - [ ] MPICH
 - [ ] NCCL
+- [ ] MCCL
 
 ## Performance Impact
 
@@ -112,6 +113,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] OpenMPI
 - [ ] MPICH
 - [ ] NCCL
+- [ ] MCCL
 
 ---
 
