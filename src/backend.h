@@ -58,6 +58,11 @@ struct BackendPriority<BackendType::kNccl> {
   static constexpr int value = 10;
 };
 
+template <>
+struct BackendPriority<BackendType::kMccl> {
+  static constexpr int value = 10;
+};
+
 }  // namespace infini::ccl
 
 #endif  // INFINI_CCL_BACKEND_H_

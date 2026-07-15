@@ -21,6 +21,7 @@ set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
+option(WITH_MCCL "Enable MCCL backend"    OFF)
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
@@ -228,10 +229,31 @@ if(AUTO_DETECT_BACKENDS)
     else()
         message(STATUS "No suitable device environment, skipping NCCL detection.")
     endif()
+
+    # Detect MCCL Dependencies
+    if(WITH_METAX)
+        set(_MCCL_HINTS)
+        if(DEFINED ENV{MACA_PATH})
+            list(APPEND _MCCL_HINTS "$ENV{MACA_PATH}")
+        endif()
+        list(APPEND _MCCL_HINTS /opt/maca)
+
+        find_path(AUTO_MCCL_INC NAMES mccl.h HINTS ${_MCCL_HINTS} PATH_SUFFIXES include QUIET)
+        find_library(AUTO_MCCL_LIB NAMES mccl HINTS ${_MCCL_HINTS} PATH_SUFFIXES lib lib64 QUIET)
+
+        if(AUTO_MCCL_INC AND AUTO_MCCL_LIB)
+            set(WITH_MCCL ON)
+            message(STATUS "Auto-detected MCCL backend.")
+        else()
+            message(STATUS "MCCL library/headers not found in MetaX paths.")
+        endif()
+    else()
+        message(STATUS "No suitable device environment, skipping MCCL detection.")
+    endif()
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -347,6 +369,26 @@ if(WITH_NCCL)
     find_path(NCCL_INC NAMES nccl.h HINTS ${_NCCL_HINTS} PATH_SUFFIXES include REQUIRED)
 
     include_directories(${NCCL_INC})
+endif()
+
+if(WITH_MCCL)
+    if (NOT WITH_METAX)
+        message(FATAL_ERROR "MCCL backend requires MetaX GPU support. Please enable `WITH_METAX`.")
+    endif()
+
+    set(_MCCL_HINTS)
+    if(MACA_PATH)
+        list(APPEND _MCCL_HINTS "${MACA_PATH}")
+    endif()
+    if(DEFINED ENV{MACA_PATH})
+        list(APPEND _MCCL_HINTS "$ENV{MACA_PATH}")
+    endif()
+    list(APPEND _MCCL_HINTS /opt/maca)
+
+    find_library(MCCL_LIB NAMES mccl HINTS ${_MCCL_HINTS} PATH_SUFFIXES lib lib64 REQUIRED)
+    find_path(MCCL_INC NAMES mccl.h HINTS ${_MCCL_HINTS} PATH_SUFFIXES include REQUIRED)
+
+    include_directories(${MCCL_INC})
 endif()
 
 # Python is required for code generation.
