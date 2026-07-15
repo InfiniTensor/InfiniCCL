@@ -24,7 +24,7 @@ static const ConstexprMap<DataType, mcclDataType_t, 12> kMcclTypeMap{{{
     {DataType::kFloat32, mcclFloat32},
     {DataType::kFloat64, mcclFloat64},
     {DataType::kFloat16, mcclFloat16},
-    {DataType::kBFloat16, mcclNumTypes},
+    {DataType::kBFloat16, mcclBfloat16},
 }}};
 
 static const ConstexprMap<ReductionOpType, mcclRedOp_t, 5> kMcclOpMap{{{
