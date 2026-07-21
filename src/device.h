@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_DEVICE_H_
 #define INFINI_CCL_DEVICE_H_
 
+#include <cstdint>
 #include <string>
 
 #include "constexpr_map.h"
@@ -155,7 +156,7 @@ struct DevicePriority<Device::Type::kCambricon> {
   static constexpr int value = 5;
 };
 
-enum class MemorySpace : uint8_t { kHost = 0, kDevice = 1, kUnknown };
+enum class MemorySpace : std::uint8_t { kHost = 0, kDevice = 1, kUnknown };
 
 template <Device::Type kDev>
 MemorySpace GetMemorySpace(const void *ptr);
