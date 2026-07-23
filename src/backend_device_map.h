@@ -25,6 +25,10 @@ template <>
 struct IsSupportedCombination<BackendType::kMccl, Device::Type::kMetax>
     : std::true_type {};
 
+template <>
+struct IsSupportedCombination<BackendType::kMccl, Device::Type::kMoore>
+    : std::true_type {};
+
 };  // namespace infini::ccl
 
 #endif  // INFINI_CCL_BACKEND_DEVICE_MAP_H_
