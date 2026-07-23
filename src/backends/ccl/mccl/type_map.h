@@ -12,6 +12,12 @@
 
 namespace infini::ccl {
 
+#if defined(INFINI_CCL_MCCL_BFLOAT16_UNSUPPORTED)
+constexpr mcclDataType_t kMcclBFloat16Val = mcclNumTypes;
+#else
+constexpr mcclDataType_t kMcclBFloat16Val = mcclBfloat16;
+#endif
+
 static const ConstexprMap<DataType, mcclDataType_t, 12> kMcclTypeMap{{{
     {DataType::kInt8, mcclInt8},
     {DataType::kInt16, mcclNumTypes},
@@ -24,7 +30,7 @@ static const ConstexprMap<DataType, mcclDataType_t, 12> kMcclTypeMap{{{
     {DataType::kFloat32, mcclFloat32},
     {DataType::kFloat64, mcclFloat64},
     {DataType::kFloat16, mcclFloat16},
-    {DataType::kBFloat16, mcclBfloat16},
+    {DataType::kBFloat16, kMcclBFloat16Val},
 }}};
 
 static const ConstexprMap<ReductionOpType, mcclRedOp_t, 5> kMcclOpMap{{{

@@ -46,6 +46,10 @@ struct Runtime<Device::Type::kMoore>
 
   static constexpr auto Memset = musaMemset;
 
+  static constexpr auto GetDevice = [](auto &&...args) {
+    return musaGetDevice(std::forward<decltype(args)>(args)...);
+  };
+
   static constexpr auto SetDevice = musaSetDevice;
 
   static constexpr auto DeviceSynchronize = [](auto &&...args) {

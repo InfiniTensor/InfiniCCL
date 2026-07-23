@@ -243,6 +243,10 @@ if(WITH_MCCL)
     target_sources(infiniccl PRIVATE ${MCCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${MCCL_INC})
     target_link_libraries(infiniccl PRIVATE ${MCCL_LIB})
+
+    if(WITH_MOORE)
+        target_compile_definitions(infiniccl PRIVATE INFINI_CCL_MCCL_BFLOAT16_UNSUPPORTED)
+    endif()
 endif()
 
 # =========================================================
