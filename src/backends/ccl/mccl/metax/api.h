@@ -7,6 +7,11 @@
 namespace infini::ccl {
 
 template <>
+struct McclDataTypeTraits<Device::Type::kMetax> {
+  static constexpr mcclDataType_t kBFloat16 = mcclBfloat16;
+};
+
+template <>
 struct CclApi<BackendType::kMccl, Device::Type::kMetax>
     : McclApi<Device::Type::kMetax> {};
 

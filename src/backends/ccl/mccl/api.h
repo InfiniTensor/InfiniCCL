@@ -13,6 +13,9 @@
 namespace infini::ccl {
 
 template <Device::Type device>
+struct McclDataTypeTraits;
+
+template <Device::Type device>
 struct McclApi {
   static constexpr BackendType kBackendType = BackendType::kMccl;
   static constexpr Device::Type kDeviceType = device;

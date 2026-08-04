@@ -6,32 +6,30 @@
 #include <string>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/mccl/api.h"
 #include "comm_impl.h"
 #include "data_type_impl.h"
 #include "logging.h"
 
 namespace infini::ccl {
 
-#if defined(INFINI_CCL_MCCL_BFLOAT16_UNSUPPORTED)
-constexpr mcclDataType_t kMcclBFloat16Val = mcclNumTypes;
-#else
-constexpr mcclDataType_t kMcclBFloat16Val = mcclBfloat16;
-#endif
-
-static const ConstexprMap<DataType, mcclDataType_t, 12> kMcclTypeMap{{{
-    {DataType::kInt8, mcclInt8},
-    {DataType::kInt16, mcclNumTypes},
-    {DataType::kInt32, mcclInt32},
-    {DataType::kInt64, mcclInt64},
-    {DataType::kUInt8, mcclUint8},
-    {DataType::kUInt16, mcclNumTypes},
-    {DataType::kUInt32, mcclUint32},
-    {DataType::kUInt64, mcclUint64},
-    {DataType::kFloat32, mcclFloat32},
-    {DataType::kFloat64, mcclFloat64},
-    {DataType::kFloat16, mcclFloat16},
-    {DataType::kBFloat16, kMcclBFloat16Val},
-}}};
+template <Device::Type device>
+struct McclDataTypeMap {
+  static constexpr ConstexprMap<DataType, mcclDataType_t, 12> kMap{{{
+      {DataType::kInt8, mcclInt8},
+      {DataType::kInt16, mcclNumTypes},
+      {DataType::kInt32, mcclInt32},
+      {DataType::kInt64, mcclInt64},
+      {DataType::kUInt8, mcclUint8},
+      {DataType::kUInt16, mcclNumTypes},
+      {DataType::kUInt32, mcclUint32},
+      {DataType::kUInt64, mcclUint64},
+      {DataType::kFloat32, mcclFloat32},
+      {DataType::kFloat64, mcclFloat64},
+      {DataType::kFloat16, mcclFloat16},
+      {DataType::kBFloat16, McclDataTypeTraits<device>::kBFloat16},
+  }}};
+};
 
 static const ConstexprMap<ReductionOpType, mcclRedOp_t, 5> kMcclOpMap{{{
     {ReductionOpType::kSum, mcclSum},
@@ -41,8 +39,9 @@ static const ConstexprMap<ReductionOpType, mcclRedOp_t, 5> kMcclOpMap{{{
     {ReductionOpType::kAvg, mcclAvg},
 }}};
 
+template <Device::Type device>
 inline mcclDataType_t DataTypeToMcclType(DataType dtype) {
-  auto mccl_dtype = kMcclTypeMap.at(dtype);
+  auto mccl_dtype = McclDataTypeMap<device>::kMap.at(dtype);
 
   if (mccl_dtype == mcclNumTypes) {
     LOG(("DataType '" + std::string(kDataTypeToDesc.at(dtype)) +
@@ -63,7 +62,7 @@ struct CclTypeMap<BackendType::kMccl, device> {
 
   static bool ToBackendDataType(DataType dtype,
                                 typename Api::DataType *backend_dtype) {
-    auto mccl_dtype = DataTypeToMcclType(dtype);
+    auto mccl_dtype = DataTypeToMcclType<device>(dtype);
     if (mccl_dtype == mcclNumTypes) {
       return false;
     }
