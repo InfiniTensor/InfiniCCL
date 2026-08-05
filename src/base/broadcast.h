@@ -31,11 +31,38 @@ class Broadcast : public Operation<Broadcast> {
       return ReturnStatus::kSuccess;
     }
 
+    if (!comm->HasBackend(backend_type) || comm->device_type() != device_type) {
+      BackendType comm_backend = backend_type;
+      if (!comm->HasBackend(comm_backend)) {
+        comm_backend = comm->intra_comm_backend();
+        if (comm_backend == BackendType::kCount) {
+          comm_backend = comm->inter_comm_backend();
+        }
+      }
+      if (comm_backend == BackendType::kCount) {
+        LOG("No initialized backend is available for `Broadcast`.");
+        return ReturnStatus::kInternalError;
+      }
+
+      // Keep the key dependent so provider `BackendEnabled`
+      // specializations are visible when redispatch is instantiated.
+      using DispatchKey =
+          typename BackendDependentType<backend_type, Broadcast>::type;
+      return Operation<DispatchKey>::Call(comm_backend, comm->device_type(),
+                                          send_buff, recv_buff, count, datatype,
+                                          root, comm_handle, stream);
+    }
+
     return BroadcastImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, root, comm, stream);
   }
 
  private:
+  template <BackendType, typename T>
+  struct BackendDependentType {
+    using type = T;
+  };
+
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
                              size_t count, DataType datatype, int root,
                              Communicator *comm) {
