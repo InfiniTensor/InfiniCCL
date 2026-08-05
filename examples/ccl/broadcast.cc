@@ -8,11 +8,14 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <charconv>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -32,6 +35,28 @@ struct ThreadArgs {
   int profile_iter;
   std::atomic_bool *all_correct;
 };
+
+template <typename T>
+bool ParseIntegerOption(const char *argument, T *value) {
+  if (!argument || !value) {
+    return false;
+  }
+
+  const std::string_view text(argument);
+  if (text.empty()) {
+    return false;
+  }
+
+  T parsed{};
+  const auto [end, error] =
+      std::from_chars(text.data(), text.data() + text.size(), parsed);
+  if (error != std::errc{} || end != text.data() + text.size()) {
+    return false;
+  }
+
+  *value = parsed;
+  return true;
+}
 
 void WorkerThread(ThreadArgs args) {
   constexpr Device::Type kDevType =
@@ -131,16 +156,28 @@ int main(int argc, char **argv) {
   while ((opt = getopt(argc, argv, "g:w:p:n:h")) != -1) {
     switch (opt) {
       case 'g':
-        num_gpus = std::stoi(optarg);
+        if (!ParseIntegerOption(optarg, &num_gpus)) {
+          std::cerr << "Invalid value for `-g`." << std::endl;
+          return EXIT_FAILURE;
+        }
         break;
       case 'w':
-        warmup_iters = std::stoi(optarg);
+        if (!ParseIntegerOption(optarg, &warmup_iters)) {
+          std::cerr << "Invalid value for `-w`." << std::endl;
+          return EXIT_FAILURE;
+        }
         break;
       case 'p':
-        profile_iters = std::stoi(optarg);
+        if (!ParseIntegerOption(optarg, &profile_iters)) {
+          std::cerr << "Invalid value for `-p`." << std::endl;
+          return EXIT_FAILURE;
+        }
         break;
       case 'n':
-        num_elements = static_cast<size_t>(std::stoull(optarg));
+        if (!ParseIntegerOption(optarg, &num_elements)) {
+          std::cerr << "Invalid value for `-n`." << std::endl;
+          return EXIT_FAILURE;
+        }
         break;
       case 'h':
         std::cout << "Usage: " << argv[0] << " [options]\n"
@@ -164,11 +201,15 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  char hostname[256];
-  gethostname(hostname, sizeof(hostname));
+  std::array<char, 256> hostname{};
+  if (gethostname(hostname.data(), hostname.size()) != 0) {
+    std::cerr << "Failed to query the host name." << std::endl;
+    return EXIT_FAILURE;
+  }
+  hostname.back() = '\0';
 
   const int root = num_gpus > 1 ? num_gpus - 1 : 0;
-  std::cout << "[Main Process] Host: " << hostname
+  std::cout << "[Main Process] Host: " << hostname.data()
             << " | Target GPUs: " << num_gpus << " | Root: " << root
             << std::endl;
 
