@@ -58,6 +58,7 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] MetaX GPU
 - [ ] Moore Threads GPU
 - [ ] Cambricon MLU
+- [ ] HYGON DCU
 
 ### Backend
 
@@ -107,6 +108,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] MetaX GPU
 - [ ] Moore Threads GPU
 - [ ] Cambricon MLU
+- [ ] HYGON DCU
 
 ### Test Involved Backend
 

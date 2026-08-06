@@ -137,6 +137,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_METAX`      | Enable MetaX GPU support  | `OFF` |
 | `WITH_MOORE`      | Enable Moore Threads GPU support  | `OFF` |
 | `WITH_CAMBRICON`  | Enable Cambricon MLU support  | `OFF` |
+| `WITH_HYGON`      | Enable HYGON DCU support  | `OFF` |
 | `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
@@ -187,7 +188,7 @@ After having a successful build and a complete `cluster.yaml`, we are ready for 
 | `nodes[].ip` | Yes | Node | Node IP address or hostname. Use `localhost` or `127.0.0.1` for the local node. |
 | `nodes[].user` | No | Node | SSH user for this node. Overrides `common_user`. |
 | `nodes[].dir` | No | Node | Node-specific project source directory. Overrides `common_dir` for this node and is useful when the project path differs across hosts. |
-| `nodes[].type` | Yes | Node | Architecture/build label used in build, install, and wrapper paths. Common values include `cpu`, `nvidia`, `iluvatar`, `metax`, `moore`, and `cambricon`. |
+| `nodes[].type` | Yes | Node | Architecture/build label used in build, install, and wrapper paths. Common values include `cpu`, `nvidia`, `iluvatar`, `metax`, `moore`, `cambricon`, and `hygon`. |
 | `nodes[].slots` | No | Node | Number of processes to launch on this node. This usually matches the number of devices assigned to the node. Defaults to `8`. |
 | `nodes[].cmake_flags` | No | Node | Node-specific CMake options used during `--build`, such as `-DUSE_CUDA=ON` or `-DUSE_MACA=ON`. Overrides global `cmake_flags` for this node. |
 | `nodes[].backend_env` | No | Node | Node-specific runtime environment variables, such as `CUDA_VISIBLE_DEVICES`, `UCX_TLS`, or `UCX_NET_DEVICES`. Overrides or prepends to global `backend_env` values for this node. |
@@ -343,6 +344,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **MetaX**      | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
 | **Moore Threads** | Full | Requires MUSA SDK and at least one of `MACA_ROOT` (default `/usr/local/musa`), `MACA_PATH`, and `MUSA_HOME` to be set. |
 | **Cambricon**  | Full | Requires CNToolKit and `NEUWARE_HOME` to be set. |
+| **HYGON**      | Full | Requires HYGON DTK and HYHAL. |
 
 </details>
 
