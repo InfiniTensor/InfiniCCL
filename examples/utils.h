@@ -55,6 +55,7 @@ struct Metrics {
               << bus_bw << " GB/s (Bus BW)" << std::endl;
     std::cout << "Alg Bandwidth:  " << std::fixed << std::setprecision(2)
               << alg_bw << " GB/s" << std::endl;
+    return;
   }
 };
 

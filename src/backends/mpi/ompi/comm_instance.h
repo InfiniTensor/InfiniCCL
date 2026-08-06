@@ -19,6 +19,7 @@ struct OmpiInstance : public BackendCommInstance {
       INFINI_CHECK_MPI(MPI_Comm_free(&handle));
       handle = MPI_COMM_NULL;
     }
+    return;
   }
 };
 

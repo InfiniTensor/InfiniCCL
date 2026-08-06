@@ -24,6 +24,7 @@ class Communicator {
   void set_world_info(int rank, int size) {
     global_rank_ = rank;
     global_size_ = size;
+    return;
   }
 
   auto intra_comm() const { return intra_comm_.get(); }
@@ -32,10 +33,12 @@ class Communicator {
 
   void set_intra_comm(std::unique_ptr<BackendCommInstance> inst) {
     intra_comm_ = std::move(inst);
+    return;
   }
 
   void set_inter_comm(std::unique_ptr<BackendCommInstance> inst) {
     inter_comm_ = std::move(inst);
+    return;
   }
 
   BackendType intra_comm_backend() const {
@@ -52,7 +55,10 @@ class Communicator {
 
   int device_id() const { return device_id_; }
 
-  void set_device_id(int id) { device_id_ = id; }
+  void set_device_id(int id) {
+    device_id_ = id;
+    return;
+  }
 
   Device::Type device_type() const { return device_type_; }
 
