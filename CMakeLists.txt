@@ -12,6 +12,7 @@ option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
+option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 
@@ -175,6 +176,44 @@ if(AUTO_DETECT_DEVICES)
     else()
         set(WITH_CAMBRICON OFF)
         message(STATUS "Cambricon environment not detected.")
+    endif()
+
+    # Hygon DCU
+    if(NOT WITH_HYGON)
+        set(HYGON_FOUND FALSE)
+
+        if((DEFINED ENV{DTKROOT} OR DEFINED ENV{DTK_ROOT} OR DEFINED ENV{ROCM_PATH})
+           AND EXISTS "/dev/kfd")
+            set(HYGON_FOUND TRUE)
+        elseif(EXISTS "/opt/dtk" AND EXISTS "/dev/kfd")
+            set(HYGON_FOUND TRUE)
+        else()
+            find_program(HYGON_SMI_PATH
+                NAMES hy-smi rocm-smi
+                HINTS /opt/hyhal/bin /opt/dtk/bin
+            )
+            if(HYGON_SMI_PATH)
+                execute_process(
+                    COMMAND ${HYGON_SMI_PATH}
+                    RESULT_VARIABLE SMI_RESULT
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(SMI_RESULT EQUAL 0)
+                    set(HYGON_FOUND TRUE)
+                endif()
+            endif()
+        endif()
+
+        if(HYGON_FOUND)
+            set(WITH_HYGON ON)
+        endif()
+    endif()
+
+    if(WITH_HYGON)
+        message(STATUS "Hygon environment detected.")
+    else()
+        message(STATUS "Hygon environment not detected.")
     endif()
 endif()
 
@@ -372,6 +411,51 @@ if(WITH_CAMBRICON)
     find_library(CAMBRICON_CNNL_LIB       NAMES cnnl       HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
     find_library(CAMBRICON_CNNL_EXTRA_LIB NAMES cnnl_extra HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
     find_library(CAMBRICON_PAPI_LIB       NAMES cnpapi     HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
+endif()
+
+if(WITH_HYGON)
+    set(HYGON_DTK_ROOT "")
+    foreach(_hygon_env DTKROOT DTK_ROOT ROCM_PATH)
+        if(NOT HYGON_DTK_ROOT AND DEFINED ENV{${_hygon_env}} AND NOT "$ENV{${_hygon_env}}" STREQUAL "")
+            set(HYGON_DTK_ROOT "$ENV{${_hygon_env}}")
+        endif()
+    endforeach()
+
+    if(NOT HYGON_DTK_ROOT AND DEFINED ENV{HIP_PATH} AND NOT "$ENV{HIP_PATH}" STREQUAL "")
+        get_filename_component(HYGON_DTK_ROOT "$ENV{HIP_PATH}/.." ABSOLUTE)
+    endif()
+
+    if(NOT HYGON_DTK_ROOT AND EXISTS "/opt/dtk")
+        set(HYGON_DTK_ROOT "/opt/dtk")
+    endif()
+
+    if(NOT HYGON_DTK_ROOT)
+        message(FATAL_ERROR "`WITH_HYGON` is `ON` but DTK was not found. Set `DTKROOT`, `DTK_ROOT`, `ROCM_PATH`, or `HIP_PATH`.")
+    endif()
+
+    set(HYGON_HIP_HINTS "${HYGON_DTK_ROOT}" "${HYGON_DTK_ROOT}/hip")
+    find_path(HYGON_HIP_INCLUDE_DIR
+        NAMES hip/hip_runtime.h
+        HINTS ${HYGON_HIP_HINTS}
+        PATH_SUFFIXES include hip/include
+        REQUIRED
+    )
+    find_library(HYGON_HIP_RUNTIME_LIB
+        NAMES amdhip64
+        HINTS ${HYGON_HIP_HINTS}
+        PATH_SUFFIXES lib lib64 hip/lib
+        REQUIRED
+    )
+    find_program(HYGON_HIPCC_COMPILER
+        NAMES hipcc
+        HINTS ${HYGON_HIP_HINTS}
+        PATH_SUFFIXES bin hip/bin
+        REQUIRED
+    )
+
+    set(CMAKE_CXX_COMPILER "${HYGON_HIPCC_COMPILER}" CACHE FILEPATH "Hygon DTK hipcc compiler" FORCE)
+    set(HYGON_HIP_DEFINITIONS __HIP_PLATFORM_AMD__)
+    include_directories(${HYGON_HIP_INCLUDE_DIR})
 endif()
 
 if(WITH_OMPI OR WITH_MPICH)

@@ -199,6 +199,24 @@ if(WITH_CAMBRICON)
     )
 endif()
 
+# Hygon
+if(WITH_HYGON)
+    list(APPEND DEVICE_LIST "hygon")
+
+    set(HYGON_PATTERNS
+        "devices/hygon/*.cc"
+        "devices/hygon/*.cpp"
+    )
+    file(GLOB_RECURSE HYGON_SRCS ${HYGON_PATTERNS})
+
+    set_source_files_properties(${HYGON_SRCS} PROPERTIES LANGUAGE CXX)
+
+    target_sources(infiniccl PRIVATE ${HYGON_SRCS})
+    target_include_directories(infiniccl PRIVATE ${HYGON_HIP_INCLUDE_DIR})
+    target_compile_definitions(infiniccl PRIVATE ${HYGON_HIP_DEFINITIONS})
+    target_link_libraries(infiniccl PRIVATE ${HYGON_HIP_RUNTIME_LIB})
+endif()
+
 # =========================================================
 # --- BACKEND SECTIONS (Communication Protocols) ---
 # =========================================================

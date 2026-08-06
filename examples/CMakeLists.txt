@@ -49,6 +49,12 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE ${CAMBRICON_RUNTIME_LIB})
     endif()
     
+    if(WITH_HYGON)
+        target_include_directories(${target_name} PRIVATE ${HYGON_HIP_INCLUDE_DIR})
+        target_compile_definitions(${target_name} PRIVATE ${HYGON_HIP_DEFINITIONS})
+        target_link_libraries(${target_name} PRIVATE ${HYGON_HIP_RUNTIME_LIB})
+    endif()
+
     if(WITH_OMPI OR WITH_MPICH)
         target_link_libraries(${target_name} PRIVATE MPI::MPI_CXX)
     endif()

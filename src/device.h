@@ -156,6 +156,11 @@ struct DevicePriority<Device::Type::kCambricon> {
   static constexpr int value = 5;
 };
 
+template <>
+struct DevicePriority<Device::Type::kHygon> {
+  static constexpr int value = 5;
+};
+
 enum class MemorySpace : std::uint8_t { kHost = 0, kDevice = 1, kUnknown };
 
 template <Device::Type kDev>
