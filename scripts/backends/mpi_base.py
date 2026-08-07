@@ -41,9 +41,14 @@ class BaseMpiBackend:
         if not launcher_script:
             launcher_script = launcher_obj.ensure_launcher_exists()
 
-            # If any node-specific `dir` is given, stage the generated wrapper at one identical '/tmp' path on all nodes.
-            # Node-specific dirs may differ, but 'mpirun' can launch only one script path.
-            if any("dir" in node for node in config["nodes"]):
+            # Stage generated wrappers when `mpirun` needs one executable path for
+            # node-specific source dirs, or when a remote node would otherwise exec
+            # the wrapper directly from shared storage such as NFS to avoid conflicts.
+            should_stage_launcher = any("dir" in node for node in config["nodes"]) or any(
+                not launcher_obj._is_local(node["ip"]) for node in config["nodes"]
+            )
+
+            if should_stage_launcher:
                 remote_launcher = f"/tmp/infiniccl_{os.path.basename(launcher_script)}"
                 subprocess.run(["cp", launcher_script, remote_launcher], check=True)
                 os.chmod(remote_launcher, 0o755)
