@@ -44,9 +44,9 @@ class BaseMpiBackend:
             # Stage generated wrappers when `mpirun` needs one executable path for
             # node-specific source dirs, or when a remote node would otherwise exec
             # the wrapper directly from shared storage such as NFS to avoid conflicts.
-            should_stage_launcher = any("dir" in node for node in config["nodes"]) or any(
-                not launcher_obj._is_local(node["ip"]) for node in config["nodes"]
-            )
+            should_stage_launcher = any(
+                "dir" in node for node in config["nodes"]
+            ) or any(not launcher_obj._is_local(node["ip"]) for node in config["nodes"])
 
             if should_stage_launcher:
                 remote_launcher = f"/tmp/infiniccl_{os.path.basename(launcher_script)}"
