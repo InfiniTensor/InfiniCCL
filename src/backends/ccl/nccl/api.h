@@ -34,19 +34,29 @@ struct NcclApi {
     return ReturnStatus::kSuccess;
   }
 
-  static Result GetUniqueId(UniqueId *id) { return ncclGetUniqueId(id); }
+  static Result GetUniqueId(UniqueId* id) { return ncclGetUniqueId(id); }
 
-  static Result CommInitRank(Comm *comm, int nranks, UniqueId id, int rank) {
+  static Result CommInitRank(Comm* comm, int nranks, UniqueId id, int rank) {
     return ncclCommInitRank(comm, nranks, id, rank);
   }
 
   static Result CommDestroy(Comm comm) { return ncclCommDestroy(comm); }
 
-  static Result AllReduce(const void *send_buff, void *recv_buff, size_t count,
+  static Result AllReduce(const void* send_buff, void* recv_buff, size_t count,
                           DataType data_type, RedOp op, Comm comm,
                           Stream stream) {
     return ncclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
+  }
+
+  static Result Send(const void* send_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclSend(send_buff, count, data_type, peer, comm, stream);
+  }
+
+  static Result Recv(void* recv_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclRecv(recv_buff, count, data_type, peer, comm, stream);
   }
 };
 
