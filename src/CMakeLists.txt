@@ -16,6 +16,21 @@ set(AUTOGEN_WARNING [[/*
 
 file(GLOB CORE_SRCS "*.cc")
 file(GLOB_RECURSE BASE_IMPL_SRCS "base/*.cc")
+file(GLOB_RECURSE BRIDGE_DEP_HEADERS CONFIGURE_DEPENDS
+    "base/*.h"
+    "backends/*.h"
+    "devices/*.h"
+    "devices/*.cuh"
+)
+
+string(REPLACE ";" "\n" BRIDGE_DEPENDENCY_CONTENT "${BRIDGE_DEP_HEADERS}")
+set(BRIDGE_DEPENDENCY_MANIFEST
+    "${CMAKE_CURRENT_BINARY_DIR}/bridge_dependencies.txt"
+)
+file(GENERATE
+    OUTPUT "${BRIDGE_DEPENDENCY_MANIFEST}"
+    CONTENT "${BRIDGE_DEPENDENCY_CONTENT}\n"
+)
 
 target_sources(infiniccl PRIVATE
     ${CORE_SRCS}
@@ -298,7 +313,9 @@ add_custom_command(
             "${BACK_STR}"
     DEPENDS "${PROJECT_SOURCE_DIR}/scripts/gen_bridge.py"
             "${PROJECT_SOURCE_DIR}/include/comm.h"
+            "${BRIDGE_DEPENDENCY_MANIFEST}"
             ${BASE_IMPL_SRCS}
+            ${BRIDGE_DEP_HEADERS}
     VERBATIM
     COMMENT "Generating InfiniCCL bridge and manifest files for Devices: [${DEV_STR}] Backends: [${BACK_STR}]..."
 )
