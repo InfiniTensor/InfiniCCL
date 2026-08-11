@@ -15,15 +15,15 @@ struct SendImpl;
 class Send : public Operation<Send> {
  public:
   template <BackendType backend_type, Device::Type device_type>
-  static ReturnStatus Execute(const void *send_buff, size_t count,
-                              DataType datatype, int peer, void *comm_handle,
-                              void *stream) {
+  static ReturnStatus Execute(const void* send_buff, size_t count,
+                              DataType datatype, int peer, void* comm_handle,
+                              void* stream) {
     if (!comm_handle) {
       LOG("Invalid communicator handle for `Send`.");
       return ReturnStatus::kInvalidArgument;
     }
 
-    auto *comm = static_cast<Communicator *>(comm_handle);
+    auto* comm = static_cast<Communicator*>(comm_handle);
     if (HasInvalidArgs(send_buff, count, datatype, peer, comm)) {
       return ReturnStatus::kInvalidArgument;
     }
@@ -31,13 +31,41 @@ class Send : public Operation<Send> {
       return ReturnStatus::kSuccess;
     }
 
+    if (!comm->HasBackend(backend_type) || comm->device_type() != device_type) {
+      using DispatchKey =
+          typename BackendDependentType<backend_type, Send>::type;
+      const BackendType comm_backend =
+          Operation<DispatchKey>::FindSupportedBackend(
+              comm->device_type(),
+              {comm->HasBackend(backend_type) ? backend_type
+                                              : BackendType::kCount,
+               comm->intra_comm_backend(), comm->inter_comm_backend()});
+      if (comm_backend == BackendType::kCount) {
+        if (comm->intra_comm_backend() == BackendType::kCount &&
+            comm->inter_comm_backend() == BackendType::kCount) {
+          LOG("No initialized backend is available for `Send`.");
+          return ReturnStatus::kInternalError;
+        }
+        return ReturnStatus::kNotSupported;
+      }
+
+      return Operation<DispatchKey>::Call(comm_backend, comm->device_type(),
+                                          send_buff, count, datatype, peer,
+                                          comm_handle, stream);
+    }
+
     return SendImpl<backend_type, device_type>::Apply(
         send_buff, count, datatype, peer, comm, stream);
   }
 
  private:
-  static bool HasInvalidArgs(const void *send_buff, size_t count,
-                             DataType datatype, int peer, Communicator *comm) {
+  template <BackendType, typename T>
+  struct BackendDependentType {
+    using type = T;
+  };
+
+  static bool HasInvalidArgs(const void* send_buff, size_t count,
+                             DataType datatype, int peer, Communicator* comm) {
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `Send`.");
       return true;
