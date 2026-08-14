@@ -7,7 +7,9 @@
 
 #include <unistd.h>
 
+#include <cmath>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -20,6 +22,41 @@
 #include "utils.h"
 
 namespace ccl = infini::ccl;
+
+namespace {
+
+void PrintSendRecvMetrics(size_t num_elements, double elapsed_ms) {
+  constexpr double kBytesPerMiB = 1024.0 * 1024.0;
+  constexpr double kBytesPerGB = 1.0e9;
+  const double payload_bytes =
+      static_cast<double>(num_elements) * sizeof(float);
+  const auto original_flags = std::cout.flags();
+  const auto original_precision = std::cout.precision();
+
+  std::cout << "Data size:      " << num_elements << " floats (" << std::fixed
+            << std::setprecision(2) << payload_bytes / kBytesPerMiB << " MiB)"
+            << std::endl;
+  std::cout << "Time:           " << std::setprecision(3) << elapsed_ms << " ms"
+            << std::endl;
+  if (elapsed_ms > 0.0 && std::isfinite(elapsed_ms)) {
+    const double algorithm_bandwidth =
+        payload_bytes / kBytesPerGB / (elapsed_ms / 1000.0);
+    // A one-way point-to-point transfer moves one payload over the bus.
+    const double bus_bandwidth = algorithm_bandwidth;
+    std::cout << "Throughput:     " << std::setprecision(2) << bus_bandwidth
+              << " GB/s (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  " << algorithm_bandwidth << " GB/s"
+              << std::endl;
+  } else {
+    std::cout << "Throughput:     N/A (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  N/A" << std::endl;
+  }
+
+  std::cout.flags(original_flags);
+  std::cout.precision(original_precision);
+}
+
+}  // namespace
 
 void RunSendRecvExample(int argc, char **argv, int warmup_iter,
                         int profile_iter, size_t num_elements) {
@@ -82,8 +119,6 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
     std::cout << "\n=== Performing Send/Recv on GPU Memory ===" << std::endl;
     std::cout << "Sender rank: " << kSender << std::endl;
     std::cout << "Receiver rank: " << kReceiver << std::endl;
-    std::cout << "Data size: " << num_elements << " floats ("
-              << total_bytes / 1024 / 1024 << " MB)" << std::endl;
     std::cout << "Warm-up iterations: " << warmup_iter << std::endl;
     std::cout << "Profile iterations: " << profile_iter << std::endl;
   }
@@ -144,6 +179,7 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
               << std::endl;
     std::cout << "Expect:  " << kSendValue << std::endl;
     std::cout << "Actual:  " << h_recv[0] << std::endl;
+    PrintSendRecvMetrics(num_elements, elapsed);
 
     if (!correct) {
       CHECK_RT(Rt, Rt::Free(d_send));
@@ -152,11 +188,6 @@ void RunSendRecvExample(int argc, char **argv, int warmup_iter,
       CHECK_INFINI(infinicclFinalize());
       std::exit(EXIT_FAILURE);
     }
-  }
-
-  if (rank == kSender) {
-    Metrics metrics{elapsed, total_bytes, kRequiredRanks};
-    metrics.Print();
   }
 
   CHECK_RT(Rt, Rt::Free(d_send));
