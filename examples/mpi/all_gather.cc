@@ -6,6 +6,9 @@
 
 #include <unistd.h>
 
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 
@@ -24,7 +27,47 @@
 
 using namespace infini::ccl;
 
-void RunAllGatherExample(int argc, char **argv, int warmup_iter,
+namespace {
+
+void PrintAllGatherMetrics(size_t num_elements, int world_size,
+                           double elapsed_ms) {
+  constexpr double kBytesPerMiB = 1024.0 * 1024.0;
+  constexpr double kBytesPerGB = 1.0e9;
+  const double rank_bytes = static_cast<double>(num_elements) * sizeof(float);
+  const double total_bytes = rank_bytes * static_cast<double>(world_size);
+  const auto original_flags = std::cout.flags();
+  const auto original_precision = std::cout.precision();
+
+  std::cout << "Data size per rank: " << num_elements << " floats ("
+            << std::fixed << std::setprecision(2) << rank_bytes / kBytesPerMiB
+            << " MiB)" << std::endl;
+  std::cout << "Total data per rank: "
+            << num_elements * static_cast<size_t>(world_size) << " floats ("
+            << total_bytes / kBytesPerMiB << " MiB)" << std::endl;
+  std::cout << "Time:           " << std::setprecision(3) << elapsed_ms << " ms"
+            << std::endl;
+  if (elapsed_ms > 0.0 && std::isfinite(elapsed_ms)) {
+    const double algorithm_bandwidth =
+        total_bytes / kBytesPerGB / (elapsed_ms / 1000.0);
+    const double bus_bandwidth = algorithm_bandwidth *
+                                 static_cast<double>(world_size - 1) /
+                                 static_cast<double>(world_size);
+    std::cout << "Throughput:     " << std::setprecision(2) << bus_bandwidth
+              << " GB/s (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  " << algorithm_bandwidth << " GB/s"
+              << std::endl;
+  } else {
+    std::cout << "Throughput:     N/A (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  N/A" << std::endl;
+  }
+
+  std::cout.flags(original_flags);
+  std::cout.precision(original_precision);
+}
+
+}  // namespace
+
+bool RunAllGatherExample(int argc, char **argv, int warmup_iter,
                          int profile_iter, const size_t kNumElements) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
@@ -113,14 +156,14 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
 
   // Result Validation
   bool correct = true;
-  int error_count = 0;
 
   for (int src_rank = 0; src_rank < size; ++src_rank) {
     float expected = static_cast<float>(src_rank + 1);
     size_t offset = static_cast<size_t>(src_rank) * kNumElements;
 
-    Validator::ValidateResult(h_recv.data() + offset, kNumElements, expected,
-                              rank);
+    const bool block_correct = Validator::ValidateResult(
+        h_recv.data() + offset, kNumElements, expected, rank);
+    correct = block_correct && correct;
   }
 
   if (rank == 0) {
@@ -132,7 +175,6 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
     std::cout << "Correct: "
               << (correct ? (GREEN + std::string("YES") + RESET)
                           : (RED + std::string("NO") + RESET));
-    if (!correct) std::cout << " (" << error_count << " errors)";
     std::cout << std::endl;
 
     std::cout << "Sample blocks: ";
@@ -143,10 +185,8 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
     std::cout << std::endl;
   }
 
-  // Metrics Reporting (Only from rank 0 for cleaner output)
   if (rank == 0) {
-    Metrics metrics{elapsed, recv_bytes, size};
-    metrics.Print();
+    PrintAllGatherMetrics(kNumElements, size, elapsed);
   }
 
   // Cleanup
@@ -159,6 +199,8 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
   if (rank == 0) {
     std::cout << "InfiniCCL finalized." << std::endl;
   }
+
+  return correct;
 }
 
 int main(int argc, char **argv) {
@@ -166,7 +208,8 @@ int main(int argc, char **argv) {
   int profile_iters = 20;
   size_t num_elements = 1 << 20;
 
-  RunAllGatherExample(argc, argv, warmup_iters, profile_iters, num_elements);
-
-  return EXIT_SUCCESS;
+  return RunAllGatherExample(argc, argv, warmup_iters, profile_iters,
+                             num_elements)
+             ? EXIT_SUCCESS
+             : EXIT_FAILURE;
 }

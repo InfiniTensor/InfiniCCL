@@ -1,11 +1,14 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 
+#include <cstdlib>
+#include <limits>
+
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
-#include "backends/mpi/ompi/type_map.h"
 #include "base/all_gather.h"
 #include "communicator.h"
+#include "data_type_impl.h"
 #include "dispatcher.h"
 #include "logging.h"
 
@@ -28,19 +31,38 @@ class AllGatherImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kInternalError;
     }
 
-    MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
+    if (comm->size() <= 0) {
+      LOG("Invalid world size for `AllGather`.");
+      return ReturnStatus::kInternalError;
+    }
+
     size_t type_size = kDataTypeToSize.at(data_type);
+    if (count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Byte size overflow for `AllGather`.");
+      return ReturnStatus::kInvalidArgument;
+    }
     size_t send_bytes = count * type_size;
-    size_t recv_count = count * static_cast<size_t>(comm->size());
-    size_t recv_bytes = recv_count * type_size;
+    if (send_bytes > static_cast<size_t>(std::numeric_limits<int>::max())) {
+      LOG("Per-rank byte count exceeds MPI int range for `AllGather`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+
+    size_t world_size = static_cast<size_t>(comm->size());
+    if (world_size != 0 &&
+        send_bytes > std::numeric_limits<size_t>::max() / world_size) {
+      LOG("Receive byte size overflow for `AllGather`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    size_t recv_bytes = send_bytes * world_size;
+    int mpi_byte_count = static_cast<int>(send_bytes);
 
     // Handle GPU Memory (Staging Pattern)
     // Note: we simply use host-staging for now.
-    void *host_sendbuf = malloc(send_bytes);
-    void *host_recvbuf = malloc(recv_bytes);
+    void *host_sendbuf = std::malloc(send_bytes == 0 ? 1 : send_bytes);
+    void *host_recvbuf = std::malloc(recv_bytes == 0 ? 1 : recv_bytes);
     if (!host_sendbuf || !host_recvbuf) {
-      free(host_sendbuf);
-      free(host_recvbuf);
+      std::free(host_sendbuf);
+      std::free(host_recvbuf);
       LOG("Failed to allocate host buffers for `AllGather` staging.");
       return ReturnStatus::kSystemError;
     }
@@ -50,14 +72,15 @@ class AllGatherImpl<BackendType::kOmpi, device_type> {
 
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
-    INFINI_CHECK_MPI(MPI_Allgather(host_sendbuf, count, mpi_type, host_recvbuf,
-                                   count, mpi_type, inst->handle));
+    INFINI_CHECK_MPI(MPI_Allgather(host_sendbuf, mpi_byte_count, MPI_BYTE,
+                                   host_recvbuf, mpi_byte_count, MPI_BYTE,
+                                   inst->handle));
 
     CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
                                 Rt::MemcpyHostToDevice));
 
-    free(host_sendbuf);
-    free(host_recvbuf);
+    std::free(host_sendbuf);
+    std::free(host_recvbuf);
 
     return ReturnStatus::kSuccess;
   }

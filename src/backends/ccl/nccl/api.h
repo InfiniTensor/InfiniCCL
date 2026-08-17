@@ -46,6 +46,13 @@ struct NcclApi {
     return ncclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
   }
+
+  static Result AllGather(const void *send_buff, void *recv_buff,
+                          size_t send_count, DataType data_type, Comm comm,
+                          Stream stream) {
+    return ncclAllGather(send_buff, recv_buff, send_count, data_type, comm,
+                         stream);
+  }
 };
 
 }  // namespace infini::ccl
