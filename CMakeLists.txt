@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(InfiniCCL VERSION 0.1.0 LANGUAGES C CXX)
+include(CTest)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,6 +24,9 @@ option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
