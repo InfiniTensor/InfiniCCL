@@ -35,19 +35,29 @@ struct McclApi {
     return ReturnStatus::kSuccess;
   }
 
-  static Result GetUniqueId(UniqueId *id) { return mcclGetUniqueId(id); }
+  static Result GetUniqueId(UniqueId* id) { return mcclGetUniqueId(id); }
 
-  static Result CommInitRank(Comm *comm, int nranks, UniqueId id, int rank) {
+  static Result CommInitRank(Comm* comm, int nranks, UniqueId id, int rank) {
     return mcclCommInitRank(comm, nranks, id, rank);
   }
 
   static Result CommDestroy(Comm comm) { return mcclCommDestroy(comm); }
 
-  static Result AllReduce(const void *send_buff, void *recv_buff, size_t count,
+  static Result AllReduce(const void* send_buff, void* recv_buff, size_t count,
                           DataType data_type, RedOp op, Comm comm,
                           Stream stream) {
     return mcclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
+  }
+
+  static Result Send(const void* send_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return mcclSend(send_buff, count, data_type, peer, comm, stream);
+  }
+
+  static Result Recv(void* recv_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return mcclRecv(recv_buff, count, data_type, peer, comm, stream);
   }
 };
 
