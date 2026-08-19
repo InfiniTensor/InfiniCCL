@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BASE_ALL_TO_ALL_H_
 #define INFINI_CCL_BASE_ALL_TO_ALL_H_
 
-#include "comm_impl.h"
 #include "communicator.h"
+#include "data_type_impl.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -19,7 +19,14 @@ class AllToAll : public Operation<AllToAll> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype,
                               void *comm_handle, void *stream) {
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, comm_handle)) {
+    if (HasInvalidRequiredArgs(datatype, comm_handle)) {
+      return ReturnStatus::kInvalidArgument;
+    }
+    if (count == 0) {
+      return ReturnStatus::kSuccess;
+    }
+    if (!send_buff || !recv_buff) {
+      LOG("Invalid buffer pointer for `AllToAll`.");
       return ReturnStatus::kInvalidArgument;
     }
     auto *comm = static_cast<Communicator *>(comm_handle);
@@ -28,15 +35,10 @@ class AllToAll : public Operation<AllToAll> {
   }
 
  private:
-  static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, void *comm_handle) {
+  static bool HasInvalidRequiredArgs(DataType datatype, void *comm_handle) {
     if (!comm_handle) {
       // TODO(lzm): change to use `glog`.
       LOG("Invalid communicator handle for `AllToAll`.");
-      return true;
-    }
-    if (!send_buff || !recv_buff) {
-      LOG("Invalid buffer pointer for `AllToAll`.");
       return true;
     }
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
