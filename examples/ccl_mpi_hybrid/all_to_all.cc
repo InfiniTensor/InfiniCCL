@@ -1,8 +1,9 @@
 /**
- * InfiniCCL Example: AllToAll (MPI Backend)
+ * InfiniCCL Example: AllToAll (OpenMPI + CCL Hybrid)
  *
- * This example exchanges a distinct block with every rank, validates every
- * received source block, and propagates validation failures to all ranks.
+ * This example first uses AllToAll through an OpenMPI inter communicator to
+ * distribute a native CCL unique ID. It then initializes a native CCL
+ * communicator and validates an out-of-place GPU all-to-all exchange.
  */
 
 #include <unistd.h>
@@ -114,11 +115,34 @@ void PrintAllToAllMetrics(size_t count_per_peer, int world_size,
   std::cout.precision(original_precision);
 }
 
-bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
-                        int profile_iterations, size_t count_per_peer) {
+void PrintResult(bool correct, const std::vector<float> &result,
+                 size_t count_per_peer, int world_size, double elapsed_ms) {
+  constexpr const char *kGreen = "\033[32m";
+  constexpr const char *kRed = "\033[31m";
+  constexpr const char *kReset = "\033[0m";
+
+  std::cout << "\n=== Hybrid CCL AllToAll Results ===" << std::endl;
+  std::cout << "Correct: "
+            << (correct ? (kGreen + std::string("YES") + kReset)
+                        : (kRed + std::string("NO") + kReset))
+            << std::endl;
+  PrintAllToAllMetrics(count_per_peer, world_size, elapsed_ms);
+  std::cout << "Sample receive blocks: ";
+  for (int source = 0; source < std::min(world_size, 4); ++source) {
+    const size_t offset = static_cast<size_t>(source) * count_per_peer;
+    std::cout << "[src" << source << ": " << result[offset] << "] ";
+  }
+  std::cout << std::endl;
+}
+
+bool RunAllToAllExample(int argc, char **argv) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
+
+  constexpr int kWarmupIterations = 2;
+  constexpr int kProfileIterations = 20;
+  constexpr size_t kCountPerPeer = 1 << 20;
 
   CHECK_INFINI(infinicclInit(&argc, &argv));
 
@@ -127,7 +151,7 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclGetRank(&rank));
   CHECK_INFINI(infinicclGetSize(&size));
   if (size <= 0) {
-    std::cerr << "Invalid world size for MPI AllToAll." << std::endl;
+    std::cerr << "Invalid world size for hybrid AllToAll." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -141,7 +165,8 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
 
   std::array<char, 256> hostname{};
   if (gethostname(hostname.data(), hostname.size()) != 0) {
-    std::cerr << "Failed to query the hostname for MPI AllToAll." << std::endl;
+    std::cerr << "Failed to query the hostname for hybrid AllToAll."
+              << std::endl;
     std::exit(EXIT_FAILURE);
   }
   hostname.back() = '\0';
@@ -153,18 +178,57 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
   const size_t world_size = static_cast<size_t>(size);
-  if (count_per_peer > std::numeric_limits<size_t>::max() / world_size ||
-      count_per_peer * world_size >
-          std::numeric_limits<size_t>::max() / sizeof(float)) {
-    std::cerr << "MPI AllToAll buffer size overflows `size_t`." << std::endl;
+  const size_t id_bytes = sizeof(infinicclUniqueId);
+  if (id_bytes > std::numeric_limits<size_t>::max() / world_size) {
+    std::cerr << "AllToAll bootstrap buffer size overflows `size_t`."
+              << std::endl;
     std::exit(EXIT_FAILURE);
   }
-  const size_t total_elements = count_per_peer * world_size;
-  const size_t total_bytes = total_elements * sizeof(float);
+  const size_t all_id_bytes = id_bytes * world_size;
 
+  // Bootstrap the native communicator with AllToAll itself. Rank 0 repeats
+  // its unique ID in every destination block; each rank then takes the block
+  // received from source rank 0. With only the OpenMPI inter communicator
+  // initialized, the CCL provider delegates this call to `MPI_Alltoall`.
+  infinicclUniqueId id{};
+  if (rank == 0) {
+    CHECK_INFINI(infinicclGetUniqueId(&id));
+  }
+  std::vector<uint8_t> h_id_send(all_id_bytes, 0);
+  if (rank == 0) {
+    for (int destination = 0; destination < size; ++destination) {
+      std::memcpy(
+          h_id_send.data() + static_cast<size_t>(destination) * id_bytes, &id,
+          id_bytes);
+    }
+  }
+
+  uint8_t *d_id_send = nullptr;
+  uint8_t *d_id_recv = nullptr;
+  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_id_send), all_id_bytes));
+  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_id_recv), all_id_bytes));
+  CHECK_RT(Rt, Rt::Memcpy(d_id_send, h_id_send.data(), all_id_bytes,
+                          Rt::MemcpyHostToDevice));
+  CHECK_INFINI(infinicclAllToAll(d_id_send, d_id_recv, id_bytes, infinicclUInt8,
+                                 comm, nullptr));
+  CHECK_RT(Rt, Rt::Memcpy(&id, d_id_recv, id_bytes, Rt::MemcpyDeviceToHost));
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+  CHECK_RT(Rt, Rt::Free(d_id_send));
+  CHECK_RT(Rt, Rt::Free(d_id_recv));
+
+  CHECK_INFINI(infinicclCommInitRank(&comm, size, id, rank));
+
+  if (kCountPerPeer > std::numeric_limits<size_t>::max() / world_size ||
+      kCountPerPeer * world_size >
+          std::numeric_limits<size_t>::max() / sizeof(float)) {
+    std::cerr << "Hybrid AllToAll buffer size overflows `size_t`." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+  const size_t total_elements = kCountPerPeer * world_size;
+  const size_t total_bytes = total_elements * sizeof(float);
   std::vector<float> h_send(total_elements);
   std::vector<float> h_recv(total_elements, 0.0f);
-  FillInput(&h_send, count_per_peer, size, rank);
+  FillInput(&h_send, kCountPerPeer, size, rank);
 
   float *d_send = nullptr;
   float *d_recv = nullptr;
@@ -174,38 +238,30 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
                           Rt::MemcpyHostToDevice));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
-  if (rank == 0) {
-    std::cout << "\n=== Performing MPI AllToAll on GPU Memory ===" << std::endl;
-    std::cout << "Count per peer: " << count_per_peer << " floats" << std::endl;
-    std::cout << "Total per rank: " << total_elements << " floats ("
-              << total_bytes / 1024 / 1024 << " MB)" << std::endl;
-    std::cout << "Warm-up iterations: " << warmup_iterations << std::endl;
-    std::cout << "Profile iterations: " << profile_iterations << std::endl;
-  }
-
-  for (int i = 0; i < warmup_iterations; ++i) {
-    CHECK_INFINI(infinicclAllToAll(d_send, d_recv, count_per_peer,
+  for (int i = 0; i < kWarmupIterations; ++i) {
+    CHECK_INFINI(infinicclAllToAll(d_send, d_recv, kCountPerPeer,
                                    infinicclFloat32, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   Timer timer;
-  for (int i = 0; i < profile_iterations; ++i) {
-    CHECK_INFINI(infinicclAllToAll(d_send, d_recv, count_per_peer,
+  for (int i = 0; i < kProfileIterations; ++i) {
+    CHECK_INFINI(infinicclAllToAll(d_send, d_recv, kCountPerPeer,
                                    infinicclFloat32, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const double elapsed_ms =
-      timer.ElapsedMs() / static_cast<double>(profile_iterations);
+      timer.ElapsedMs() / static_cast<double>(kProfileIterations);
 
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, total_bytes,
                           Rt::MemcpyDeviceToHost));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const bool local_correct =
-      ValidateAllToAll(h_recv, count_per_peer, size, rank);
+      ValidateAllToAll(h_recv, kCountPerPeer, size, rank);
 
-  // Exchange each rank's validation flag with every destination so all ranks
-  // derive the same final process status.
+  // Use native AllToAll once more to exchange every rank's validation flag.
+  // This makes all ranks derive the same final process status without direct
+  // MPI or vendor-library calls in the example.
   std::vector<int32_t> h_status_send(world_size, local_correct ? 1 : 0);
   std::vector<int32_t> h_status_recv(world_size, 0);
   int32_t *d_status_send = nullptr;
@@ -227,21 +283,7 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
                                    [](int32_t value) { return value == 1; });
 
   if (rank == 0) {
-    constexpr const char *kGreen = "\033[32m";
-    constexpr const char *kRed = "\033[31m";
-    constexpr const char *kReset = "\033[0m";
-    std::cout << "\n=== MPI AllToAll Results ===" << std::endl;
-    std::cout << "Correct: "
-              << (correct ? (kGreen + std::string("YES") + kReset)
-                          : (kRed + std::string("NO") + kReset))
-              << std::endl;
-    PrintAllToAllMetrics(count_per_peer, size, elapsed_ms);
-    std::cout << "Sample receive blocks: ";
-    for (int source = 0; source < std::min(size, 4); ++source) {
-      const size_t offset = static_cast<size_t>(source) * count_per_peer;
-      std::cout << "[src" << source << ": " << h_recv[offset] << "] ";
-    }
-    std::cout << std::endl;
+    PrintResult(correct, h_recv, kCountPerPeer, size, elapsed_ms);
   }
 
   CHECK_RT(Rt, Rt::Free(d_status_send));
@@ -252,6 +294,13 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclFinalize());
 
   if (rank == 0) {
+    if (correct) {
+      std::cout << "[Main Process] Hybrid CCL AllToAll validation passed."
+                << std::endl;
+    } else {
+      std::cerr << "[Main Process] Hybrid CCL AllToAll validation failed."
+                << std::endl;
+    }
     std::cout << "InfiniCCL finalized." << std::endl;
   }
   return correct;
@@ -260,11 +309,5 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iterations,
 }  // namespace
 
 int main(int argc, char **argv) {
-  constexpr int kWarmupIterations = 2;
-  constexpr int kProfileIterations = 20;
-  constexpr size_t kCountPerPeer = 1 << 18;
-  return RunAllToAllExample(argc, argv, kWarmupIterations, kProfileIterations,
-                            kCountPerPeer)
-             ? EXIT_SUCCESS
-             : EXIT_FAILURE;
+  return RunAllToAllExample(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
