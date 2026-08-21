@@ -20,19 +20,15 @@ class Reduce : public Operation<Reduce> {
                               size_t count, DataType datatype,
                               ReductionOpType op, int root, void *comm_handle,
                               void *stream) {
-    if (!comm_handle) {
-      LOG("Invalid communicator handle for `Reduce`.");
-      return ReturnStatus::kInvalidArgument;
-    }
-
-    auto *comm = static_cast<Communicator *>(comm_handle);
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, op, root, comm)) {
-      return ReturnStatus::kInvalidArgument;
-    }
     if (count == 0) {
       return ReturnStatus::kSuccess;
     }
 
+    if (HasInvalidArgs(send_buff, recv_buff, datatype, op, root, comm_handle)) {
+      return ReturnStatus::kInvalidArgument;
+    }
+
+    auto *comm = static_cast<Communicator *>(comm_handle);
     return ReduceImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, op, root, comm, stream);
   }
@@ -40,7 +36,12 @@ class Reduce : public Operation<Reduce> {
  private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
                              DataType datatype, ReductionOpType op, int root,
-                             Communicator *comm) {
+                             void *comm_handle) {
+    if (!comm_handle) {
+      LOG("Invalid communicator handle for `Reduce`.");
+      return true;
+    }
+    auto *comm = static_cast<Communicator *>(comm_handle);
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `Reduce`.");
       return true;
