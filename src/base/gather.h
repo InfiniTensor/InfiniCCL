@@ -18,17 +18,20 @@ class Gather : public Operation<Gather> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype, int root,
                               void *comm_handle, void *stream) {
-    if (!comm_handle) {
-      LOG("Invalid communicator handle for `Gather`.");
-      return ReturnStatus::kInvalidArgument;
-    }
-
-    auto *comm = static_cast<Communicator *>(comm_handle);
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, root, comm)) {
+    if (HasInvalidRequiredArgs(datatype, root, comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
     if (count == 0) {
       return ReturnStatus::kSuccess;
+    }
+    auto *comm = static_cast<Communicator *>(comm_handle);
+    if (!send_buff) {
+      LOG("Invalid send buffer pointer for `Gather`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    if (comm->rank() == root && !recv_buff) {
+      LOG("Invalid root receive buffer pointer for `Gather`.");
+      return ReturnStatus::kInvalidArgument;
     }
 
     return GatherImpl<backend_type, device_type>::Apply(
@@ -36,22 +39,19 @@ class Gather : public Operation<Gather> {
   }
 
  private:
-  static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, int root, Communicator *comm) {
+  static bool HasInvalidRequiredArgs(DataType datatype, int root,
+                                     void *comm_handle) {
+    if (!comm_handle) {
+      LOG("Invalid communicator handle for `Gather`.");
+      return true;
+    }
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `Gather`.");
       return true;
     }
+    auto *comm = static_cast<Communicator *>(comm_handle);
     if (root < 0 || root >= comm->size()) {
       LOG("Invalid root rank for `Gather`.");
-      return true;
-    }
-    if (!send_buff) {
-      LOG("Invalid send buffer pointer for `Gather`.");
-      return true;
-    }
-    if (comm->rank() == root && !recv_buff) {
-      LOG("Invalid root receive buffer pointer for `Gather`.");
       return true;
     }
     return false;
