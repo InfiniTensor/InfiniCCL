@@ -8,7 +8,9 @@
 
 #include <unistd.h>
 
+#include <cmath>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <vector>
 
@@ -25,6 +27,35 @@
 #include "traits.h"
 
 using namespace infini::ccl;
+
+void PrintBroadcastMetrics(size_t num_elements, double elapsed_ms) {
+  constexpr double kBytesPerMiB = 1024.0 * 1024.0;
+  constexpr double kBytesPerGB = 1.0e9;
+  const double data_bytes = static_cast<double>(num_elements) * sizeof(float);
+  const auto original_flags = std::cout.flags();
+  const auto original_precision = std::cout.precision();
+
+  std::cout << std::fixed;
+  std::cout << "Data size:      " << std::setprecision(2)
+            << data_bytes / kBytesPerMiB << " MiB" << std::endl;
+  std::cout << "Time:           " << std::setprecision(3) << elapsed_ms << " ms"
+            << std::endl;
+  if (elapsed_ms > 0.0 && std::isfinite(elapsed_ms)) {
+    const double algorithm_bandwidth =
+        data_bytes / kBytesPerGB / (elapsed_ms / 1000.0);
+    const double bus_bandwidth = algorithm_bandwidth;
+    std::cout << "Throughput:     " << std::setprecision(2) << bus_bandwidth
+              << " GB/s (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  " << algorithm_bandwidth << " GB/s"
+              << std::endl;
+  } else {
+    std::cout << "Throughput:     N/A (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  N/A" << std::endl;
+  }
+
+  std::cout.flags(original_flags);
+  std::cout.precision(original_precision);
+}
 
 void RunBroadcastExample(int argc, char **argv, int warmup_iter,
                          int profile_iter, const size_t kNumElements) {
@@ -91,8 +122,6 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
     if (rank == kRoot) {
       std::cout << "\n=== Performing " << scenario_name << " ===" << std::endl;
       if (scenario_name.find("Scenario 1") != std::string::npos) {
-        std::cout << "Data size: " << kNumElements << " floats ("
-                  << total_bytes / 1024 / 1024 << " MB)" << std::endl;
         std::cout << "Root Node: " << kRoot << std::endl;
       }
     }
@@ -121,8 +150,7 @@ void RunBroadcastExample(int argc, char **argv, int warmup_iter,
 
     // Performance Reporting
     if (rank == kRoot) {
-      Metrics metrics{elapsed, total_bytes, size};
-      metrics.Print();
+      PrintBroadcastMetrics(kNumElements, elapsed);
     }
   };
 
