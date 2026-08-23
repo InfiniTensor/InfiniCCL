@@ -1,9 +1,8 @@
 /**
- * InfiniCCL Example: Reduce (MPI Backend)
+ * InfiniCCL Example: Reduce (OpenMPI + CCL Hybrid)
  *
- * This example performs a rooted reduction across multiple accelerators and
- * nodes, validates the root result, and propagates validation failure through
- * the process exit status.
+ * This example uses an OpenMPI inter communicator to distribute a native CCL
+ * unique ID, then validates a rooted GPU reduction on the native communicator.
  */
 
 #include <unistd.h>
@@ -97,7 +96,7 @@ void PrintResult(bool correct, float expected, float actual, size_t count,
   constexpr const char *kRed = "\033[31m";
   constexpr const char *kReset = "\033[0m";
 
-  std::cout << "\n=== MPI Reduce Results ===" << std::endl;
+  std::cout << "\n=== Hybrid CCL Reduce Results ===" << std::endl;
   std::cout << "Correct: "
             << (correct ? (kGreen + std::string("YES") + kReset)
                         : (kRed + std::string("NO") + kReset))
@@ -108,11 +107,14 @@ void PrintResult(bool correct, float expected, float actual, size_t count,
   PrintReduceMetrics(count, elapsed_ms);
 }
 
-bool RunReduceExample(int argc, char **argv, int warmup_iterations,
-                      int profile_iterations, size_t count) {
+bool RunReduceExample(int argc, char **argv) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
+
+  constexpr int kWarmupIterations = 2;
+  constexpr int kProfileIterations = 20;
+  constexpr size_t kCount = 1 << 20;
 
   CHECK_INFINI(infinicclInit(&argc, &argv));
 
@@ -121,7 +123,7 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclGetRank(&rank));
   CHECK_INFINI(infinicclGetSize(&size));
   if (size <= 0 || kRoot >= size) {
-    std::cerr << "Invalid world size for MPI Reduce." << std::endl;
+    std::cerr << "Invalid world size for hybrid Reduce." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -135,7 +137,7 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
 
   std::array<char, 256> hostname{};
   if (gethostname(hostname.data(), hostname.size()) != 0) {
-    std::cerr << "Failed to query the hostname for MPI Reduce." << std::endl;
+    std::cerr << "Failed to query the hostname for hybrid Reduce." << std::endl;
     std::exit(EXIT_FAILURE);
   }
   hostname.back() = '\0';
@@ -146,15 +148,55 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
   infinicclComm_t comm = nullptr;
   CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
-  if (count == 0 ||
-      count > std::numeric_limits<size_t>::max() / sizeof(float)) {
-    std::cerr << "Invalid MPI Reduce buffer size." << std::endl;
+  // Exercise Reduce before the native communicator exists. The CCL backend
+  // must delegate this call to the OpenMPI inter communicator.
+  constexpr size_t kBootstrapCount = 1;
+  const float bootstrap_send = static_cast<float>(rank + 1);
+  float bootstrap_recv = 0.0f;
+  float *d_bootstrap_send = nullptr;
+  float *d_bootstrap_recv = nullptr;
+  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_bootstrap_send),
+                          kBootstrapCount * sizeof(float)));
+  if (rank == kRoot) {
+    CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_bootstrap_recv),
+                            kBootstrapCount * sizeof(float)));
+  }
+  CHECK_RT(Rt, Rt::Memcpy(d_bootstrap_send, &bootstrap_send, sizeof(float),
+                          Rt::MemcpyHostToDevice));
+  CHECK_INFINI(infinicclReduce(d_bootstrap_send, d_bootstrap_recv,
+                               kBootstrapCount, infinicclFloat32, infinicclSum,
+                               kRoot, comm, nullptr));
+  if (rank == kRoot) {
+    CHECK_RT(Rt, Rt::Memcpy(&bootstrap_recv, d_bootstrap_recv, sizeof(float),
+                            Rt::MemcpyDeviceToHost));
+  }
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+
+  int32_t bootstrap_status =
+      rank != kRoot || bootstrap_recv == ExpectedValue(size) ? 1 : 0;
+  CHECK_INFINI(infinicclBroadcast(&bootstrap_status, &bootstrap_status, 1,
+                                  infinicclInt32, kRoot, comm, nullptr));
+  CHECK_RT(Rt, Rt::Free(d_bootstrap_send));
+  if (rank == kRoot) {
+    CHECK_RT(Rt, Rt::Free(d_bootstrap_recv));
+  }
+
+  infinicclUniqueId id{};
+  if (rank == kRoot) {
+    CHECK_INFINI(infinicclGetUniqueId(&id));
+  }
+  CHECK_INFINI(infinicclBroadcast(&id, &id, sizeof(id), infinicclChar, kRoot,
+                                  comm, nullptr));
+  CHECK_INFINI(infinicclCommInitRank(&comm, size, id, rank));
+
+  if (kCount > std::numeric_limits<size_t>::max() / sizeof(float)) {
+    std::cerr << "Hybrid Reduce buffer size overflows `size_t`." << std::endl;
     std::exit(EXIT_FAILURE);
   }
   const bool is_root = rank == kRoot;
-  const size_t total_bytes = count * sizeof(float);
-  std::vector<float> h_send(count, static_cast<float>(rank + 1));
-  std::vector<float> h_recv(is_root ? count : 0, 0.0f);
+  const size_t total_bytes = kCount * sizeof(float);
+  std::vector<float> h_send(kCount, static_cast<float>(rank + 1));
+  std::vector<float> h_recv(is_root ? kCount : 0, 0.0f);
 
   float *d_send = nullptr;
   float *d_recv = nullptr;
@@ -167,37 +209,39 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   if (is_root) {
-    std::cout << "\n=== Performing MPI Reduce on GPU Memory ===" << std::endl;
+    std::cout << "\n=== Performing Hybrid CCL Reduce on GPU Memory ==="
+              << std::endl;
     std::cout << "Operation: Sum" << std::endl;
     std::cout << "Root rank: " << kRoot << std::endl;
-    std::cout << "Warm-up iterations: " << warmup_iterations << std::endl;
-    std::cout << "Profile iterations: " << profile_iterations << std::endl;
+    std::cout << "Warm-up iterations: " << kWarmupIterations << std::endl;
+    std::cout << "Profile iterations: " << kProfileIterations << std::endl;
   }
 
-  for (int i = 0; i < warmup_iterations; ++i) {
-    CHECK_INFINI(infinicclReduce(d_send, d_recv, count, infinicclFloat32,
+  for (int i = 0; i < kWarmupIterations; ++i) {
+    CHECK_INFINI(infinicclReduce(d_send, d_recv, kCount, infinicclFloat32,
                                  infinicclSum, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   Timer timer;
-  for (int i = 0; i < profile_iterations; ++i) {
-    CHECK_INFINI(infinicclReduce(d_send, d_recv, count, infinicclFloat32,
+  for (int i = 0; i < kProfileIterations; ++i) {
+    CHECK_INFINI(infinicclReduce(d_send, d_recv, kCount, infinicclFloat32,
                                  infinicclSum, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const double elapsed_ms =
-      timer.ElapsedMs() / static_cast<double>(profile_iterations);
+      timer.ElapsedMs() / static_cast<double>(kProfileIterations);
 
-  bool correct = true;
+  bool correct = bootstrap_status == 1;
   const float expected = ExpectedValue(size);
   if (is_root) {
     CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, total_bytes,
                             Rt::MemcpyDeviceToHost));
     CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-    correct = Validator::ValidateResult(h_recv.data(), count, expected, rank,
-                                        false, "Reduce");
-    PrintResult(correct, expected, h_recv.front(), count, elapsed_ms);
+    correct = Validator::ValidateResult(h_recv.data(), kCount, expected, rank,
+                                        false, "Reduce") &&
+              correct;
+    PrintResult(correct, expected, h_recv.front(), kCount, elapsed_ms);
   }
 
   int32_t validation_status = correct ? 1 : 0;
@@ -213,6 +257,13 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclFinalize());
 
   if (is_root) {
+    if (correct) {
+      std::cout << "[Main Process] Hybrid CCL Reduce validation passed."
+                << std::endl;
+    } else {
+      std::cerr << "[Main Process] Hybrid CCL Reduce validation failed."
+                << std::endl;
+    }
     std::cout << "InfiniCCL finalized." << std::endl;
   }
   return correct;
@@ -221,11 +272,5 @@ bool RunReduceExample(int argc, char **argv, int warmup_iterations,
 }  // namespace
 
 int main(int argc, char **argv) {
-  constexpr int kWarmupIterations = 2;
-  constexpr int kProfileIterations = 20;
-  constexpr size_t kCount = 1 << 20;
-  return RunReduceExample(argc, argv, kWarmupIterations, kProfileIterations,
-                          kCount)
-             ? EXIT_SUCCESS
-             : EXIT_FAILURE;
+  return RunReduceExample(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

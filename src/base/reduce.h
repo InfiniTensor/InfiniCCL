@@ -26,7 +26,7 @@ class Reduce : public Operation<Reduce> {
     }
 
     auto *comm = static_cast<Communicator *>(comm_handle);
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, op, root, comm)) {
+    if (HasInvalidArgs(send_buff, recv_buff, count, datatype, op, root, comm)) {
       return ReturnStatus::kInvalidArgument;
     }
     if (count == 0) {
@@ -39,8 +39,8 @@ class Reduce : public Operation<Reduce> {
 
  private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, ReductionOpType op, int root,
-                             Communicator *comm) {
+                             size_t count, DataType datatype,
+                             ReductionOpType op, int root, Communicator *comm) {
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `Reduce`.");
       return true;
@@ -52,6 +52,9 @@ class Reduce : public Operation<Reduce> {
     if (root < 0 || root >= comm->size()) {
       LOG("Invalid root rank for `Reduce`.");
       return true;
+    }
+    if (count == 0) {
+      return false;
     }
     if (!send_buff) {
       LOG("Invalid send buffer pointer for `Reduce`.");

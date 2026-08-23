@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 #include "backends/mpi/ompi/checks.h"
@@ -28,14 +29,27 @@ class ReduceImpl<BackendType::kOmpi, device_type> {
         ListGetBest<DevicePriority>(ActiveDevices<Reduce>{});
     using Rt = Runtime<kDev>;
 
+    if (!comm || comm->inter_comm_backend() != BackendType::kOmpi) {
+      LOG("Invalid OpenMPI communicator for `Reduce`.");
+      return ReturnStatus::kInternalError;
+    }
+
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
     if (!inst || inst->handle == MPI_COMM_NULL) {
       LOG("Invalid OpenMPI communicator instance for `Reduce`.");
       return ReturnStatus::kInternalError;
     }
+    if (comm->size() <= 0) {
+      LOG("Invalid world size for `Reduce`.");
+      return ReturnStatus::kInternalError;
+    }
 
     MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
     MPI_Op mpi_op = RedOpToOmpiOp(op);
+    if (mpi_type == MPI_BYTE) {
+      LOG("Data type is not supported by OpenMPI reductions for `Reduce`.");
+      return ReturnStatus::kNotSupported;
+    }
 
     if (count > static_cast<size_t>(std::numeric_limits<int>::max())) {
       LOG("`count` exceeds MPI int range for `Reduce`.");
@@ -44,26 +58,31 @@ class ReduceImpl<BackendType::kOmpi, device_type> {
     int mpi_count = static_cast<int>(count);
 
     size_t type_size = kDataTypeToSize.at(data_type);
+    if (count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Buffer byte size overflows `size_t` for `Reduce`.");
+      return ReturnStatus::kInvalidArgument;
+    }
     size_t total_bytes = count * type_size;
     const bool is_root = comm->rank() == root;
 
     // Host staging buffers. Only `root` allocates the receive side, since
     // `MPI_Reduce` writes the output only on `root`.
-    void *host_sendbuf = std::malloc(total_bytes);
-    void *host_recvbuf = is_root ? std::malloc(total_bytes) : nullptr;
+    std::unique_ptr<void, decltype(&std::free)> host_sendbuf(
+        std::malloc(total_bytes), &std::free);
+    std::unique_ptr<void, decltype(&std::free)> host_recvbuf(
+        is_root ? std::malloc(total_bytes) : nullptr, &std::free);
     if (!host_sendbuf || (is_root && !host_recvbuf)) {
-      std::free(host_sendbuf);
-      std::free(host_recvbuf);
       LOG("Failed to allocate host buffers for `Reduce` staging.");
       return ReturnStatus::kSystemError;
     }
 
-    CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf, send_buff, total_bytes,
+    CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf.get(), send_buff, total_bytes,
                                 Rt::MemcpyDeviceToHost));
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
-    INFINI_CHECK_MPI(MPI_Reduce(host_sendbuf, host_recvbuf, mpi_count, mpi_type,
-                                mpi_op, root, inst->handle));
+    INFINI_CHECK_MPI(MPI_Reduce(host_sendbuf.get(), host_recvbuf.get(),
+                                mpi_count, mpi_type, mpi_op, root,
+                                inst->handle));
 
     if (is_root) {
       if (op == ReductionOpType::kAvg) {
@@ -72,7 +91,7 @@ class ReduceImpl<BackendType::kOmpi, device_type> {
         DispatchFunc<kDev, AllTypes>(data_type, [&](auto dtype) {
           using T = typename decltype(dtype)::type;
 
-          T *typed_buf = static_cast<T *>(host_recvbuf);
+          T *typed_buf = static_cast<T *>(host_recvbuf.get());
 
           // Simply do the averaging on the CPU before the H2D copy.
           for (size_t i = 0; i < count; ++i) {
@@ -92,12 +111,9 @@ class ReduceImpl<BackendType::kOmpi, device_type> {
         });
       }
 
-      CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, total_bytes,
+      CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf.get(), total_bytes,
                                   Rt::MemcpyHostToDevice));
     }
-
-    std::free(host_sendbuf);
-    std::free(host_recvbuf);
 
     return ReturnStatus::kSuccess;
   }
