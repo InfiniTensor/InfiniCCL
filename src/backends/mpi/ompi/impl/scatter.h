@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <limits>
+#include <memory>
 
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
@@ -24,9 +25,19 @@ class ScatterImpl<BackendType::kOmpi, device_type> {
         ListGetBest<DevicePriority>(ActiveDevices<Scatter>{});
     using Rt = Runtime<kDev>;
 
-    auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
-    if (!inst || inst->handle == MPI_COMM_NULL) {
+    if (!comm || !comm->inter_comm() ||
+        comm->inter_comm_backend() != BackendType::kOmpi) {
       LOG("Invalid OpenMPI communicator instance for `Scatter`.");
+      return ReturnStatus::kInternalError;
+    }
+    auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
+    if (inst->handle == MPI_COMM_NULL) {
+      LOG("Invalid OpenMPI communicator handle for `Scatter`.");
+      return ReturnStatus::kInternalError;
+    }
+    if (comm->size() <= 0 || comm->rank() < 0 || comm->rank() >= comm->size() ||
+        root < 0 || root >= comm->size()) {
+      LOG("Invalid rank, root, or world size for `Scatter`.");
       return ReturnStatus::kInternalError;
     }
 
@@ -36,44 +47,43 @@ class ScatterImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kInvalidArgument;
     }
     size_t recv_bytes = count * type_size;
-    size_t send_bytes = recv_bytes * static_cast<size_t>(comm->size());
-    const bool is_root = comm->rank() == root;
-
-    // Transfer raw bytes so the scatter is correct for every data type,
-    // including `kFloat16` / `kBFloat16`, which map to `MPI_BYTE`.
     if (recv_bytes > static_cast<size_t>(std::numeric_limits<int>::max())) {
       LOG("Per-rank byte count exceeds MPI int range for `Scatter`.");
       return ReturnStatus::kInvalidArgument;
     }
+    const size_t world_size = static_cast<size_t>(comm->size());
+    if (recv_bytes > std::numeric_limits<size_t>::max() / world_size) {
+      LOG("Total byte size overflows `size_t` for `Scatter`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    const size_t send_bytes = recv_bytes * world_size;
+    const bool is_root = comm->rank() == root;
     int mpi_byte_count = static_cast<int>(recv_bytes);
 
-    // Host staging buffers. Only `root` allocates the send side, since
-    // `MPI_Scatter` reads the distributed blocks only from `root`.
-    void *host_sendbuf = is_root ? std::malloc(send_bytes) : nullptr;
-    void *host_recvbuf = std::malloc(recv_bytes);
+    // Transfer raw bytes so movement-only collectives preserve every InfiniCCL
+    // data type, including float16 and bfloat16.
+    std::unique_ptr<void, decltype(&std::free)> host_sendbuf(
+        is_root ? std::malloc(send_bytes) : nullptr, &std::free);
+    std::unique_ptr<void, decltype(&std::free)> host_recvbuf(
+        std::malloc(recv_bytes), &std::free);
     if ((is_root && !host_sendbuf) || !host_recvbuf) {
-      std::free(host_sendbuf);
-      std::free(host_recvbuf);
       LOG("Failed to allocate host buffers for `Scatter` staging.");
       return ReturnStatus::kSystemError;
     }
 
     if (is_root) {
-      CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf, send_buff, send_bytes,
+      CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf.get(), send_buff, send_bytes,
                                   Rt::MemcpyDeviceToHost));
     }
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
     // Note: `MPI_Scatter`'s `sendcount` is the per-rank count, not the total.
-    INFINI_CHECK_MPI(MPI_Scatter(host_sendbuf, mpi_byte_count, MPI_BYTE,
-                                 host_recvbuf, mpi_byte_count, MPI_BYTE, root,
-                                 inst->handle));
+    INFINI_CHECK_MPI(MPI_Scatter(host_sendbuf.get(), mpi_byte_count, MPI_BYTE,
+                                 host_recvbuf.get(), mpi_byte_count, MPI_BYTE,
+                                 root, inst->handle));
 
-    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
+    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf.get(), recv_bytes,
                                 Rt::MemcpyHostToDevice));
-
-    std::free(host_sendbuf);
-    std::free(host_recvbuf);
 
     return ReturnStatus::kSuccess;
   }
