@@ -46,6 +46,20 @@ struct NcclApi {
     return ncclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
   }
+
+  static Result GroupStart() { return ncclGroupStart(); }
+
+  static Result GroupEnd() { return ncclGroupEnd(); }
+
+  static Result Send(const void *send_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclSend(send_buff, count, data_type, peer, comm, stream);
+  }
+
+  static Result Recv(void *recv_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclRecv(recv_buff, count, data_type, peer, comm, stream);
+  }
 };
 
 }  // namespace infini::ccl
