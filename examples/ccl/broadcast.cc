@@ -11,7 +11,9 @@
 #include <array>
 #include <atomic>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -56,6 +58,35 @@ bool ParseIntegerOption(const char *argument, T *value) {
 
   *value = parsed;
   return true;
+}
+
+void PrintBroadcastMetrics(size_t num_elements, double elapsed_ms) {
+  constexpr double kBytesPerMiB = 1024.0 * 1024.0;
+  constexpr double kBytesPerGB = 1.0e9;
+  const double data_bytes = static_cast<double>(num_elements) * sizeof(float);
+  const auto original_flags = std::cout.flags();
+  const auto original_precision = std::cout.precision();
+
+  std::cout << std::fixed;
+  std::cout << "Data size:      " << std::setprecision(2)
+            << data_bytes / kBytesPerMiB << " MiB" << std::endl;
+  std::cout << "Time:           " << std::setprecision(3) << elapsed_ms << " ms"
+            << std::endl;
+  if (elapsed_ms > 0.0 && std::isfinite(elapsed_ms)) {
+    const double algorithm_bandwidth =
+        data_bytes / kBytesPerGB / (elapsed_ms / 1000.0);
+    const double bus_bandwidth = algorithm_bandwidth;
+    std::cout << "Throughput:     " << std::setprecision(2) << bus_bandwidth
+              << " GB/s (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  " << algorithm_bandwidth << " GB/s"
+              << std::endl;
+  } else {
+    std::cout << "Throughput:     N/A (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  N/A" << std::endl;
+  }
+
+  std::cout.flags(original_flags);
+  std::cout.precision(original_precision);
 }
 
 void WorkerThread(ThreadArgs args) {
@@ -116,8 +147,7 @@ void WorkerThread(ThreadArgs args) {
     }
 
     if (args.rank == 0) {
-      Metrics metrics{elapsed, total_bytes, args.size};
-      metrics.Print();
+      PrintBroadcastMetrics(args.num_elements, elapsed);
     }
   };
 
