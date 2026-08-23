@@ -20,9 +20,14 @@ class ReduceScatter : public Operation<ReduceScatter> {
                               size_t recv_count, DataType datatype,
                               ReductionOpType op, void *comm_handle,
                               void *stream) {
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, op, comm_handle)) {
+    if (HasInvalidArgs(send_buff, recv_buff, recv_count, datatype, op,
+                       comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
+    if (recv_count == 0) {
+      return ReturnStatus::kSuccess;
+    }
+
     auto *comm = static_cast<Communicator *>(comm_handle);
     return ReduceScatterImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, recv_count, datatype, op, comm, stream);
@@ -30,15 +35,11 @@ class ReduceScatter : public Operation<ReduceScatter> {
 
  private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, ReductionOpType op,
-                             void *comm_handle) {
+                             size_t recv_count, DataType datatype,
+                             ReductionOpType op, void *comm_handle) {
     if (!comm_handle) {
       // TODO(lzm): change to use `glog`.
       LOG("Invalid communicator handle for `ReduceScatter`.");
-      return true;
-    }
-    if (!send_buff || !recv_buff) {
-      LOG("Invalid buffer pointer for `ReduceScatter`.");
       return true;
     }
     if (op < ReductionOpType::kSum || op >= ReductionOpType::kNumRedOps) {
@@ -47,6 +48,13 @@ class ReduceScatter : public Operation<ReduceScatter> {
     }
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `ReduceScatter`.");
+      return true;
+    }
+    if (recv_count == 0) {
+      return false;
+    }
+    if (!send_buff || !recv_buff) {
+      LOG("Invalid buffer pointer for `ReduceScatter`.");
       return true;
     }
     return false;

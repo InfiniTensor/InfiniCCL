@@ -1,7 +1,9 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_REDUCE_SCATTER_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_REDUCE_SCATTER_H_
 
+#include <cstdlib>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 #include "backends/mpi/ompi/checks.h"
@@ -31,42 +33,58 @@ class ReduceScatterImpl<BackendType::kOmpi, device_type> {
       LOG("Invalid OpenMPI communicator instance for `ReduceScatter`.");
       return ReturnStatus::kInternalError;
     }
+    if (comm->size() <= 0) {
+      LOG("Invalid world size for `ReduceScatter`.");
+      return ReturnStatus::kInternalError;
+    }
 
     MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
     MPI_Op mpi_op = RedOpToOmpiOp(op);
+    if (mpi_type == MPI_BYTE) {
+      LOG("Data type is not supported by OpenMPI reductions for "
+          "`ReduceScatter`.");
+      return ReturnStatus::kNotSupported;
+    }
 
     size_t world_size = static_cast<size_t>(comm->size());
     size_t type_size = kDataTypeToSize.at(data_type);
+    if (recv_count > std::numeric_limits<size_t>::max() / world_size) {
+      LOG("Send element count overflows `size_t` for `ReduceScatter`.");
+      return ReturnStatus::kInvalidArgument;
+    }
     size_t send_count = recv_count * world_size;
+    if (send_count > std::numeric_limits<size_t>::max() / type_size ||
+        recv_count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Buffer byte size overflows `size_t` for `ReduceScatter`.");
+      return ReturnStatus::kInvalidArgument;
+    }
     size_t send_bytes = send_count * type_size;
     size_t recv_bytes = recv_count * type_size;
 
-    // Handle GPU Memory (Staging Pattern)
-    // Note: we simply use host-staging for now.
-    void *host_sendbuf = malloc(send_bytes);
-    void *host_recvbuf = malloc(recv_bytes);
-    if (!host_sendbuf || !host_recvbuf) {
-      free(host_sendbuf);
-      free(host_recvbuf);
-      LOG("Failed to allocate host buffers for `ReduceScatter` staging.");
-      return ReturnStatus::kSystemError;
-    }
-
-    CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf, send_buff, send_bytes,
-                                Rt::MemcpyDeviceToHost));
-    CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
-
     if (recv_count > static_cast<size_t>(std::numeric_limits<int>::max())) {
-      LOG("recv_count exceeds MPI int range for `ReduceScatter`.");
-      free(host_sendbuf);
-      free(host_recvbuf);
+      LOG("Receive count exceeds MPI int range for `ReduceScatter`.");
       return ReturnStatus::kInvalidArgument;
     }
     int mpi_recv_count = static_cast<int>(recv_count);
 
-    INFINI_CHECK_MPI(MPI_Reduce_scatter_block(host_sendbuf, host_recvbuf,
-                                              mpi_recv_count, mpi_type, mpi_op,
-                                              inst->handle));
+    // Handle GPU Memory (Staging Pattern)
+    // Note: we simply use host-staging for now.
+    std::unique_ptr<void, decltype(&std::free)> host_sendbuf(
+        std::malloc(send_bytes), &std::free);
+    std::unique_ptr<void, decltype(&std::free)> host_recvbuf(
+        std::malloc(recv_bytes), &std::free);
+    if (!host_sendbuf || !host_recvbuf) {
+      LOG("Failed to allocate host buffers for `ReduceScatter` staging.");
+      return ReturnStatus::kSystemError;
+    }
+
+    CHECK_STATUS(Rt, Rt::Memcpy(host_sendbuf.get(), send_buff, send_bytes,
+                                Rt::MemcpyDeviceToHost));
+    CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
+
+    INFINI_CHECK_MPI(MPI_Reduce_scatter_block(
+        host_sendbuf.get(), host_recvbuf.get(), mpi_recv_count, mpi_type,
+        mpi_op, inst->handle));
 
     if (op == ReductionOpType::kAvg) {
       float scale = 1.0f / static_cast<float>(world_size);
@@ -74,7 +92,7 @@ class ReduceScatterImpl<BackendType::kOmpi, device_type> {
       DispatchFunc<kDev, AllTypes>(data_type, [&](auto dtype) {
         using T = typename decltype(dtype)::type;
 
-        T *typed_buf = static_cast<T *>(host_recvbuf);
+        T *typed_buf = static_cast<T *>(host_recvbuf.get());
 
         // Simply do the averaging on the CPU before the H2D copy.
         for (size_t i = 0; i < recv_count; ++i) {
@@ -94,11 +112,8 @@ class ReduceScatterImpl<BackendType::kOmpi, device_type> {
       });
     }
 
-    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
+    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf.get(), recv_bytes,
                                 Rt::MemcpyHostToDevice));
-
-    free(host_sendbuf);
-    free(host_recvbuf);
 
     return ReturnStatus::kSuccess;
   }
