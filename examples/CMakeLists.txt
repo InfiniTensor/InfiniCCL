@@ -32,7 +32,7 @@ foreach(source_file ${EXAMPLE_SOURCES})
             RULE_LAUNCH_COMPILE "${ILUVATAR_CUDA_COMPILER} "
         )
         target_compile_options(${target_name} PRIVATE ${ILUVATAR_CUDA_FLAGS} "-Wno-unused-command-line-argument")
-        target_link_libraries(${target_name} PRIVATE CUDA::cudart CUDA::cuda_driver)
+        target_link_libraries(${target_name} PRIVATE CUDA::cudart)
     endif()
 
     if(WITH_METAX)

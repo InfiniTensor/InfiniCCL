@@ -76,7 +76,7 @@ if(WITH_ILUVATAR)
     set(CMAKE_CXX_COMPILER "${ILUVATAR_CUDA_COMPILER}" CACHE FILEPATH "Iluvatar Compiler" FORCE)
     target_compile_options(infiniccl PRIVATE ${ILUVATAR_CUDA_FLAGS})
 
-    target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
+    target_link_libraries(infiniccl PRIVATE CUDA::cudart)
 endif()
 
 # MetaX
