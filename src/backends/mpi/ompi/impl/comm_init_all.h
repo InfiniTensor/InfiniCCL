@@ -12,17 +12,26 @@ namespace infini::ccl {
 template <Device::Type device_type>
 class CommInitAllImpl<BackendType::kOmpi, device_type> {
  public:
-  static ReturnStatus Apply(Communicator *comm, int n_dev,
-                            const int *dev_list) {
+  static ReturnStatus Apply(void** comm_handles, int n_dev,
+                            const int* dev_list) {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
     using Rt = Runtime<kDev>;
 
-    if (!comm) {
+    if (!comm_handles) {
       // TODO(lzm): change to use `glog`.
       LOG("Failed to initialize OpenMPI communicator: invalid "
           "communicator pointer.");
       return ReturnStatus::kInternalError;
+    }
+
+    Communicator*& comm = *reinterpret_cast<Communicator**>(comm_handles);
+    if (comm && comm->inter_comm()) {
+      LOG("Invalid communicator handle for `CommInitAll`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    if (!comm) {
+      comm = new Communicator(kDev, 0);
     }
 
     int rank, size;
@@ -35,7 +44,7 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
     comm->set_inter_comm(std::move(inst));
 
     int local_rank = 0;
-    char *local_rank_str = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
+    char* local_rank_str = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
     if (local_rank_str) {
       local_rank = atoi(local_rank_str);
     }
