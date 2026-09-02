@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(InfiniCCL VERSION 0.1.0 LANGUAGES C CXX)
 
+include(CTest)
+include(cmake/MooreArchitecture.cmake)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -30,6 +33,9 @@ option(WITH_MCCL "Enable MCCL backend"    OFF)
 option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
 option(AUTO_DETECT_BACKENDS "Automatically detect available backends" OFF)
 option(BUILD_EXAMPLES "Build internal examples" ON)
+
+set(MUSA_ARCHITECTURES "" CACHE STRING
+    "MUSA GPU architectures (for example `31;22`); detected from installed GPUs when empty")
 
 # =========================================================
 # --- AUTO-DETECTION: DEVICES ---
@@ -397,6 +403,34 @@ if(WITH_MOORE)
     find_library(MUSA_LIB   NAMES musa   HINTS "${MUSA_ROOT}/lib" REQUIRED)
     find_library(MUSART_LIB NAMES musart HINTS "${MUSA_ROOT}/lib" REQUIRED)
     find_library(MUBLAS_LIB NAMES mublas HINTS "${MUSA_ROOT}/lib" REQUIRED)
+
+    set(_musa_architectures "${MUSA_ARCHITECTURES}")
+    if(NOT _musa_architectures
+       AND DEFINED ENV{TORCH_MUSA_ARCH_LIST}
+       AND NOT "$ENV{TORCH_MUSA_ARCH_LIST}" STREQUAL "")
+        set(_musa_architectures "$ENV{TORCH_MUSA_ARCH_LIST}")
+        message(STATUS "Using MUSA architectures from `TORCH_MUSA_ARCH_LIST`.")
+    endif()
+
+    if(NOT _musa_architectures)
+        infiniccl_detect_musa_architectures(
+            "${MUSA_ROOT}/include"
+            "${MUSART_LIB}"
+            _musa_architectures
+        )
+        message(STATUS "Auto-detected MUSA architectures from installed GPUs.")
+    endif()
+
+    infiniccl_compute_musa_architecture_config(
+        "${_musa_architectures}"
+        MUSA_ARCHITECTURES
+        MUSA_MARCH_TYPE
+        MUSA_ARCH_COMPILE_OPTIONS
+    )
+    set(MUSA_ARCHITECTURES "${MUSA_ARCHITECTURES}" CACHE STRING
+        "MUSA GPU architectures (for example `31;22`); detected from installed GPUs when empty" FORCE)
+    message(STATUS
+        "MUSA architectures: ${MUSA_ARCHITECTURES} (`MARCH_TYPE=${MUSA_MARCH_TYPE}`)")
 endif()
 
 if(WITH_CAMBRICON)
@@ -506,6 +540,24 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(src)
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+if(BUILD_TESTING)
+    add_test(
+        NAME cmake_moore_architecture
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST_CASE=valid
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/MooreArchitectureTest.cmake
+    )
+    add_test(
+        NAME cmake_moore_architecture_rejects_invalid_input
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST_CASE=invalid
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/tests/MooreArchitectureTest.cmake
+    )
+    set_tests_properties(
+        cmake_moore_architecture_rejects_invalid_input
+        PROPERTIES WILL_FAIL TRUE
+    )
 endif()
 
 # =========================================================
