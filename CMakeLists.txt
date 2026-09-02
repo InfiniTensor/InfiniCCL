@@ -25,6 +25,7 @@ option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
+option(WITH_CNCL "Enable CNCL backend"    OFF)
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
@@ -309,10 +310,23 @@ if(AUTO_DETECT_BACKENDS)
     else()
         message(STATUS "No suitable device environment, skipping MCCL detection.")
     endif()
+
+    # Detect CNCL Dependencies
+    if(WITH_CAMBRICON)
+        find_path(AUTO_CNCL_INC NAMES cncl.h HINTS "$ENV{NEUWARE_HOME}" /usr/local/neuware PATH_SUFFIXES include QUIET)
+        find_library(AUTO_CNCL_LIB NAMES cncl HINTS "$ENV{NEUWARE_HOME}" /usr/local/neuware PATH_SUFFIXES lib lib64 QUIET)
+
+        if(AUTO_CNCL_INC AND AUTO_CNCL_LIB)
+            set(WITH_CNCL ON)
+            message(STATUS "Auto-detected CNCL backend.")
+        else()
+            message(STATUS "CNCL library/headers not found in Cambricon paths.")
+        endif()
+    endif()
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -497,6 +511,17 @@ if(WITH_MCCL)
     find_path(MCCL_INC NAMES mccl.h HINTS ${_MCCL_HINTS} PATH_SUFFIXES include REQUIRED)
 
     include_directories(${MCCL_INC})
+endif()
+
+if(WITH_CNCL)
+    if(NOT WITH_CAMBRICON)
+        message(FATAL_ERROR "CNCL backend requires Cambricon device support. Please enable `WITH_CAMBRICON`.")
+    endif()
+
+    find_library(CNCL_LIB NAMES cncl HINTS "${NEUWARE_HOME}" "$ENV{NEUWARE_HOME}" /usr/local/neuware PATH_SUFFIXES lib lib64 REQUIRED)
+    find_path(CNCL_INC NAMES cncl.h HINTS "${NEUWARE_HOME}" "$ENV{NEUWARE_HOME}" /usr/local/neuware PATH_SUFFIXES include REQUIRED)
+
+    include_directories(${CNCL_INC})
 endif()
 
 # Python is required for code generation.

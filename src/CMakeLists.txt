@@ -278,6 +278,16 @@ if(WITH_MCCL)
     target_link_libraries(infiniccl PRIVATE ${MCCL_LIB})
 endif()
 
+# CNCL
+if(WITH_CNCL)
+    list(APPEND BACKEND_LIST "cncl")
+    file(GLOB_RECURSE CNCL_SRCS "backends/ccl/cncl/*.cc" "backends/ccl/cncl/*.cpp")
+
+    target_sources(infiniccl PRIVATE ${CNCL_SRCS})
+    target_include_directories(infiniccl PRIVATE ${CNCL_INC})
+    target_link_libraries(infiniccl PRIVATE ${CNCL_LIB})
+endif()
+
 # =========================================================
 # --- File Generation ---
 # =========================================================
