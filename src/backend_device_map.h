@@ -22,6 +22,10 @@ struct IsSupportedCombination<BackendType::kNccl, Device::Type::kIluvatar>
     : std::true_type {};
 
 template <>
+struct IsSupportedCombination<BackendType::kNccl, Device::Type::kHygon>
+    : std::true_type {};
+
+template <>
 struct IsSupportedCombination<BackendType::kMccl, Device::Type::kMetax>
     : std::true_type {};
 

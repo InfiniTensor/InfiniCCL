@@ -355,7 +355,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 |---------|---------------|----------------------|---------------|
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
-| **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA or Iluvatar NCCL. Currently available when `WITH_NVIDIA=ON` or `WITH_ILUVATAR=ON`.|
+| **NCCL-compatible** | Partial | `WITH_NCCL=ON` | Uses NCCL on NVIDIA/Iluvatar and the NCCL-compatible RCCL interface on Hygon. |
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
 
 </details>

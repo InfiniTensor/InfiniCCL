@@ -463,8 +463,8 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA or Iluvatar GPU support. Please enable `WITH_NVIDIA` or `WITH_ILUVATAR`.")
+    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
+        message(FATAL_ERROR "NCCL-compatible backend requires NVIDIA, Iluvatar, or Hygon GPU support.")
     endif()
 
     find_library(NCCL_LIB NAMES nccl HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 REQUIRED)

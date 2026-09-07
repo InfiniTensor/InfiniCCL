@@ -1,16 +1,15 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_TYPE_MAP_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_TYPE_MAP_H_
 
-#include <nccl.h>
-
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/nccl/vendor.h"
 #include "comm_impl.h"
 #include "data_type_impl.h"
 #include "logging.h"
 
 namespace infini::ccl {
 
-#if defined(__CUDA_BF16_TYPES_EXIST__)
+#if defined(__CUDA_BF16_TYPES_EXIST__) || defined(RCCL_BFLOAT16)
 constexpr ncclDataType_t kNcclBFloat16Val = ncclBfloat16;
 #else
 constexpr ncclDataType_t kNcclBFloat16Val = ncclNumTypes;

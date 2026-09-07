@@ -251,6 +251,9 @@ if(WITH_NCCL)
     target_sources(infiniccl PRIVATE ${NCCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${NCCL_INC})
     target_link_libraries(infiniccl PRIVATE ${NCCL_LIB})
+    if(WITH_HYGON)
+        target_compile_definitions(infiniccl PUBLIC INFINI_CCL_USE_RCCL=1)
+    endif()
 endif()
 
 # MCCL
