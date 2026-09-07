@@ -47,6 +47,13 @@ struct NcclApi {
                          stream);
   }
 
+  static Result AllGather(const void* send_buff, void* recv_buff,
+                          size_t send_count, DataType data_type, Comm comm,
+                          Stream stream) {
+    return ncclAllGather(send_buff, recv_buff, send_count, data_type, comm,
+                         stream);
+  }
+
   static Result Send(const void* send_buff, size_t count, DataType data_type,
                      int peer, Comm comm, Stream stream) {
     return ncclSend(send_buff, count, data_type, peer, comm, stream);
