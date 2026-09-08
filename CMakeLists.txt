@@ -31,9 +31,6 @@ option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
 option(AUTO_DETECT_BACKENDS "Automatically detect available backends" OFF)
 option(BUILD_EXAMPLES "Build internal examples" ON)
 
-set(MUSA_ARCHITECTURES "" CACHE STRING
-    "MUSA GPU architectures (for example `31;22`); detected from installed GPUs when empty")
-
 # =========================================================
 # --- AUTO-DETECTION: DEVICES ---
 # =========================================================

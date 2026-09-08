@@ -35,6 +35,10 @@ endfunction()
 # `MUSA_ARCHITECTURES`, then `TORCH_MUSA_ARCH_LIST`, then installed GPU probing.
 # The resolved values are exported for later target setup in `src` and examples.
 function(infiniccl_resolve_musa_architecture_config musa_include_dir musart_library)
+    set(_musa_architectures_help
+        "MUSA GPU architectures (for example `31;22`); detected from installed GPUs when empty")
+    set(MUSA_ARCHITECTURES "" CACHE STRING "${_musa_architectures_help}")
+
     set(_musa_architectures "${MUSA_ARCHITECTURES}")
     if(NOT _musa_architectures
        AND DEFINED ENV{TORCH_MUSA_ARCH_LIST}
@@ -59,8 +63,8 @@ function(infiniccl_resolve_musa_architecture_config musa_include_dir musart_libr
         _musa_arch_compile_options
     )
 
-    set(MUSA_ARCHITECTURES "${_normalized_musa_architectures}" CACHE STRING
-        "MUSA GPU architectures (for example `31;22`); detected from installed GPUs when empty" FORCE)
+    set(MUSA_ARCHITECTURES "${_normalized_musa_architectures}"
+        CACHE STRING "${_musa_architectures_help}" FORCE)
     set(MUSA_ARCHITECTURES "${_normalized_musa_architectures}" PARENT_SCOPE)
     set(MUSA_MARCH_TYPE "${_musa_march_type}" PARENT_SCOPE)
     set(MUSA_ARCH_COMPILE_OPTIONS "${_musa_arch_compile_options}" PARENT_SCOPE)
