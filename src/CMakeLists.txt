@@ -136,6 +136,7 @@ if(WITH_MOORE)
     target_include_directories(infiniccl PRIVATE "${MUSA_ROOT}/include")
     target_link_libraries(infiniccl PRIVATE ${MUSA_LIB} ${MUSART_LIB} ${MUBLAS_LIB})
     target_compile_options(infiniccl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-x musa>)
+    infiniccl_configure_musa_target(infiniccl)
 endif()
 
 # Cambricon

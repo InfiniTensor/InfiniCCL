@@ -365,7 +365,9 @@ if(WITH_METAX)
     find_library(MACA_RUNTIME_LIB NAMES mcruntime HINTS "${MACA_PATH}/lib" REQUIRED)
 endif()
 
-if(WITH_MOORE)  
+if(WITH_MOORE)
+    include(cmake/architecture/MusaArchitecture.cmake)
+
     set(MUSA_ROOT "")
     foreach(_musa_env MUSA_ROOT MUSA_HOME MUSA_PATH)
         if(NOT MUSA_ROOT AND DEFINED ENV{${_musa_env}} AND NOT "$ENV{${_musa_env}}" STREQUAL "")
@@ -397,6 +399,11 @@ if(WITH_MOORE)
     find_library(MUSA_LIB   NAMES musa   HINTS "${MUSA_ROOT}/lib" REQUIRED)
     find_library(MUSART_LIB NAMES musart HINTS "${MUSA_ROOT}/lib" REQUIRED)
     find_library(MUBLAS_LIB NAMES mublas HINTS "${MUSA_ROOT}/lib" REQUIRED)
+
+    infiniccl_resolve_musa_architecture_config(
+        "${MUSA_ROOT}/include"
+        "${MUSART_LIB}"
+    )
 endif()
 
 if(WITH_CAMBRICON)
