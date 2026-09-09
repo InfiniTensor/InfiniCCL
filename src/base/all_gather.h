@@ -19,9 +19,13 @@ class AllGather : public Operation<AllGather> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype,
                               void *comm_handle, void *stream) {
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, comm_handle)) {
+    if (HasInvalidArgs(send_buff, recv_buff, count, datatype, comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
+    if (count == 0) {
+      return ReturnStatus::kSuccess;
+    }
+
     auto *comm = static_cast<Communicator *>(comm_handle);
     return AllGatherImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, comm, stream);
@@ -29,18 +33,22 @@ class AllGather : public Operation<AllGather> {
 
  private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, void *comm_handle) {
+                             size_t count, DataType datatype,
+                             void *comm_handle) {
     if (!comm_handle) {
       // TODO(lzm): change to use `glog`.
       LOG("Invalid communicator handle for `AllGather`.");
       return true;
     }
-    if (!send_buff || !recv_buff) {
-      LOG("Invalid buffer pointer for `AllGather`.");
-      return true;
-    }
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `AllGather`.");
+      return true;
+    }
+    if (count == 0) {
+      return false;
+    }
+    if (!send_buff || !recv_buff) {
+      LOG("Invalid buffer pointer for `AllGather`.");
       return true;
     }
     return false;
