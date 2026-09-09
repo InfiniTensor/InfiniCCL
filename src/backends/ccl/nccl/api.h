@@ -1,11 +1,10 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 
-#include "backends/ccl/nccl/compat.h"
-
 #include <cstddef>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/nccl/compat.h"
 #include "logging.h"
 #include "return_status_impl.h"
 #include "runtime.h"

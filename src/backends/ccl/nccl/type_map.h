@@ -2,6 +2,7 @@
 #define INFINI_CCL_BACKENDS_CCL_NCCL_TYPE_MAP_H_
 
 #include <string>
+
 #include "backends/ccl/common/api.h"
 #include "backends/ccl/nccl/api.h"
 #include "comm_impl.h"
