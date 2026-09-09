@@ -1,16 +1,18 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_API_H_
 
-#include <nccl.h>
-
 #include <cstddef>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/nccl/compat.h"
 #include "logging.h"
 #include "return_status_impl.h"
 #include "runtime.h"
 
 namespace infini::ccl {
+
+template <Device::Type device>
+struct NcclDataTypeTraits;
 
 template <Device::Type device>
 struct NcclApi {

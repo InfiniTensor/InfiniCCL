@@ -1,35 +1,33 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_TYPE_MAP_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_TYPE_MAP_H_
 
-#include <nccl.h>
+#include <string>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/nccl/api.h"
 #include "comm_impl.h"
 #include "data_type_impl.h"
 #include "logging.h"
 
 namespace infini::ccl {
 
-#if defined(__CUDA_BF16_TYPES_EXIST__)
-constexpr ncclDataType_t kNcclBFloat16Val = ncclBfloat16;
-#else
-constexpr ncclDataType_t kNcclBFloat16Val = ncclNumTypes;
-#endif
-
-static const ConstexprMap<DataType, ncclDataType_t, 12> kNcclTypeMap{{{
-    {DataType::kInt8, ncclInt8},
-    {DataType::kInt16, ncclNumTypes},
-    {DataType::kInt32, ncclInt32},
-    {DataType::kInt64, ncclInt64},
-    {DataType::kUInt8, ncclUint8},
-    {DataType::kUInt16, ncclNumTypes},
-    {DataType::kUInt32, ncclUint32},
-    {DataType::kUInt64, ncclUint64},
-    {DataType::kFloat32, ncclFloat32},
-    {DataType::kFloat64, ncclFloat64},
-    {DataType::kFloat16, ncclFloat16},
-    {DataType::kBFloat16, kNcclBFloat16Val},
-}}};
+template <Device::Type device>
+struct NcclDataTypeMap {
+  static constexpr ConstexprMap<DataType, ncclDataType_t, 12> kMap{{{
+      {DataType::kInt8, ncclInt8},
+      {DataType::kInt16, ncclNumTypes},
+      {DataType::kInt32, ncclInt32},
+      {DataType::kInt64, ncclInt64},
+      {DataType::kUInt8, ncclUint8},
+      {DataType::kUInt16, ncclNumTypes},
+      {DataType::kUInt32, ncclUint32},
+      {DataType::kUInt64, ncclUint64},
+      {DataType::kFloat32, ncclFloat32},
+      {DataType::kFloat64, ncclFloat64},
+      {DataType::kFloat16, ncclFloat16},
+      {DataType::kBFloat16, NcclDataTypeTraits<device>::kBFloat16},
+  }}};
+};
 
 static const ConstexprMap<ReductionOpType, ncclRedOp_t, 5> kNcclOpMap{{{
     {ReductionOpType::kSum, ncclSum},
@@ -39,8 +37,9 @@ static const ConstexprMap<ReductionOpType, ncclRedOp_t, 5> kNcclOpMap{{{
     {ReductionOpType::kAvg, ncclAvg},
 }}};
 
+template <Device::Type device>
 inline ncclDataType_t DataTypeToNcclType(DataType dtype) {
-  auto nccl_dtype = kNcclTypeMap.at(dtype);
+  auto nccl_dtype = NcclDataTypeMap<device>::kMap.at(dtype);
 
   if (nccl_dtype == ncclNumTypes) {
     // This means the requested data type is not supported by NCCL.
@@ -63,7 +62,7 @@ struct CclTypeMap<BackendType::kNccl, device> {
 
   static bool ToBackendDataType(DataType dtype,
                                 typename Api::DataType *backend_dtype) {
-    auto nccl_dtype = DataTypeToNcclType(dtype);
+    auto nccl_dtype = DataTypeToNcclType<device>(dtype);
     if (nccl_dtype == ncclNumTypes) {
       return false;
     }

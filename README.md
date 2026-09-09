@@ -142,7 +142,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
-| `WITH_NCCL`   | Enable NCCL backend | `OFF` |
+| `WITH_NCCL`   | Enable NCCL/RCCL backend | `OFF` |
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
@@ -355,7 +355,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 |---------|---------------|----------------------|---------------|
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
-| **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA or Iluvatar NCCL. Currently available when `WITH_NVIDIA=ON` or `WITH_ILUVATAR=ON`.|
+| **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA or Iluvatar NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, or `WITH_HYGON=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
 
 </details>

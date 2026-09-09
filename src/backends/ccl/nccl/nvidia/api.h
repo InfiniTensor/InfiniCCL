@@ -7,6 +7,15 @@
 namespace infini::ccl {
 
 template <>
+struct NcclDataTypeTraits<Device::Type::kNvidia> {
+#if defined(__CUDA_BF16_TYPES_EXIST__)
+  static constexpr ncclDataType_t kBFloat16 = ncclBfloat16;
+#else
+  static constexpr ncclDataType_t kBFloat16 = ncclNumTypes;
+#endif
+};
+
+template <>
 struct CclApi<BackendType::kNccl, Device::Type::kNvidia>
     : NcclApi<Device::Type::kNvidia> {};
 

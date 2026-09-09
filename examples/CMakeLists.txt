@@ -61,7 +61,12 @@ foreach(source_file ${EXAMPLE_SOURCES})
     endif()
 
     if(WITH_NCCL)
+        target_include_directories(${target_name} PRIVATE ${NCCL_INC})
         target_link_libraries(${target_name} PRIVATE "${NCCL_LIB}")
+
+        if(NCCL_COMPILE_DEFINITIONS)
+            target_compile_definitions(${target_name} PRIVATE ${NCCL_COMPILE_DEFINITIONS})
+        endif()
     endif()
 
     if(WITH_MCCL)

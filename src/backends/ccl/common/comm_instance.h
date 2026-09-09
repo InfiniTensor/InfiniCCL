@@ -20,6 +20,7 @@ struct CclCommInstance : public BackendCommInstance {
       (void)Api::Check(Api::CommDestroy(handle));
       handle = Comm{};
     }
+    return;
   }
 };
 

@@ -1,10 +1,9 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_CHECKS_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_CHECKS_H_
 
-#include <nccl.h>
-
 #include <iostream>
 
+#include "backends/ccl/nccl/compat.h"
 #include "return_status_impl.h"
 
 #define INFINI_CHECK_NCCL(result) \
