@@ -13,25 +13,16 @@ struct CommInitAllImpl;
 
 class CommInitAll : public Operation<CommInitAll> {
  public:
-  template <BackendType backend_type, Device::Type device_type,
-            typename... Args>
-  static ReturnStatus Execute(void **comm_handle, Args &&...args) {
-    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
-    if (comm && comm->inter_comm()) {
-      // TODO(lzm): change to use `glog`.
+  template <BackendType backend_type, Device::Type device_type>
+  static ReturnStatus Execute(void** comm_handles, int n_dev,
+                              const int* dev_list) {
+    if (!comm_handles || n_dev <= 0) {
       LOG("Invalid communicator handle for `CommInitAll`.");
       return ReturnStatus::kInvalidArgument;
     }
 
-    constexpr Device::Type kDev =
-        ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
-
-    if (!comm) {
-      comm = new Communicator(kDev, 0);
-    }
-
-    return CommInitAllImpl<backend_type, device_type>::Apply(
-        comm, std::forward<Args>(args)...);
+    return CommInitAllImpl<backend_type, device_type>::Apply(comm_handles,
+                                                             n_dev, dev_list);
   }
 };
 
