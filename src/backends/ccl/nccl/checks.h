@@ -1,7 +1,7 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_NCCL_CHECKS_H_
 #define INFINI_CCL_BACKENDS_CCL_NCCL_CHECKS_H_
 
-#include <nccl.h>
+#include "backends/ccl/nccl/compat.h"
 
 #include <iostream>
 
