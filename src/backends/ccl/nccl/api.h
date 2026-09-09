@@ -10,6 +10,12 @@
 #include "return_status_impl.h"
 #include "runtime.h"
 
+#if !defined(NCCL_VERSION_CODE) || !defined(NCCL_VERSION)
+#error "InfiniCCL NCCL support requires NCCL 2.10.0 or newer."
+#elif NCCL_VERSION_CODE < NCCL_VERSION(2, 10, 0)
+#error "InfiniCCL NCCL support requires NCCL 2.10.0 or newer."
+#endif
+
 namespace infini::ccl {
 
 template <Device::Type device>
@@ -45,6 +51,16 @@ struct NcclApi {
                           Stream stream) {
     return ncclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
+  }
+
+  static Result Send(const void *send_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclSend(send_buff, count, data_type, peer, comm, stream);
+  }
+
+  static Result Recv(void *recv_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return ncclRecv(recv_buff, count, data_type, peer, comm, stream);
   }
 };
 
