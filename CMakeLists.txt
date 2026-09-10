@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(InfiniCCL VERSION 0.1.0 LANGUAGES C CXX)
 
+include(CTest)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -544,6 +546,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(src)
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+if(BUILD_TESTING)
+    add_subdirectory(tests)
 endif()
 
 # =========================================================
