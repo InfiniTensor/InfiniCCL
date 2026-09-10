@@ -32,16 +32,19 @@ BACKEND_IMPL_PATH_MAP = {
     "mpich": ["backends/mpi/ompi/impl"],
     "nccl": ["backends/ccl/nccl/impl"],
     "mccl": ["backends/ccl/mccl/impl"],
+    "hccl": ["backends/ccl/hccl/impl"],
 }
 
 BACKEND_COMMON_HEADERS = {
     "nccl": ["backends/ccl/nccl/type_map.h"],
     "mccl": ["backends/ccl/mccl/type_map.h"],
+    "hccl": ["backends/ccl/hccl/type_map.h"],
 }
 
 CCL_PROVIDER_BACKENDS = {
     "nccl": "backends/ccl/nccl",
     "mccl": "backends/ccl/mccl",
+    "hccl": "backends/ccl/hccl",
 }
 
 # =================================================================

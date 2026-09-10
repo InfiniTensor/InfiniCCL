@@ -157,6 +157,11 @@ struct DevicePriority<Device::Type::kCambricon> {
 };
 
 template <>
+struct DevicePriority<Device::Type::kAscend> {
+  static constexpr int value = 5;
+};
+
+template <>
 struct DevicePriority<Device::Type::kHygon> {
   static constexpr int value = 5;
 };

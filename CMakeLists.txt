@@ -12,6 +12,7 @@ option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
+option(WITH_ASCEND      "Enable Ascend NPU support"     OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
@@ -23,6 +24,7 @@ option(WITH_OMPI "Enable OpenMPI backend" OFF)
 option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
+option(WITH_HCCL "Enable HCCL backend"    OFF)
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
@@ -178,6 +180,35 @@ if(AUTO_DETECT_DEVICES)
         message(STATUS "Cambricon environment not detected.")
     endif()
 
+    # Ascend
+    set(ASCEND_FOUND FALSE)
+
+    if(DEFINED ENV{ASCEND_HOME_PATH} OR DEFINED ENV{ASCEND_TOOLKIT_HOME} OR DEFINED ENV{ASCEND_HOME})
+        set(ASCEND_FOUND TRUE)
+    elseif(EXISTS "/dev/davinci0" OR EXISTS "/dev/davinci_manager")
+        set(ASCEND_FOUND TRUE)
+    else()
+        find_program(ASCEND_SMI_PATH npu-smi)
+        if(ASCEND_SMI_PATH)
+            execute_process(
+                COMMAND ${ASCEND_SMI_PATH} info
+                RESULT_VARIABLE ASCEND_SMI_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(ASCEND_SMI_RESULT EQUAL 0)
+                set(ASCEND_FOUND TRUE)
+            endif()
+        endif()
+    endif()
+
+    if(ASCEND_FOUND)
+        set(WITH_ASCEND ON)
+        message(STATUS "Ascend environment detected.")
+    else()
+        message(STATUS "Ascend environment not detected.")
+    endif()
+
     # Hygon DCU
     if(NOT WITH_HYGON)
         set(HYGON_FOUND FALSE)
@@ -327,10 +358,30 @@ if(AUTO_DETECT_BACKENDS)
     else()
         message(STATUS "No suitable device environment, skipping MCCL detection.")
     endif()
+
+    # Detect HCCL dependencies.
+    if(WITH_ASCEND)
+        set(_HCCL_HINTS
+            "${ASCEND_HOME}"
+            "$ENV{ASCEND_HOME_PATH}"
+            "$ENV{ASCEND_TOOLKIT_HOME}"
+            "$ENV{ASCEND_HOME}"
+            /usr/local/Ascend/ascend-toolkit/latest
+        )
+        find_path(AUTO_HCCL_INC NAMES hccl/hccl.h HINTS ${_HCCL_HINTS} PATH_SUFFIXES include QUIET)
+        find_library(AUTO_HCCL_LIB NAMES hccl HINTS ${_HCCL_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 QUIET)
+
+        if(AUTO_HCCL_INC AND AUTO_HCCL_LIB)
+            set(WITH_HCCL ON)
+            message(STATUS "Auto-detected HCCL backend.")
+        else()
+            message(STATUS "HCCL library/headers not found in Ascend paths.")
+        endif()
+    endif()
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_HCCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -440,6 +491,26 @@ if(WITH_CAMBRICON)
     find_library(CAMBRICON_PAPI_LIB       NAMES cnpapi     HINTS "${NEUWARE_HOME}/lib64" REQUIRED)
 endif()
 
+if(WITH_ASCEND)
+    set(_ASCEND_HINTS)
+    if(ASCEND_HOME)
+        list(APPEND _ASCEND_HINTS "${ASCEND_HOME}")
+    endif()
+    foreach(_ascend_env ASCEND_HOME_PATH ASCEND_TOOLKIT_HOME ASCEND_HOME)
+        if(DEFINED ENV{${_ascend_env}} AND NOT "$ENV{${_ascend_env}}" STREQUAL "")
+            list(APPEND _ASCEND_HINTS "$ENV{${_ascend_env}}")
+        endif()
+    endforeach()
+    list(APPEND _ASCEND_HINTS
+        /usr/local/Ascend/ascend-toolkit/latest
+    )
+
+    find_path(ASCEND_INC NAMES acl/acl.h HINTS ${_ASCEND_HINTS} PATH_SUFFIXES include REQUIRED)
+    find_library(ASCENDCL_LIB NAMES ascendcl HINTS ${_ASCEND_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 REQUIRED)
+
+    include_directories(${ASCEND_INC})
+endif()
+
 if(WITH_HYGON)
     set(HYGON_DTK_ROOT "")
     foreach(_hygon_env DTKROOT DTK_ROOT ROCM_PATH)
@@ -533,6 +604,17 @@ if(WITH_MCCL)
     find_path(MCCL_INC NAMES mccl.h HINTS ${_MCCL_HINTS} PATH_SUFFIXES include REQUIRED)
 
     include_directories(${MCCL_INC})
+endif()
+
+if(WITH_HCCL)
+    if(NOT WITH_ASCEND)
+        message(FATAL_ERROR "HCCL backend requires Ascend device support. Please enable `WITH_ASCEND`.")
+    endif()
+
+    find_library(HCCL_LIB NAMES hccl HINTS ${_ASCEND_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 REQUIRED)
+    find_path(HCCL_INC NAMES hccl/hccl.h HINTS ${_ASCEND_HINTS} PATH_SUFFIXES include REQUIRED)
+
+    include_directories(${HCCL_INC})
 endif()
 
 # Python is required for code generation.
