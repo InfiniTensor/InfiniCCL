@@ -18,6 +18,10 @@ struct IsSupportedCombination<BackendType::kNccl, Device::Type::kNvidia>
     : std::true_type {};
 
 template <>
+struct IsSupportedCombination<BackendType::kNccl, Device::Type::kAli>
+    : std::true_type {};
+
+template <>
 struct IsSupportedCombination<BackendType::kNccl, Device::Type::kIluvatar>
     : std::true_type {};
 

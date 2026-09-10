@@ -26,6 +26,10 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE CUDA::cudart)
     endif()
 
+    if(WITH_ALI)
+        target_link_libraries(${target_name} PRIVATE CUDA::cudart)
+    endif()
+
     if(WITH_ILUVATAR)
         set_source_files_properties(${source_file} PROPERTIES LANGUAGE CXX)
         set_target_properties(${target_name} PROPERTIES
