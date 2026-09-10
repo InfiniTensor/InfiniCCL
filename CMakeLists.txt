@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --- DEVICE OPTIONS (Hardware Runtimes) ---
 # =========================================================
 option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
+option(WITH_ALI         "Enable Ali PPU support"        OFF)
 option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
@@ -37,6 +38,57 @@ option(BUILD_EXAMPLES "Build internal examples" ON)
 if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
 
+    # Ali PPU
+    set(ALI_FOUND FALSE)
+
+    if(WITH_ALI)
+        set(ALI_FOUND TRUE)
+    else()
+        set(_ALI_SDK_HINTS)
+        foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
+            if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
+                list(APPEND _ALI_SDK_HINTS "$ENV{${_ali_env}}")
+            endif()
+        endforeach()
+        foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+            if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
+                list(APPEND _ALI_SDK_HINTS "$ENV{${_ali_cuda_env}}" "$ENV{${_ali_cuda_env}}/..")
+            endif()
+        endforeach()
+        list(APPEND _ALI_SDK_HINTS /usr/local/PPU_SDK /usr/local/PPU_SDK/CUDA_SDK)
+
+        foreach(_ali_hint ${_ALI_SDK_HINTS})
+            if(EXISTS "${_ali_hint}/CUDA_SDK" OR EXISTS "${_ali_hint}/bin/ppu-smi" OR EXISTS "${_ali_hint}/ppu-smi/bin/ppu-smi")
+                set(ALI_FOUND TRUE)
+            endif()
+        endforeach()
+
+        if(NOT ALI_FOUND)
+            find_program(ALI_SMI_PATH
+                NAMES ppu-smi nvidia-smi
+                HINTS /usr/local/PPU_SDK/bin /usr/local/PPU_SDK/ppu-smi/bin
+            )
+            if(ALI_SMI_PATH)
+                execute_process(
+                    COMMAND ${ALI_SMI_PATH} -L
+                    RESULT_VARIABLE SMI_RESULT
+                    OUTPUT_VARIABLE SMI_OUTPUT
+                    ERROR_QUIET
+                )
+                if(SMI_RESULT EQUAL 0 AND SMI_OUTPUT MATCHES "PPU")
+                    set(ALI_FOUND TRUE)
+                endif()
+            endif()
+        endif()
+    endif()
+
+    if(ALI_FOUND)
+        set(WITH_ALI ON)
+        message(STATUS "Auto-detected Ali PPU environment.")
+    else()
+        message(STATUS "Ali PPU environment not detected.")
+    endif()
+
     # NVIDIA
     set(NVIDIA_FOUND FALSE)
 
@@ -57,6 +109,11 @@ if(AUTO_DETECT_DEVICES)
                 set(NVIDIA_FOUND TRUE)
             endif()
         endif()
+    endif()
+
+    if(NVIDIA_FOUND AND ALI_FOUND AND NOT WITH_NVIDIA)
+        set(NVIDIA_FOUND FALSE)
+        message(STATUS "Ali PPU environment detected; skipping NVIDIA auto-detection.")
     endif()
 
     if(NVIDIA_FOUND)
@@ -250,12 +307,26 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect NCCL Dependencies
-    if(WITH_NVIDIA OR WITH_ILUVATAR OR WITH_HYGON)
+    if(WITH_NVIDIA OR WITH_ALI OR WITH_ILUVATAR OR WITH_HYGON)
         set(_NCCL_HINTS)
         set(_NCCL_HEADER_NAMES nccl.h)
         set(_NCCL_LIBRARY_NAMES nccl)
 
-        if (WITH_ILUVATAR)
+        if(WITH_ALI)
+            foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+                if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
+                    list(APPEND _NCCL_HINTS "$ENV{${_ali_cuda_env}}")
+                endif()
+            endforeach()
+            foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
+                if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
+                    list(APPEND _NCCL_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+                endif()
+            endforeach()
+            list(APPEND _NCCL_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK)
+            list(REMOVE_DUPLICATES _NCCL_HINTS)
+            message(STATUS "Ali PPU detected. Searching for NCCL in ${_NCCL_HINTS}")
+        elseif(WITH_ILUVATAR)
             set(_NCCL_HINTS /usr/local/corex)
             message(STATUS "Iluvatar detected. Searching for NCCL in ${_NCCL_HINTS}")
         elseif(WITH_HYGON)
@@ -276,8 +347,14 @@ if(AUTO_DETECT_BACKENDS)
             message(STATUS "Hygon detected. Searching for NCCL-compatible RCCL in ${_NCCL_HINTS}")
         endif()
 
-        find_path(AUTO_NCCL_INC NAMES ${_NCCL_HEADER_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES include QUIET)
-        find_library(AUTO_NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 rccl/lib QUIET)
+        find_path(AUTO_NCCL_INC NAMES ${_NCCL_HEADER_NAMES}
+            HINTS ${_NCCL_HINTS}
+            PATH_SUFFIXES include targets/x86_64-linux/include
+            QUIET)
+        find_library(AUTO_NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES}
+            HINTS ${_NCCL_HINTS}
+            PATH_SUFFIXES lib lib64 targets/x86_64-linux/lib rccl/lib
+            QUIET)
 
         if(AUTO_NCCL_INC AND AUTO_NCCL_LIB)
             set(WITH_NCCL ON)
@@ -338,6 +415,40 @@ endif()
 # =========================================================
 # --- DEPENDENCY DISCOVERY ---
 # =========================================================
+if(WITH_ALI)
+    set(_ALI_CUDA_HINTS)
+    foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+        if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
+            list(APPEND _ALI_CUDA_HINTS "$ENV{${_ali_cuda_env}}")
+        endif()
+    endforeach()
+    foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
+        if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
+            list(APPEND _ALI_CUDA_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+        endif()
+    endforeach()
+    list(APPEND _ALI_CUDA_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK /usr/local/cuda)
+    list(REMOVE_DUPLICATES _ALI_CUDA_HINTS)
+
+    set(ALI_CUDA_ROOT "")
+    foreach(_ali_cuda_hint ${_ALI_CUDA_HINTS})
+        if(NOT ALI_CUDA_ROOT AND EXISTS "${_ali_cuda_hint}/include/cuda_runtime.h")
+            set(ALI_CUDA_ROOT "${_ali_cuda_hint}")
+        endif()
+    endforeach()
+
+    if(NOT ALI_CUDA_ROOT)
+        message(FATAL_ERROR "`WITH_ALI` is `ON` but the Ali PPU CUDA-compatible SDK was not found. Set `PPU_SDK`, `PPU_HOME`, `CUDA_SDK`, `CUDA_HOME`, or `CUDA_PATH`.")
+    endif()
+
+    set(CUDAToolkit_ROOT "${ALI_CUDA_ROOT}" CACHE PATH "Ali PPU CUDA-compatible toolkit root" FORCE)
+    list(APPEND _NCCL_HINTS ${_ALI_CUDA_HINTS})
+    list(REMOVE_DUPLICATES _NCCL_HINTS)
+
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+endif()
+
 if(WITH_NVIDIA)
     enable_language(CUDA)
     find_package(CUDAToolkit REQUIRED)
@@ -490,23 +601,42 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
+    if (NOT WITH_NVIDIA AND NOT WITH_ALI AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
+        message(FATAL_ERROR "NCCL backend requires NVIDIA, Ali PPU, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_ALI`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
     endif()
 
     set(_NCCL_HEADER_NAMES nccl.h)
     set(_NCCL_LIBRARY_NAMES nccl)
     set(NCCL_COMPILE_DEFINITIONS)
 
-    if(WITH_HYGON)
+    if(WITH_ALI)
+        foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+            if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
+                list(APPEND _NCCL_HINTS "$ENV{${_ali_cuda_env}}")
+            endif()
+        endforeach()
+        foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
+            if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
+                list(APPEND _NCCL_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+            endif()
+        endforeach()
+        list(APPEND _NCCL_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK)
+    elseif(WITH_HYGON)
         list(APPEND _NCCL_HINTS "${HYGON_DTK_ROOT}" "${HYGON_DTK_ROOT}/rccl")
         set(_NCCL_HEADER_NAMES rccl/rccl.h rccl.h)
         set(_NCCL_LIBRARY_NAMES rccl)
         set(NCCL_COMPILE_DEFINITIONS INFINI_CCL_USE_RCCL)
     endif()
 
-    find_library(NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 rccl/lib REQUIRED)
-    find_path(NCCL_INC NAMES ${_NCCL_HEADER_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES include REQUIRED)
+    list(REMOVE_DUPLICATES _NCCL_HINTS)
+    find_library(NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES}
+        HINTS ${_NCCL_HINTS}
+        PATH_SUFFIXES lib lib64 targets/x86_64-linux/lib rccl/lib
+        REQUIRED)
+    find_path(NCCL_INC NAMES ${_NCCL_HEADER_NAMES}
+        HINTS ${_NCCL_HINTS}
+        PATH_SUFFIXES include targets/x86_64-linux/include
+        REQUIRED)
 
     include_directories(${NCCL_INC})
 endif()
