@@ -11,20 +11,20 @@ namespace infini::ccl {
 template <BackendType backend, Device::Type device>
 class CclSendImpl {
  public:
-  static ReturnStatus Apply(const void* send_buff, size_t count,
-                            DataType data_type, int peer, Communicator* comm,
-                            void* stream) {
+  static ReturnStatus Apply(const void *send_buff, size_t count,
+                            DataType data_type, int peer, Communicator *comm,
+                            void *stream) {
     using Api = CclApi<backend, device>;
     using TypeMap = CclTypeMap<backend, device>;
     using CommInstance = CclCommInstance<Api>;
 
-    if (!comm || !comm->intra_comm() || comm->intra_comm_backend() != backend ||
-        comm->device_type() != device) {
+    auto *comm_internal = static_cast<Communicator *>(comm);
+    if (!comm_internal) {
       return ReturnStatus::kInternalError;
     }
 
-    auto* intra = static_cast<CommInstance*>(comm->intra_comm());
-    if (!intra->handle) {
+    auto *intra = static_cast<CommInstance *>(comm_internal->intra_comm());
+    if (!intra || !intra->handle) {
       return ReturnStatus::kInternalError;
     }
 

@@ -1,7 +1,6 @@
 #ifndef INFINI_CCL_OPERATION_H_
 #define INFINI_CCL_OPERATION_H_
 
-#include <initializer_list>
 #include <memory>
 
 #include "backend.h"
@@ -45,37 +44,6 @@ class Operation {
           }
         },
         "Operation::Call");
-  }
-
-  static BackendType FindSupportedBackend(
-      Device::Type device, std::initializer_list<BackendType> candidates) {
-    for (BackendType candidate : candidates) {
-      if (Supports(candidate, device)) {
-        return candidate;
-      }
-    }
-    return BackendType::kCount;
-  }
-
- private:
-  template <auto device, auto... backends>
-  static constexpr bool SupportsBackend(BackendType backend,
-                                        List<backends...>) {
-    return ((backend == backends &&
-             IsSupportedCombination<backends, device>::value) ||
-            ...);
-  }
-
-  template <auto... devices>
-  static constexpr bool Supports(BackendType backend, Device::Type device,
-                                 List<devices...>) {
-    return ((device == devices &&
-             SupportsBackend<devices>(backend, ActiveBackends<Key>{})) ||
-            ...);
-  }
-
-  static constexpr bool Supports(BackendType backend, Device::Type device) {
-    return Supports(backend, device, ActiveDevices<Key>{});
   }
 };
 
