@@ -68,6 +68,29 @@ if(WITH_NVIDIA)
     )
 endif()
 
+# T-Head PPU
+if(WITH_THEAD)
+    list(APPEND DEVICE_LIST "thead")
+
+    set(THEAD_PATTERNS
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/cuda/*.cu"
+        "devices/thead/*.cc"
+        "devices/thead/*.cpp"
+        "devices/thead/*.cu"
+    )
+    file(GLOB_RECURSE THEAD_SOURCES ${THEAD_PATTERNS})
+
+    target_sources(infiniccl PRIVATE ${THEAD_SOURCES})
+    target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
+
+    set_target_properties(infiniccl PROPERTIES
+        CUDA_STANDARD 17
+        CUDA_STANDARD_REQUIRED ON
+    )
+endif()
+
 # Iluvatar
 if(WITH_ILUVATAR)
     list(APPEND DEVICE_LIST "iluvatar")

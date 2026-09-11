@@ -13,8 +13,17 @@ option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
+option(WITH_THEAD       "Enable T-Head PPU support"     OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
+
+if(WITH_THEAD)
+    if(DEFINED ENV{CUDA_SDK} AND NOT "$ENV{CUDA_SDK}" STREQUAL "")
+        set(THEAD_CUDA_ROOT "$ENV{CUDA_SDK}")
+    else()
+        set(THEAD_CUDA_ROOT "/usr/local/PPU_SDK/CUDA_SDK")
+    endif()
+endif()
 
 # =========================================================
 # --- BACKEND OPTIONS (Communication Protocols) ---
@@ -343,6 +352,20 @@ if(WITH_NVIDIA)
     find_package(CUDAToolkit REQUIRED)
 endif()
 
+if(WITH_THEAD)
+    if(NOT EXISTS "${THEAD_CUDA_ROOT}/bin/nvcc")
+        message(FATAL_ERROR
+            "`WITH_THEAD` is `ON` but `${THEAD_CUDA_ROOT}/bin/nvcc` was not found. "
+            "Set `CUDA_SDK` to the PPU CUDA SDK root.")
+    endif()
+
+    set(CMAKE_CUDA_COMPILER "${THEAD_CUDA_ROOT}/bin/nvcc" CACHE FILEPATH
+        "T-Head PPU CUDA compiler" FORCE)
+    set(CUDAToolkit_ROOT "${THEAD_CUDA_ROOT}" CACHE PATH
+        "T-Head PPU CUDA toolkit root" FORCE)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+endif()
 if(WITH_ILUVATAR)
     find_program(ILUVATAR_CUDA_COMPILER NAMES clang++ HINTS /usr/local/corex/bin)
     
@@ -490,8 +513,8 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
+    if(NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON AND NOT WITH_THEAD)
+        message(FATAL_ERROR "NCCL backend requires NVIDIA, Iluvatar, Hygon, or T-Head GPU support.")
     endif()
 
     set(_NCCL_HEADER_NAMES nccl.h)
@@ -503,6 +526,10 @@ if(WITH_NCCL)
         set(_NCCL_HEADER_NAMES rccl/rccl.h rccl.h)
         set(_NCCL_LIBRARY_NAMES rccl)
         set(NCCL_COMPILE_DEFINITIONS INFINI_CCL_USE_RCCL)
+    elseif(WITH_THEAD)
+        list(APPEND _NCCL_HINTS
+            "${THEAD_CUDA_ROOT}"
+            "${THEAD_CUDA_ROOT}/targets/x86_64-linux")
     endif()
 
     find_library(NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 rccl/lib REQUIRED)
