@@ -1,8 +1,8 @@
 /**
- * InfiniCCL Example: Scatter (MPI Backend)
+ * InfiniCCL Example: Scatter (OpenMPI + CCL Hybrid)
  *
- * Rank 0 distributes one GPU-resident block to every rank. Each rank validates
- * its full block, and rank 0 reports Scatter-specific bandwidth.
+ * This example first exercises Scatter through its OpenMPI fallback, then
+ * initializes a native CCL communicator and profiles the grouped-P2P path.
  */
 
 #include <unistd.h>
@@ -142,11 +142,35 @@ void PrintScatterMetrics(size_t num_elements, int world_size,
   std::cout.precision(original_precision);
 }
 
-bool RunScatterExample(int argc, char **argv, int warmup_iterations,
-                       int profile_iterations, size_t num_elements) {
+void PrintResult(bool correct, const std::vector<float> &samples,
+                 size_t num_elements, int world_size, double elapsed_ms) {
+  constexpr const char *kGreen = "\033[32m";
+  constexpr const char *kRed = "\033[31m";
+  constexpr const char *kReset = "\033[0m";
+
+  std::cout << "\n=== Hybrid CCL Scatter Results ===" << std::endl;
+  std::cout << "Correct: "
+            << (correct ? (kGreen + std::string("YES") + kReset)
+                        : (kRed + std::string("NO") + kReset))
+            << std::endl;
+  std::cout << "Root rank: " << kRoot << std::endl;
+  std::cout << "Sample receive blocks: ";
+  for (int rank = 0; rank < std::min(world_size, 4); ++rank) {
+    std::cout << "[r" << rank << ": " << samples[static_cast<size_t>(rank)]
+              << "] ";
+  }
+  std::cout << std::endl;
+  PrintScatterMetrics(num_elements, world_size, elapsed_ms);
+}
+
+bool RunScatterExample(int argc, char **argv) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
+
+  constexpr int kWarmupIterations = 2;
+  constexpr int kProfileIterations = 20;
+  constexpr size_t kNumElements = 1 << 20;
 
   CHECK_INFINI(infinicclInit(&argc, &argv));
 
@@ -155,7 +179,7 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclGetRank(&rank));
   CHECK_INFINI(infinicclGetSize(&size));
   if (size <= 0) {
-    std::cerr << "Invalid world size for MPI Scatter." << std::endl;
+    std::cerr << "Invalid world size for hybrid Scatter." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -169,7 +193,8 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
 
   std::array<char, 256> hostname{};
   if (gethostname(hostname.data(), hostname.size()) != 0) {
-    std::cerr << "Failed to query the hostname for MPI Scatter." << std::endl;
+    std::cerr << "Failed to query the hostname for hybrid Scatter."
+              << std::endl;
     std::exit(EXIT_FAILURE);
   }
   hostname.back() = '\0';
@@ -180,22 +205,80 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
   infinicclComm_t comm = nullptr;
   CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
+  // Before a native communicator exists, the selected CCL Scatter provider
+  // delegates this rank token distribution to the OpenMPI inter communicator.
+  std::vector<float> h_bootstrap_send;
+  if (rank == kRoot) {
+    h_bootstrap_send.resize(static_cast<size_t>(size));
+    for (int destination = 0; destination < size; ++destination) {
+      h_bootstrap_send[static_cast<size_t>(destination)] =
+          static_cast<float>(destination + 1);
+    }
+  }
+  float h_bootstrap_recv = 0.0f;
+  float *d_bootstrap_send = nullptr;
+  float *d_bootstrap_recv = nullptr;
+  if (rank == kRoot) {
+    CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_bootstrap_send),
+                            static_cast<size_t>(size) * sizeof(float)));
+    CHECK_RT(Rt, Rt::Memcpy(d_bootstrap_send, h_bootstrap_send.data(),
+                            static_cast<size_t>(size) * sizeof(float),
+                            Rt::MemcpyHostToDevice));
+  }
+  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_bootstrap_recv),
+                          sizeof(float)));
+  CHECK_INFINI(infinicclScatter(d_bootstrap_send, d_bootstrap_recv, 1,
+                                infinicclFloat32, kRoot, comm, nullptr));
+  CHECK_RT(Rt, Rt::Memcpy(&h_bootstrap_recv, d_bootstrap_recv, sizeof(float),
+                          Rt::MemcpyDeviceToHost));
+  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
+
+  const bool bootstrap_local_correct = h_bootstrap_recv == rank + 1.0f;
+  std::vector<float> bootstrap_reports;
+  const bool bootstrap_correct =
+      CollectValidationReports<Rt>(bootstrap_local_correct, h_bootstrap_recv,
+                                   rank, size, comm, &bootstrap_reports);
+  if (rank == kRoot) {
+    CHECK_RT(Rt, Rt::Free(d_bootstrap_send));
+  }
+  CHECK_RT(Rt, Rt::Free(d_bootstrap_recv));
+
+  if (!bootstrap_correct) {
+    if (rank == kRoot) {
+      std::cerr << "OpenMPI Scatter fallback validation failed." << std::endl;
+    }
+    CHECK_INFINI(infinicclCommDestroy(comm));
+    CHECK_INFINI(infinicclFinalize());
+    return false;
+  }
+  if (rank == kRoot) {
+    std::cout << "OpenMPI Scatter fallback validation passed." << std::endl;
+  }
+
+  infinicclUniqueId id{};
+  if (rank == kRoot) {
+    CHECK_INFINI(infinicclGetUniqueId(&id));
+  }
+  CHECK_INFINI(infinicclBroadcast(&id, &id, sizeof(id), infinicclUInt8, kRoot,
+                                  comm, nullptr));
+  CHECK_INFINI(infinicclCommInitRank(&comm, size, id, rank));
+
   const size_t world_size = static_cast<size_t>(size);
-  if (num_elements > std::numeric_limits<size_t>::max() / world_size ||
-      num_elements * world_size >
+  if (kNumElements > std::numeric_limits<size_t>::max() / world_size ||
+      kNumElements * world_size >
           std::numeric_limits<size_t>::max() / sizeof(float)) {
-    std::cerr << "MPI Scatter buffer size overflows `size_t`." << std::endl;
+    std::cerr << "Hybrid Scatter buffer size overflows `size_t`." << std::endl;
     std::exit(EXIT_FAILURE);
   }
-  const size_t rank_bytes = num_elements * sizeof(float);
-  const size_t total_elements = num_elements * world_size;
+  const size_t rank_bytes = kNumElements * sizeof(float);
+  const size_t total_elements = kNumElements * world_size;
   const size_t total_bytes = total_elements * sizeof(float);
   std::vector<float> h_send;
   if (rank == kRoot) {
     h_send.resize(total_elements, 0.0f);
-    FillScatterInput(&h_send, num_elements, size);
+    FillScatterInput(&h_send, kNumElements, size);
   }
-  std::vector<float> h_recv(num_elements, 0.0f);
+  std::vector<float> h_recv(kNumElements, 0.0f);
 
   float *d_send = nullptr;
   float *d_recv = nullptr;
@@ -207,56 +290,32 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
   CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_recv), rank_bytes));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
-  if (rank == kRoot) {
-    std::cout << "\n=== Performing MPI Scatter on GPU Memory ===" << std::endl;
-    std::cout << "Root rank: " << kRoot << std::endl;
-    std::cout << "Elements per rank: " << num_elements << " floats"
-              << std::endl;
-    std::cout << "Warm-up iterations: " << warmup_iterations << std::endl;
-    std::cout << "Profile iterations: " << profile_iterations << std::endl;
-  }
-
-  for (int i = 0; i < warmup_iterations; ++i) {
-    CHECK_INFINI(infinicclScatter(d_send, d_recv, num_elements,
+  for (int i = 0; i < kWarmupIterations; ++i) {
+    CHECK_INFINI(infinicclScatter(d_send, d_recv, kNumElements,
                                   infinicclFloat32, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
   Timer timer;
-  for (int i = 0; i < profile_iterations; ++i) {
-    CHECK_INFINI(infinicclScatter(d_send, d_recv, num_elements,
+  for (int i = 0; i < kProfileIterations; ++i) {
+    CHECK_INFINI(infinicclScatter(d_send, d_recv, kNumElements,
                                   infinicclFloat32, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const double elapsed_ms =
-      timer.ElapsedMs() / static_cast<double>(profile_iterations);
+      timer.ElapsedMs() / static_cast<double>(kProfileIterations);
 
   CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, rank_bytes,
                           Rt::MemcpyDeviceToHost));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const bool local_correct = Validator::ValidateResult(
-      h_recv.data(), num_elements, static_cast<float>(rank + 1), rank);
+      h_recv.data(), kNumElements, static_cast<float>(rank + 1), rank);
   std::vector<float> validation_reports;
   const bool correct = CollectValidationReports<Rt>(
       local_correct, h_recv.front(), rank, size, comm, &validation_reports);
 
   if (rank == kRoot) {
-    constexpr const char *kGreen = "\033[32m";
-    constexpr const char *kRed = "\033[31m";
-    constexpr const char *kReset = "\033[0m";
-    std::cout << "\n=== MPI Scatter Results ===" << std::endl;
-    std::cout << "Correct: "
-              << (correct ? (kGreen + std::string("YES") + kReset)
-                          : (kRed + std::string("NO") + kReset))
-              << std::endl;
-    std::cout << "Root rank: " << kRoot << std::endl;
-    std::cout << "Sample receive blocks: ";
-    for (int source = 0; source < std::min(size, 4); ++source) {
-      std::cout << "[r" << source << ": "
-                << validation_reports[static_cast<size_t>(source)] << "] ";
-    }
-    std::cout << std::endl;
-    PrintScatterMetrics(num_elements, size, elapsed_ms);
+    PrintResult(correct, validation_reports, kNumElements, size, elapsed_ms);
   }
 
   if (rank == kRoot) {
@@ -267,6 +326,13 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
   CHECK_INFINI(infinicclFinalize());
 
   if (rank == kRoot) {
+    if (correct) {
+      std::cout << "[Main Process] Hybrid CCL Scatter validation passed."
+                << std::endl;
+    } else {
+      std::cerr << "[Main Process] Hybrid CCL Scatter validation failed."
+                << std::endl;
+    }
     std::cout << "InfiniCCL finalized." << std::endl;
   }
   return correct;
@@ -275,11 +341,5 @@ bool RunScatterExample(int argc, char **argv, int warmup_iterations,
 }  // namespace
 
 int main(int argc, char **argv) {
-  constexpr int kWarmupIterations = 2;
-  constexpr int kProfileIterations = 20;
-  constexpr size_t kNumElements = 1 << 20;
-  return RunScatterExample(argc, argv, kWarmupIterations, kProfileIterations,
-                           kNumElements)
-             ? EXIT_SUCCESS
-             : EXIT_FAILURE;
+  return RunScatterExample(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
