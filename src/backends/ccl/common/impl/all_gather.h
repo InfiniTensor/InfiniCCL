@@ -18,13 +18,12 @@ class CclAllGatherImpl {
     using TypeMap = CclTypeMap<backend, device>;
     using CommInstance = CclCommInstance<Api>;
 
-    if (!comm || !comm->intra_comm() || comm->intra_comm_backend() != backend ||
-        comm->device_type() != device) {
+    if (!comm) {
       return ReturnStatus::kInternalError;
     }
 
     auto* intra = static_cast<CommInstance*>(comm->intra_comm());
-    if (!intra->handle) {
+    if (!intra || !intra->handle) {
       return ReturnStatus::kInternalError;
     }
 
