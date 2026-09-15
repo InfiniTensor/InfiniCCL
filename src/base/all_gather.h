@@ -19,10 +19,16 @@ class AllGather : public Operation<AllGather> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype,
                               void *comm_handle, void *stream) {
+    if (count == 0) {
+      return ReturnStatus::kSuccess;
+    }
+
     if (HasInvalidArgs(send_buff, recv_buff, datatype, comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
+
     auto *comm = static_cast<Communicator *>(comm_handle);
+
     return AllGatherImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, comm, stream);
   }

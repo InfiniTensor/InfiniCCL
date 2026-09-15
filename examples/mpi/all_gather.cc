@@ -24,7 +24,7 @@
 
 using namespace infini::ccl;
 
-void RunAllGatherExample(int argc, char **argv, int warmup_iter,
+bool RunAllGatherExample(int argc, char **argv, int warmup_iter,
                          int profile_iter, const size_t kNumElements) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
@@ -113,14 +113,14 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
 
   // Result Validation
   bool correct = true;
-  int error_count = 0;
 
   for (int src_rank = 0; src_rank < size; ++src_rank) {
     float expected = static_cast<float>(src_rank + 1);
     size_t offset = static_cast<size_t>(src_rank) * kNumElements;
 
-    Validator::ValidateResult(h_recv.data() + offset, kNumElements, expected,
-                              rank);
+    correct = Validator::ValidateResult(h_recv.data() + offset, kNumElements,
+                                        expected, rank) &&
+              correct;
   }
 
   if (rank == 0) {
@@ -132,7 +132,6 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
     std::cout << "Correct: "
               << (correct ? (GREEN + std::string("YES") + RESET)
                           : (RED + std::string("NO") + RESET));
-    if (!correct) std::cout << " (" << error_count << " errors)";
     std::cout << std::endl;
 
     std::cout << "Sample blocks: ";
@@ -159,6 +158,7 @@ void RunAllGatherExample(int argc, char **argv, int warmup_iter,
   if (rank == 0) {
     std::cout << "InfiniCCL finalized." << std::endl;
   }
+  return correct;
 }
 
 int main(int argc, char **argv) {
@@ -166,7 +166,8 @@ int main(int argc, char **argv) {
   int profile_iters = 20;
   size_t num_elements = 1 << 20;
 
-  RunAllGatherExample(argc, argv, warmup_iters, profile_iters, num_elements);
-
-  return EXIT_SUCCESS;
+  return RunAllGatherExample(argc, argv, warmup_iters, profile_iters,
+                             num_elements)
+             ? EXIT_SUCCESS
+             : EXIT_FAILURE;
 }
