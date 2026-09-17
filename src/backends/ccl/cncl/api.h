@@ -18,6 +18,7 @@ struct CnclApi {
   static constexpr Device::Type kDeviceType = device;
 
   using Comm = cnclComm_t;
+  using UniqueId = cnclCliqueId;
   using Result = cnclResult_t;
   using DataType = cnclDataType_t;
   using RedOp = cnclReduceOp_t;
@@ -31,9 +32,17 @@ struct CnclApi {
     return ReturnStatus::kSuccess;
   }
 
-  static Result CommInitAll(Comm* comms, int n_dev, const int* dev_list,
-                            const int* rank_list) {
-    return cnclInitComms(comms, n_dev, dev_list, rank_list, n_dev, nullptr);
+  static Result GetUniqueId(UniqueId* id) { return cnclGetCliqueId(id); }
+
+  static Result CommInitRank(Comm* comm, int nranks, UniqueId id, int rank) {
+    using Rt = Runtime<device>;
+
+    int device_id = 0;
+    if (Rt::GetDevice(&device_id) != cnrtSuccess) {
+      return CNCL_RET_ERR_MLU_RUNTIME;
+    }
+
+    return cnclInitComms(comm, 1, &device_id, &rank, nranks, &id);
   }
 
   static Result CommDestroy(Comm comm) { return cnclFreeComm(comm); }

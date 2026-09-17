@@ -21,8 +21,17 @@ class CommInitAll : public Operation<CommInitAll> {
       return ReturnStatus::kInvalidArgument;
     }
 
-    return CommInitAllImpl<backend_type, device_type>::Apply(comm_handles,
-                                                             n_dev, dev_list);
+    constexpr Device::Type kDev =
+        ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
+
+    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
+
+    if (!comm) {
+      comm = new Communicator(kDev, 0);
+    }
+
+    return CommInitAllImpl<backend_type, device_type>::Apply(
+        comm, std::forward<Args>(args)...);
   }
 };
 
