@@ -14,11 +14,9 @@ class CommInitRank : public Operation<CommInitRank> {
  public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
-  static ReturnStatus Execute(void **comm_handle, Args &&...args) {
-    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
-    if (comm && comm->intra_comm()) {
-      // TODO(lzm): change to use `glog`.
-      LOG("Invalid communicator handle for `CommInitRank`.");
+  static ReturnStatus Execute(void **comm_handle, Args &&...args) {    
+    if (!comm_handle) {
+      LOG("Invalid communicator handle for `CommInitAll`.");
       return ReturnStatus::kInvalidArgument;
     }
 
@@ -28,6 +26,8 @@ class CommInitRank : public Operation<CommInitRank> {
 
     int current_dev = 0;
     CHECK_STATUS(Rt, Rt::GetDevice(&current_dev));
+
+    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
 
     if (!comm) {
       comm = new Communicator(kDev, current_dev);

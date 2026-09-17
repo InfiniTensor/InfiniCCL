@@ -18,11 +18,10 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
     using Rt = Runtime<kDev>;
 
-    if (!comm) {
+    if (comm && comm->inter_comm()) {
       // TODO(lzm): change to use `glog`.
-      LOG("Failed to initialize OpenMPI communicator: invalid "
-          "communicator pointer.");
-      return ReturnStatus::kInternalError;
+      LOG("Invalid communicator handle for `CommInitAll`.");
+      return ReturnStatus::kInvalidArgument;
     }
 
     int rank, size;

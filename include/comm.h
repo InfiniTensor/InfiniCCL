@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define INFINICCL_UNIQUE_ID_BYTES 128
+#define INFINICCL_UNIQUE_ID_BYTES 136
 
 typedef void *infinicclComm_t;
 

@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_BACKENDS_CCL_COMMON_IMPL_COMM_INIT_RANK_H_
 #define INFINI_CCL_BACKENDS_CCL_COMMON_IMPL_COMM_INIT_RANK_H_
 
+#include <cstring>
 #include <memory>
 
 #include "backends/ccl/common/api.h"
@@ -19,12 +20,18 @@ class CclCommInitRankImpl {
     using Api = CclApi<backend, device>;
     using CommInstance = CclCommInstance<Api>;
 
-    const auto *backend_id =
-        reinterpret_cast<const typename Api::UniqueId *>(id.internal);
+    if (comm && comm->intra_comm()) {
+      // TODO(lzm): change to use `glog`.
+      LOG("Invalid communicator handle for `CommInitRank`.");
+      return ReturnStatus::kInvalidArgument;
+    }
+
+    typename Api::UniqueId backend_id{};
+    std::memcpy(&backend_id, id.internal, sizeof(backend_id));
 
     typename Api::Comm ccl_handle{};
     auto status =
-        Api::Check(Api::CommInitRank(&ccl_handle, nranks, *backend_id, rank));
+        Api::Check(Api::CommInitRank(&ccl_handle, nranks, backend_id, rank));
     if (status != ReturnStatus::kSuccess) {
       return status;
     }
