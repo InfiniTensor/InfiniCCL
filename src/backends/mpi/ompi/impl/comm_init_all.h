@@ -31,6 +31,7 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
     INFINI_CHECK_MPI(MPI_Comm_size(inst->handle, &size));
 
     comm->set_world_info(rank, size);
+    comm->set_local_size(n_dev);
     comm->set_inter_comm(std::move(inst));
 
     int local_rank = 0;

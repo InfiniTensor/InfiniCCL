@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_BASE_COMM_INIT_RANK_H_
 #define INFINI_CCL_BASE_COMM_INIT_RANK_H_
 
+#include "communicator.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -14,9 +15,9 @@ class CommInitRank : public Operation<CommInitRank> {
  public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
-  static ReturnStatus Execute(void **comm_handle, Args &&...args) {    
+  static ReturnStatus Execute(void **comm_handle, Args &&...args) {
     if (!comm_handle) {
-      LOG("Invalid communicator handle for `CommInitAll`.");
+      LOG("Invalid communicator handle for `CommInitRank`.");
       return ReturnStatus::kInvalidArgument;
     }
 

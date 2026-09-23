@@ -53,6 +53,13 @@ class Communicator {
 
   int size() const { return global_size_; }
 
+  int local_size() const { return local_size_; }
+
+  void set_local_size(int size) {
+    local_size_ = size;
+    return;
+  }
+
   int device_id() const { return device_id_; }
 
   void set_device_id(int id) {
@@ -78,6 +85,8 @@ class Communicator {
   int global_rank_;
 
   int global_size_;
+
+  int local_size_ = 0;
 
   Device::Type device_type_;
 };
