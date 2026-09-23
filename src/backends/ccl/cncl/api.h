@@ -26,7 +26,8 @@ struct CnclApi {
   using Stream = typename Runtime<device>::Stream;
 
  private:
-  // CNCL does not support a `nullptr` queue argument, so we need to manage a default queue for synchronous operations.
+  // CNCL does not support a `nullptr` queue argument, so we need to manage a
+  // default queue for synchronous operations.
   struct DefaultQueue {
     Stream queue = nullptr;
     int device_id = -1;
@@ -62,9 +63,10 @@ struct CnclApi {
   static Result PointToPoint(PointToPointOp operation, void* buffer,
                              size_t count, DataType data_type, int peer,
                              Comm comm, Stream stream) {
-    // Up to CNCL 1.30.8, a `nullptr` queue argument is unsupported. 
-    // Synchronize the fallback queue to preserve the synchronous behavior of the `nullptr` path; 
-    // explicit queues stay async. Future CNCL versions may remove this compatibility path.
+    // Up to CNCL 1.30.8, a `nullptr` queue argument is unsupported.
+    // Synchronize the fallback queue to preserve the synchronous behavior of
+    // the `nullptr` path; explicit queues stay async. Future CNCL versions may
+    // remove this compatibility path.
     const bool is_default_queue = stream == nullptr;
     if (is_default_queue) {
       stream = GetDefaultQueue();

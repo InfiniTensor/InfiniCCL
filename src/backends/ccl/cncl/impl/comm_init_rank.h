@@ -52,8 +52,7 @@ class CommInitRankImpl<BackendType::kCncl, device> {
   }
 
   static ReturnStatus ValidateRequests(const std::vector<Request*>& requests,
-                                       int nranks,
-                                       int expected_local_ranks) {
+                                       int nranks, int expected_local_ranks) {
     // The arrays passed to `cnclInitComms` describe only this process's local
     // communicators, while `nranks` describes the global communicator.
     if (requests.size() != static_cast<size_t>(expected_local_ranks)) {
@@ -133,10 +132,10 @@ class CommInitRankImpl<BackendType::kCncl, device> {
                 return left->rank < right->rank;
               });
 
-    ReturnStatus status = ValidateRequests(
-        requests, coordinator.active_nranks,
-        coordinator.active_expected_local_ranks);
-        
+    ReturnStatus status =
+        ValidateRequests(requests, coordinator.active_nranks,
+                         coordinator.active_expected_local_ranks);
+
     std::vector<typename Api::Comm> comms(requests.size());
     std::vector<int> devices(requests.size());
     std::vector<int> ranks(requests.size());
