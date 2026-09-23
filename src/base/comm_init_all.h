@@ -15,10 +15,8 @@ class CommInitAll : public Operation<CommInitAll> {
  public:
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
-  static ReturnStatus Execute(void **comm_handle, Args &&...args) {
-    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
-    if (comm && comm->inter_comm()) {
-      // TODO(lzm): change to use `glog`.
+  static ReturnStatus Execute(void **comm_handle, int n_dev, Args &&...args) {
+    if (!comm_handle || n_dev <= 0) {
       LOG("Invalid communicator handle for `CommInitAll`.");
       return ReturnStatus::kInvalidArgument;
     }
@@ -26,12 +24,14 @@ class CommInitAll : public Operation<CommInitAll> {
     constexpr Device::Type kDev =
         ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
 
+    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
+
     if (!comm) {
       comm = new Communicator(kDev, 0);
     }
 
     return CommInitAllImpl<backend_type, device_type>::Apply(
-        comm, std::forward<Args>(args)...);
+        comm, n_dev, std::forward<Args>(args)...);
   }
 };
 

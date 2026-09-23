@@ -1,6 +1,7 @@
 #ifndef INFINI_CCL_BASE_COMM_INIT_RANK_H_
 #define INFINI_CCL_BASE_COMM_INIT_RANK_H_
 
+#include "communicator.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -15,9 +16,7 @@ class CommInitRank : public Operation<CommInitRank> {
   template <BackendType backend_type, Device::Type device_type,
             typename... Args>
   static ReturnStatus Execute(void **comm_handle, Args &&...args) {
-    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
-    if (comm && comm->intra_comm()) {
-      // TODO(lzm): change to use `glog`.
+    if (!comm_handle) {
       LOG("Invalid communicator handle for `CommInitRank`.");
       return ReturnStatus::kInvalidArgument;
     }
@@ -28,6 +27,8 @@ class CommInitRank : public Operation<CommInitRank> {
 
     int current_dev = 0;
     CHECK_STATUS(Rt, Rt::GetDevice(&current_dev));
+
+    Communicator *&comm = *reinterpret_cast<Communicator **>(comm_handle);
 
     if (!comm) {
       comm = new Communicator(kDev, current_dev);

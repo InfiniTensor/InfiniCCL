@@ -144,6 +144,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
 | `WITH_NCCL`   | Enable NCCL/RCCL backend | `OFF` |
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
+| `WITH_CNCL`   | Enable CNCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
 | `AUTO_DETECT_BACKENDS` | Automatically detect available communication backends and enable corresponding support | `OFF` |
@@ -357,6 +358,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA or Iluvatar NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, or `WITH_HYGON=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
+| **CNCL** | Partial | `WITH_CNCL=ON` | Requires Cambricon CNCL. Available only when `WITH_CAMBRICON=ON`.|
 
 </details>
 
