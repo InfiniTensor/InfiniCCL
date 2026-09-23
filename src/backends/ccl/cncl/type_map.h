@@ -3,50 +3,44 @@
 
 #include <cncl.h>
 
+#include <string>
+
 #include "backends/ccl/common/api.h"
 #include "comm_impl.h"
 #include "data_type_impl.h"
+#include "logging.h"
 
 namespace infini::ccl {
 
-inline bool DataTypeToCnclType(DataType dtype, cnclDataType_t* cncl_dtype) {
-  switch (dtype) {
-    case DataType::kInt8:
-      *cncl_dtype = cnclInt8;
-      return true;
-    case DataType::kInt16:
-      *cncl_dtype = cnclInt16;
-      return true;
-    case DataType::kInt32:
-      *cncl_dtype = cnclInt32;
-      return true;
-    case DataType::kInt64:
-      *cncl_dtype = cnclInt64;
-      return true;
-    case DataType::kUInt8:
-      *cncl_dtype = cnclUint8;
-      return true;
-    case DataType::kUInt16:
-      *cncl_dtype = cnclUint16;
-      return true;
-    case DataType::kUInt32:
-      *cncl_dtype = cnclUint32;
-      return true;
-    case DataType::kUInt64:
-      *cncl_dtype = cnclUint64;
-      return true;
-    case DataType::kFloat16:
-      *cncl_dtype = cnclFloat16;
-      return true;
-    case DataType::kBFloat16:
-      *cncl_dtype = cnclBfloat16;
-      return true;
-    case DataType::kFloat32:
-      *cncl_dtype = cnclFloat32;
-      return true;
-    default:
-      return false;
+template <Device::Type device>
+struct CnclDataTypeMap {
+  static constexpr ConstexprMap<DataType, cnclDataType_t, 12> kMap{{{
+      {DataType::kInt8, cnclInt8},
+      {DataType::kInt16, cnclInt16},
+      {DataType::kInt32, cnclInt32},
+      {DataType::kInt64, cnclInt64},
+      {DataType::kUInt8, cnclUint8},
+      {DataType::kUInt16, cnclUint16},
+      {DataType::kUInt32, cnclUint32},
+      {DataType::kUInt64, cnclUint64},
+      {DataType::kFloat32, cnclFloat32},
+      {DataType::kFloat64, cnclInvalid},
+      {DataType::kFloat16, cnclFloat16},
+      {DataType::kBFloat16, cnclBfloat16},
+  }}};
+};
+
+template <Device::Type device>
+inline cnclDataType_t DataTypeToCnclType(DataType dtype) {
+  auto cncl_dtype = CnclDataTypeMap<device>::kMap.at(dtype);
+
+  if (cncl_dtype == cnclInvalid) {
+    LOG(("DataType '" + std::string(kDataTypeToDesc.at(dtype)) +
+         "' is not supported by the CNCL backend")
+            .c_str());
   }
+
+  return cncl_dtype;
 }
 
 template <>
@@ -55,7 +49,12 @@ struct CclTypeMap<BackendType::kCncl, Device::Type::kCambricon> {
 
   static bool ToBackendDataType(DataType dtype,
                                 typename Api::DataType* backend_dtype) {
-    return DataTypeToCnclType(dtype, backend_dtype);
+    auto cncl_dtype = DataTypeToCnclType<Device::Type::kCambricon>(dtype);
+    if (cncl_dtype == cnclInvalid) {
+      return false;
+    }
+    *backend_dtype = cncl_dtype;
+    return true;
   }
 
   static bool ToBackendRedOp(ReductionOpType red_op,
