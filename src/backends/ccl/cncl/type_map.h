@@ -43,6 +43,17 @@ inline cnclDataType_t DataTypeToCnclType(DataType dtype) {
   return cncl_dtype;
 }
 
+static const ConstexprMap<ReductionOpType, cnclReduceOp_t, 4> kCnclOpMap{{{
+    {ReductionOpType::kSum, cnclSum},
+    {ReductionOpType::kProd, cnclProd},
+    {ReductionOpType::kMax, cnclMax},
+    {ReductionOpType::kMin, cnclMin},
+}}};
+
+inline cnclReduceOp_t RedOpToCnclOp(ReductionOpType red_op) {
+  return kCnclOpMap.at(red_op);
+}
+
 template <>
 struct CclTypeMap<BackendType::kCncl, Device::Type::kCambricon> {
   using Api = CclApi<BackendType::kCncl, Device::Type::kCambricon>;
@@ -62,7 +73,7 @@ struct CclTypeMap<BackendType::kCncl, Device::Type::kCambricon> {
     if (red_op == ReductionOpType::kAvg) {
       return false;
     }
-    *backend_op = static_cast<cnclReduceOp_t>(red_op);
+    *backend_op = RedOpToCnclOp(red_op);
     return true;
   }
 };
