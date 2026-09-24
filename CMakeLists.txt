@@ -13,6 +13,7 @@ option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
+option(WITH_THEAD       "Enable T-Head PPU support"     OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 
@@ -41,21 +42,28 @@ if(AUTO_DETECT_DEVICES)
     # NVIDIA
     set(NVIDIA_FOUND FALSE)
 
-    file(GLOB NVIDIA_DEV_FILES "/dev/nvidia0")
+    if(WITH_THEAD)
+        # Explicitly selecting T-Head means NVIDIA auto-detection
+        # must not take effect, because the T-Head SDK provides
+        # an `nvidia-smi` compatible command.
+        message(STATUS "Skipping NVIDIA auto-detection because `WITH_THEAD=ON`.")
+    else()
+        file(GLOB NVIDIA_DEV_FILES "/dev/nvidia0")
 
-    if(NVIDIA_DEV_FILES)
-        set(NVIDIA_FOUND TRUE)
-    elseif(NOT NVIDIA_FOUND)
-        find_program(NVIDIA_SMI_PATH nvidia-smi)
-        if(NVIDIA_SMI_PATH)
-            execute_process(
-                COMMAND ${NVIDIA_SMI_PATH} -L
-                RESULT_VARIABLE SMI_RESULT
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-            if(SMI_RESULT EQUAL 0)
-                set(NVIDIA_FOUND TRUE)
+        if(NVIDIA_DEV_FILES)
+            set(NVIDIA_FOUND TRUE)
+        elseif(NOT NVIDIA_FOUND)
+            find_program(NVIDIA_SMI_PATH nvidia-smi)
+            if(NVIDIA_SMI_PATH)
+                execute_process(
+                    COMMAND ${NVIDIA_SMI_PATH} -L
+                    RESULT_VARIABLE SMI_RESULT
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(SMI_RESULT EQUAL 0)
+                    set(NVIDIA_FOUND TRUE)
+                endif()
             endif()
         endif()
     endif()
@@ -65,6 +73,36 @@ if(AUTO_DETECT_DEVICES)
         message(STATUS "Auto-detected NVIDIA environment.")
     else()
         message(STATUS "NVIDIA environment not detected.")
+    endif()
+
+    # T-Head PPU
+    set(THEAD_FOUND FALSE)
+
+    if(WITH_NVIDIA)
+        message(STATUS "Skipping T-Head auto-detection because `WITH_NVIDIA=ON`.")
+    else()
+        file(GLOB THEAD_DEV_FILES "/dev/alixpu_ppu*")
+
+        if(THEAD_DEV_FILES)
+            set(THEAD_FOUND TRUE)
+        elseif(DEFINED ENV{CUDA_SDK}
+               AND NOT "$ENV{CUDA_SDK}" STREQUAL ""
+               AND EXISTS "$ENV{CUDA_SDK}/bin/nvcc")
+            set(THEAD_FOUND TRUE)
+        elseif(DEFINED ENV{PPU_PATH}
+               AND NOT "$ENV{PPU_PATH}" STREQUAL ""
+               AND EXISTS "$ENV{PPU_PATH}/CUDA_SDK/bin/nvcc")
+            set(THEAD_FOUND TRUE)
+        elseif(EXISTS "/usr/local/PPU_SDK/CUDA_SDK/bin/nvcc")
+            set(THEAD_FOUND TRUE)
+        endif()
+    endif()
+
+    if(THEAD_FOUND)
+        set(WITH_THEAD ON)
+        message(STATUS "T-Head environment detected.")
+    else()
+        message(STATUS "T-Head environment not detected.")
     endif()
 
     # Iluvatar
@@ -218,6 +256,18 @@ if(AUTO_DETECT_DEVICES)
     endif()
 endif()
 
+set(_THEAD_SDK_ROOT "")
+
+if(WITH_THEAD)
+    if(DEFINED ENV{CUDA_SDK} AND NOT "$ENV{CUDA_SDK}" STREQUAL "")
+        set(_THEAD_SDK_ROOT "$ENV{CUDA_SDK}")
+    elseif(DEFINED ENV{PPU_PATH} AND NOT "$ENV{PPU_PATH}" STREQUAL "")
+        set(_THEAD_SDK_ROOT "$ENV{PPU_PATH}/CUDA_SDK")
+    else()
+        set(_THEAD_SDK_ROOT "/usr/local/PPU_SDK/CUDA_SDK")
+    endif()
+endif()
+
 # =========================================================
 # --- AUTO-DETECTION: BACKENDS ---
 # =========================================================
@@ -251,7 +301,7 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect NCCL Dependencies
-    if(WITH_NVIDIA OR WITH_ILUVATAR OR WITH_HYGON)
+    if(WITH_NVIDIA OR WITH_ILUVATAR OR WITH_HYGON OR WITH_THEAD)
         set(_NCCL_HINTS)
         set(_NCCL_HEADER_NAMES nccl.h)
         set(_NCCL_LIBRARY_NAMES nccl)
@@ -275,6 +325,13 @@ if(AUTO_DETECT_BACKENDS)
             set(_NCCL_HEADER_NAMES rccl/rccl.h rccl.h)
             set(_NCCL_LIBRARY_NAMES rccl)
             message(STATUS "Hygon detected. Searching for NCCL-compatible RCCL in ${_NCCL_HINTS}")
+        elseif(WITH_THEAD)
+            list(APPEND _NCCL_HINTS
+                "${_THEAD_SDK_ROOT}"
+                "${_THEAD_SDK_ROOT}/targets/${CMAKE_SYSTEM_PROCESSOR}-linux"
+            )
+            message(STATUS
+                "T-Head detected. Searching for NCCL in ${_NCCL_HINTS}")
         endif()
 
         find_path(AUTO_NCCL_INC NAMES ${_NCCL_HEADER_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES include QUIET)
@@ -357,6 +414,18 @@ if(WITH_NVIDIA)
     find_package(CUDAToolkit REQUIRED)
 endif()
 
+if(WITH_THEAD)
+    if(NOT EXISTS "${_THEAD_SDK_ROOT}/bin/nvcc")
+        message(FATAL_ERROR
+            "T-Head PPU CUDA compiler was not found under "
+            "`${_THEAD_SDK_ROOT}/bin/nvcc`.")
+    endif()
+
+    set(CMAKE_CUDA_COMPILER "${_THEAD_SDK_ROOT}/bin/nvcc" CACHE FILEPATH
+        "T-Head PPU CUDA compiler" FORCE)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+endif()
 if(WITH_ILUVATAR)
     find_program(ILUVATAR_CUDA_COMPILER NAMES clang++ HINTS /usr/local/corex/bin)
     
@@ -504,8 +573,8 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
+    if(NOT WITH_NVIDIA AND NOT WITH_ILUVATAR AND NOT WITH_HYGON AND NOT WITH_THEAD)
+        message(FATAL_ERROR "NCCL backend requires NVIDIA, Iluvatar, Hygon, or T-Head device support.")
     endif()
 
     set(_NCCL_HEADER_NAMES nccl.h)
@@ -517,6 +586,11 @@ if(WITH_NCCL)
         set(_NCCL_HEADER_NAMES rccl/rccl.h rccl.h)
         set(_NCCL_LIBRARY_NAMES rccl)
         set(NCCL_COMPILE_DEFINITIONS INFINI_CCL_USE_RCCL)
+    elseif(WITH_THEAD)
+        list(APPEND _NCCL_HINTS
+            "${_THEAD_SDK_ROOT}"
+            "${_THEAD_SDK_ROOT}/targets/${CMAKE_SYSTEM_PROCESSOR}-linux"
+        )
     endif()
 
     find_library(NCCL_LIB NAMES ${_NCCL_LIBRARY_NAMES} HINTS ${_NCCL_HINTS} PATH_SUFFIXES lib lib64 rccl/lib REQUIRED)
