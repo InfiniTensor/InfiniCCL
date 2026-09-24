@@ -1,5 +1,5 @@
-#ifndef INFINI_CCL_DEVICES_ALI_DEVICE_H_
-#define INFINI_CCL_DEVICES_ALI_DEVICE_H_
+#ifndef INFINI_CCL_DEVICES_T_HEAD_DEVICE_H_
+#define INFINI_CCL_DEVICES_T_HEAD_DEVICE_H_
 
 #include <cuda_runtime.h>
 
@@ -9,10 +9,10 @@
 namespace infini::ccl {
 
 template <>
-struct DeviceEnabled<Device::Type::kAli> : std::true_type {};
+struct DeviceEnabled<Device::Type::kTHead> : std::true_type {};
 
 template <>
-MemorySpace GetMemorySpace<Device::Type::kAli>(const void* ptr) {
+MemorySpace GetMemorySpace<Device::Type::kTHead>(const void* ptr) {
   if (!ptr) {
     return MemorySpace::kHost;
   }
@@ -29,4 +29,4 @@ MemorySpace GetMemorySpace<Device::Type::kAli>(const void* ptr) {
 
 }  // namespace infini::ccl
 
-#endif  // INFINI_CCL_DEVICES_ALI_DEVICE_H_
+#endif  // INFINI_CCL_DEVICES_T_HEAD_DEVICE_H_

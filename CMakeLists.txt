@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # --- DEVICE OPTIONS (Hardware Runtimes) ---
 # =========================================================
 option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
-option(WITH_ALI         "Enable Ali PPU support"        OFF)
 option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
+option(WITH_THEAD       "Enable T-Head PPU support"     OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 
@@ -39,58 +39,8 @@ option(BUILD_EXAMPLES "Build internal examples" ON)
 if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
 
-    # Ali PPU
-    set(ALI_FOUND FALSE)
-
-    if(WITH_ALI)
-        set(ALI_FOUND TRUE)
-    else()
-        set(_ALI_SDK_HINTS)
-        foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
-            if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
-                list(APPEND _ALI_SDK_HINTS "$ENV{${_ali_env}}")
-            endif()
-        endforeach()
-        foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
-            if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
-                list(APPEND _ALI_SDK_HINTS "$ENV{${_ali_cuda_env}}" "$ENV{${_ali_cuda_env}}/..")
-            endif()
-        endforeach()
-        list(APPEND _ALI_SDK_HINTS /usr/local/PPU_SDK /usr/local/PPU_SDK/CUDA_SDK)
-
-        foreach(_ali_hint ${_ALI_SDK_HINTS})
-            if(EXISTS "${_ali_hint}/CUDA_SDK" OR EXISTS "${_ali_hint}/bin/ppu-smi" OR EXISTS "${_ali_hint}/ppu-smi/bin/ppu-smi")
-                set(ALI_FOUND TRUE)
-            endif()
-        endforeach()
-
-        if(NOT ALI_FOUND)
-            find_program(ALI_SMI_PATH
-                NAMES ppu-smi nvidia-smi
-                HINTS /usr/local/PPU_SDK/bin /usr/local/PPU_SDK/ppu-smi/bin
-            )
-            if(ALI_SMI_PATH)
-                execute_process(
-                    COMMAND ${ALI_SMI_PATH} -L
-                    RESULT_VARIABLE SMI_RESULT
-                    OUTPUT_VARIABLE SMI_OUTPUT
-                    ERROR_QUIET
-                )
-                if(SMI_RESULT EQUAL 0 AND SMI_OUTPUT MATCHES "PPU")
-                    set(ALI_FOUND TRUE)
-                endif()
-            endif()
-        endif()
-    endif()
-
-    if(ALI_FOUND)
-        set(WITH_ALI ON)
-        message(STATUS "Auto-detected Ali PPU environment.")
-    else()
-        message(STATUS "Ali PPU environment not detected.")
-    endif()
-
     # NVIDIA
+    set(NVIDIA_REQUESTED ${WITH_NVIDIA})
     set(NVIDIA_FOUND FALSE)
 
     file(GLOB NVIDIA_DEV_FILES "/dev/nvidia0")
@@ -110,18 +60,6 @@ if(AUTO_DETECT_DEVICES)
                 set(NVIDIA_FOUND TRUE)
             endif()
         endif()
-    endif()
-
-    if(NVIDIA_FOUND AND ALI_FOUND AND NOT WITH_NVIDIA)
-        set(NVIDIA_FOUND FALSE)
-        message(STATUS "Ali PPU environment detected; skipping NVIDIA auto-detection.")
-    endif()
-
-    if(NVIDIA_FOUND)
-        set(WITH_NVIDIA ON)
-        message(STATUS "Auto-detected NVIDIA environment.")
-    else()
-        message(STATUS "NVIDIA environment not detected.")
     endif()
 
     # Iluvatar
@@ -273,6 +211,71 @@ if(AUTO_DETECT_DEVICES)
     else()
         message(STATUS "Hygon environment not detected.")
     endif()
+
+    # T-Head
+    set(THEAD_FOUND FALSE)
+
+    if(WITH_THEAD)
+        set(THEAD_FOUND TRUE)
+    else()
+        set(_THEAD_SDK_HINTS)
+        foreach(_thead_env PPU_SDK PPU_HOME PPU_PATH)
+            if(DEFINED ENV{${_thead_env}} AND NOT "$ENV{${_thead_env}}" STREQUAL "")
+                list(APPEND _THEAD_SDK_HINTS "$ENV{${_thead_env}}")
+            endif()
+        endforeach()
+        foreach(_thead_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+            if(DEFINED ENV{${_thead_cuda_env}} AND NOT "$ENV{${_thead_cuda_env}}" STREQUAL "")
+                list(APPEND _THEAD_SDK_HINTS "$ENV{${_thead_cuda_env}}" "$ENV{${_thead_cuda_env}}/..")
+            endif()
+        endforeach()
+        list(APPEND _THEAD_SDK_HINTS /usr/local/PPU_SDK /usr/local/PPU_SDK/CUDA_SDK)
+
+        foreach(_thead_hint ${_THEAD_SDK_HINTS})
+            if(EXISTS "${_thead_hint}/CUDA_SDK" OR EXISTS "${_thead_hint}/bin/ppu-smi" OR EXISTS "${_thead_hint}/ppu-smi/bin/ppu-smi")
+                set(THEAD_FOUND TRUE)
+            endif()
+        endforeach()
+
+        if(NOT THEAD_FOUND)
+            find_program(THEAD_SMI_PATH
+                NAMES ppu-smi nvidia-smi
+                HINTS /usr/local/PPU_SDK/bin /usr/local/PPU_SDK/ppu-smi/bin
+            )
+            if(THEAD_SMI_PATH)
+                execute_process(
+                    COMMAND ${THEAD_SMI_PATH} -L
+                    RESULT_VARIABLE SMI_RESULT
+                    OUTPUT_VARIABLE SMI_OUTPUT
+                    ERROR_QUIET
+                )
+                if(SMI_RESULT EQUAL 0 AND SMI_OUTPUT MATCHES "PPU")
+                    set(THEAD_FOUND TRUE)
+                endif()
+            endif()
+        endif()
+    endif()
+
+    if(THEAD_FOUND)
+        set(WITH_THEAD ON)
+        message(STATUS "Auto-detected T-Head environment.")
+    else()
+        message(STATUS "T-Head environment not detected.")
+    endif()
+
+    if(THEAD_FOUND AND NVIDIA_FOUND AND NOT NVIDIA_REQUESTED)
+        set(NVIDIA_FOUND FALSE)
+        set(WITH_NVIDIA OFF CACHE BOOL "Enable NVIDIA GPU support" FORCE)
+        message(STATUS "T-Head environment detected; ignoring NVIDIA auto-detection.")
+    endif()
+
+    if(NVIDIA_FOUND)
+        set(WITH_NVIDIA ON)
+        message(STATUS "Auto-detected NVIDIA environment.")
+    else()
+        message(STATUS "NVIDIA environment not detected.")
+    endif()
+
 endif()
 
 # =========================================================
@@ -308,25 +311,25 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect NCCL Dependencies
-    if(WITH_NVIDIA OR WITH_ALI OR WITH_ILUVATAR OR WITH_HYGON)
+    if(WITH_NVIDIA OR WITH_THEAD OR WITH_ILUVATAR OR WITH_HYGON)
         set(_NCCL_HINTS)
         set(_NCCL_HEADER_NAMES nccl.h)
         set(_NCCL_LIBRARY_NAMES nccl)
 
-        if(WITH_ALI)
-            foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
-                if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
-                    list(APPEND _NCCL_HINTS "$ENV{${_ali_cuda_env}}")
+        if(WITH_THEAD)
+            foreach(_thead_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+                if(DEFINED ENV{${_thead_cuda_env}} AND NOT "$ENV{${_thead_cuda_env}}" STREQUAL "")
+                    list(APPEND _NCCL_HINTS "$ENV{${_thead_cuda_env}}")
                 endif()
             endforeach()
-            foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
-                if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
-                    list(APPEND _NCCL_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+            foreach(_thead_env PPU_SDK PPU_HOME PPU_PATH)
+                if(DEFINED ENV{${_thead_env}} AND NOT "$ENV{${_thead_env}}" STREQUAL "")
+                    list(APPEND _NCCL_HINTS "$ENV{${_thead_env}}/CUDA_SDK" "$ENV{${_thead_env}}")
                 endif()
             endforeach()
             list(APPEND _NCCL_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK)
             list(REMOVE_DUPLICATES _NCCL_HINTS)
-            message(STATUS "Ali PPU detected. Searching for NCCL in ${_NCCL_HINTS}")
+            message(STATUS "T-Head detected. Searching for NCCL in ${_NCCL_HINTS}")
         elseif(WITH_ILUVATAR)
             set(_NCCL_HINTS /usr/local/corex)
             message(STATUS "Iluvatar detected. Searching for NCCL in ${_NCCL_HINTS}")
@@ -429,34 +432,34 @@ endif()
 # =========================================================
 # --- DEPENDENCY DISCOVERY ---
 # =========================================================
-if(WITH_ALI)
-    set(_ALI_CUDA_HINTS)
-    foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
-        if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
-            list(APPEND _ALI_CUDA_HINTS "$ENV{${_ali_cuda_env}}")
+if(WITH_THEAD)
+    set(_THEAD_CUDA_HINTS)
+    foreach(_thead_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+        if(DEFINED ENV{${_thead_cuda_env}} AND NOT "$ENV{${_thead_cuda_env}}" STREQUAL "")
+            list(APPEND _THEAD_CUDA_HINTS "$ENV{${_thead_cuda_env}}")
         endif()
     endforeach()
-    foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
-        if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
-            list(APPEND _ALI_CUDA_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+    foreach(_thead_env PPU_SDK PPU_HOME PPU_PATH)
+        if(DEFINED ENV{${_thead_env}} AND NOT "$ENV{${_thead_env}}" STREQUAL "")
+            list(APPEND _THEAD_CUDA_HINTS "$ENV{${_thead_env}}/CUDA_SDK" "$ENV{${_thead_env}}")
         endif()
     endforeach()
-    list(APPEND _ALI_CUDA_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK /usr/local/cuda)
-    list(REMOVE_DUPLICATES _ALI_CUDA_HINTS)
+    list(APPEND _THEAD_CUDA_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK /usr/local/cuda)
+    list(REMOVE_DUPLICATES _THEAD_CUDA_HINTS)
 
-    set(ALI_CUDA_ROOT "")
-    foreach(_ali_cuda_hint ${_ALI_CUDA_HINTS})
-        if(NOT ALI_CUDA_ROOT AND EXISTS "${_ali_cuda_hint}/include/cuda_runtime.h")
-            set(ALI_CUDA_ROOT "${_ali_cuda_hint}")
+    set(THEAD_CUDA_ROOT "")
+    foreach(_thead_cuda_hint ${_THEAD_CUDA_HINTS})
+        if(NOT THEAD_CUDA_ROOT AND EXISTS "${_thead_cuda_hint}/include/cuda_runtime.h")
+            set(THEAD_CUDA_ROOT "${_thead_cuda_hint}")
         endif()
     endforeach()
 
-    if(NOT ALI_CUDA_ROOT)
-        message(FATAL_ERROR "`WITH_ALI` is `ON` but the Ali PPU CUDA-compatible SDK was not found. Set `PPU_SDK`, `PPU_HOME`, `CUDA_SDK`, `CUDA_HOME`, or `CUDA_PATH`.")
+    if(NOT THEAD_CUDA_ROOT)
+        message(FATAL_ERROR "`WITH_THEAD` is `ON` but the T-Head CUDA-compatible SDK was not found. Set `PPU_SDK`, `PPU_HOME`, `CUDA_SDK`, `CUDA_HOME`, or `CUDA_PATH`.")
     endif()
 
-    set(CUDAToolkit_ROOT "${ALI_CUDA_ROOT}" CACHE PATH "Ali PPU CUDA-compatible toolkit root" FORCE)
-    list(APPEND _NCCL_HINTS ${_ALI_CUDA_HINTS})
+    set(CUDAToolkit_ROOT "${THEAD_CUDA_ROOT}" CACHE PATH "T-Head CUDA-compatible toolkit root" FORCE)
+    list(APPEND _NCCL_HINTS ${_THEAD_CUDA_HINTS})
     list(REMOVE_DUPLICATES _NCCL_HINTS)
 
     enable_language(CUDA)
@@ -615,23 +618,23 @@ if(WITH_OMPI OR WITH_MPICH)
 endif()
 
 if(WITH_NCCL)
-    if (NOT WITH_NVIDIA AND NOT WITH_ALI AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
-        message(FATAL_ERROR "NCCL backend requires NVIDIA, Ali PPU, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_ALI`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
+    if (NOT WITH_NVIDIA AND NOT WITH_THEAD AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
+        message(FATAL_ERROR "NCCL backend requires NVIDIA, T-Head, Iluvatar, or Hygon GPU support. Please enable `WITH_NVIDIA`, `WITH_THEAD`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
     endif()
 
     set(_NCCL_HEADER_NAMES nccl.h)
     set(_NCCL_LIBRARY_NAMES nccl)
     set(NCCL_COMPILE_DEFINITIONS)
 
-    if(WITH_ALI)
-        foreach(_ali_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
-            if(DEFINED ENV{${_ali_cuda_env}} AND NOT "$ENV{${_ali_cuda_env}}" STREQUAL "")
-                list(APPEND _NCCL_HINTS "$ENV{${_ali_cuda_env}}")
+    if(WITH_THEAD)
+        foreach(_thead_cuda_env CUDA_SDK CUDA_HOME CUDA_PATH CUDA_TOOLKIT_ROOT)
+            if(DEFINED ENV{${_thead_cuda_env}} AND NOT "$ENV{${_thead_cuda_env}}" STREQUAL "")
+                list(APPEND _NCCL_HINTS "$ENV{${_thead_cuda_env}}")
             endif()
         endforeach()
-        foreach(_ali_env PPU_SDK PPU_HOME PPU_PATH)
-            if(DEFINED ENV{${_ali_env}} AND NOT "$ENV{${_ali_env}}" STREQUAL "")
-                list(APPEND _NCCL_HINTS "$ENV{${_ali_env}}/CUDA_SDK" "$ENV{${_ali_env}}")
+        foreach(_thead_env PPU_SDK PPU_HOME PPU_PATH)
+            if(DEFINED ENV{${_thead_env}} AND NOT "$ENV{${_thead_env}}" STREQUAL "")
+                list(APPEND _NCCL_HINTS "$ENV{${_thead_env}}/CUDA_SDK" "$ENV{${_thead_env}}")
             endif()
         endforeach()
         list(APPEND _NCCL_HINTS /usr/local/PPU_SDK/CUDA_SDK /usr/local/PPU_SDK)

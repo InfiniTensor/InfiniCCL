@@ -26,7 +26,7 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE CUDA::cudart)
     endif()
 
-    if(WITH_ALI)
+    if(WITH_THEAD)
         target_link_libraries(${target_name} PRIVATE CUDA::cudart)
     endif()
 

@@ -1,5 +1,5 @@
-#ifndef INFINI_CCL_DEVICES_ALI_RUNTIME_H_
-#define INFINI_CCL_DEVICES_ALI_RUNTIME_H_
+#ifndef INFINI_CCL_DEVICES_T_HEAD_RUNTIME_H_
+#define INFINI_CCL_DEVICES_T_HEAD_RUNTIME_H_
 
 #include <utility>
 
@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 // clang-format on
 
-#include "devices/ali/device_.h"
+#include "devices/t-head/device_.h"
 #include "devices/cuda/runtime_.h"
 #include "logging.h"
 #include "return_status_impl.h"
@@ -15,10 +15,10 @@
 namespace infini::ccl {
 
 template <>
-struct Runtime<Device::Type::kAli> : CudaRuntime<Runtime<Device::Type::kAli>> {
+struct Runtime<Device::Type::kTHead> : CudaRuntime<Runtime<Device::Type::kTHead>> {
   using Stream = cudaStream_t;
 
-  static constexpr Device::Type kDeviceType = Device::Type::kAli;
+  static constexpr Device::Type kDeviceType = Device::Type::kTHead;
 
   static constexpr auto Check =
       [](auto status, ReturnStatus err_code = ReturnStatus::kSystemError) {
@@ -52,8 +52,8 @@ struct Runtime<Device::Type::kAli> : CudaRuntime<Runtime<Device::Type::kAli>> {
   static constexpr auto StreamSynchronize = cudaStreamSynchronize;
 };
 
-static_assert(Runtime<Device::Type::kAli>::Validate());
+static_assert(Runtime<Device::Type::kTHead>::Validate());
 
 }  // namespace infini::ccl
 
-#endif  // INFINI_CCL_DEVICES_ALI_RUNTIME_H_
+#endif  // INFINI_CCL_DEVICES_T_HEAD_RUNTIME_H_

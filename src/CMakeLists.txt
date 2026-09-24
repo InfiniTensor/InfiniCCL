@@ -68,21 +68,21 @@ if(WITH_NVIDIA)
     )
 endif()
 
-# Ali PPU
-if(WITH_ALI)
-    list(APPEND DEVICE_LIST "ali")
+# T-Head
+if(WITH_THEAD)
+    list(APPEND DEVICE_LIST "t-head")
 
-    set(ALI_PATTERNS
+    set(THEAD_PATTERNS
         "devices/cuda/*.cc"
         "devices/cuda/*.cpp"
         "devices/cuda/*.cu"
-        "devices/ali/*.cc"
-        "devices/ali/*.cpp"
-        "devices/ali/*.cu"
+        "devices/t-head/*.cc"
+        "devices/t-head/*.cpp"
+        "devices/t-head/*.cu"
     )
-    file(GLOB ALI_SOURCES ${ALI_PATTERNS})
+    file(GLOB THEAD_SOURCES ${THEAD_PATTERNS})
 
-    target_sources(infiniccl PRIVATE ${ALI_SOURCES})
+    target_sources(infiniccl PRIVATE ${THEAD_SOURCES})
     target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
 
     set_target_properties(infiniccl PROPERTIES
