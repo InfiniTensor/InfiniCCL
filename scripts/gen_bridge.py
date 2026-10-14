@@ -143,7 +143,8 @@ def generate(project_root, output_dir, devices, backends):
         provider_root = CCL_PROVIDER_BACKENDS.get(bb)
         if provider_root:
             for dev in devices:
-                provider_path = f"{provider_root}/{dev}/api.h"
+                provider_dir = dev
+                provider_path = f"{provider_root}/{provider_dir}/api.h"
                 if os.path.exists(os.path.join(src_dir, provider_path)):
                     manifest_lines.append(f'#include "{provider_path}"')
 

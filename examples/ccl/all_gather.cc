@@ -67,6 +67,8 @@ void PrintResult(const std::vector<float>& output, const char* mode, int size,
     std::cout << "[r" << source << ": " << output[offset] << "] ";
   }
   std::cout << std::endl;
+
+  return;
 }
 
 void WorkerThread(ThreadArgs args) {

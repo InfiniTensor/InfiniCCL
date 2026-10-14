@@ -75,10 +75,15 @@ class ICCLLauncher:
     def _is_local(self, ip):
         """Check if the IP/hostname refers to the local machine."""
         try:
-            local_ips = {"127.0.0.1", "localhost"}
+            local_ips = {"127.0.0.1", "localhost", "::1", socket.gethostname()}
+            if ip in local_ips:
+                return True
 
             # Add hostname-resolved IPs.
-            local_ips.update(socket.gethostbyname_ex(socket.gethostname())[2])
+            try:
+                local_ips.update(socket.gethostbyname_ex(socket.gethostname())[2])
+            except Exception:
+                pass
 
             # Add all interface IPs via `hostname -I`.
             try:
