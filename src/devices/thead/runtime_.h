@@ -7,15 +7,16 @@
 #include <cuda_runtime.h>
 // clang-format on
 
-#include "devices/thead/device_.h"
 #include "devices/cuda/runtime_.h"
+#include "devices/thead/device_.h"
 #include "logging.h"
 #include "return_status_impl.h"
 
 namespace infini::ccl {
 
 template <>
-struct Runtime<Device::Type::kThead> : CudaRuntime<Runtime<Device::Type::kThead>> {
+struct Runtime<Device::Type::kThead>
+    : CudaRuntime<Runtime<Device::Type::kThead>> {
   using Stream = cudaStream_t;
 
   static constexpr Device::Type kDeviceType = Device::Type::kThead;
