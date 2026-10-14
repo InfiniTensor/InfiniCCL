@@ -59,6 +59,7 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] Moore Threads GPU
 - [ ] Cambricon MLU
 - [ ] HYGON DCU
+- [ ] T-Head PPU
 
 ### Backend
 
@@ -110,6 +111,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] Moore Threads GPU
 - [ ] Cambricon MLU
 - [ ] HYGON DCU
+- [ ] T-Head PPU
 
 ### Test Involved Backend
 
