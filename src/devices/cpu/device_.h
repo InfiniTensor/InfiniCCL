@@ -9,7 +9,7 @@ template <>
 struct DeviceEnabled<Device::Type::kCpu> : std::true_type {};
 
 template <>
-MemorySpace GetMemorySpace<Device::Type::kCpu>(const void * /*ptr*/) {
+MemorySpace GetMemorySpace<Device::Type::kCpu>(const void* /*ptr*/) {
   return MemorySpace::kHost;
 }
 
