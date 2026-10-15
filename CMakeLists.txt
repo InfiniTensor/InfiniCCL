@@ -33,8 +33,8 @@ option(AUTO_DETECT_DEVICES "Automatically detect available devices" ON)
 option(AUTO_DETECT_BACKENDS "Automatically detect available backends" OFF)
 option(BUILD_EXAMPLES "Build internal examples" ON)
 
-# Device modules provide platform probes and SDK configuration helpers. The
-# selection policy remains below so the overall configure flow stays visible.
+# Device modules provide platform probes and SDK configuration helpers.
+include(cmake/devices/DeviceDetection.cmake)
 include(cmake/devices/Nvidia.cmake)
 include(cmake/devices/Iluvatar.cmake)
 include(cmake/devices/MetaX.cmake)
@@ -43,7 +43,7 @@ include(cmake/devices/Cambricon.cmake)
 include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
 
-# Backend modules provide quiet probes and required dependency resolution.
+# Backend modules provide backend probes and required dependency resolution.
 include(cmake/backends/MPI.cmake)
 include(cmake/backends/NCCL.cmake)
 include(cmake/backends/MCCL.cmake)
@@ -55,82 +55,40 @@ include(cmake/backends/CNCL.cmake)
 if(AUTO_DETECT_DEVICES)
     message(STATUS "Auto-detecting available devices...")
 
+    # NVIDIA
     set(NVIDIA_REQUESTED ${WITH_NVIDIA})
-    infiniccl_detect_nvidia(NVIDIA_FOUND)
+    infiniccl_resolve_device_detection(
+        WITH_NVIDIA "NVIDIA" infiniccl_detect_nvidia NVIDIA_FOUND)
 
-    infiniccl_detect_iluvatar(ILUVATAR_FOUND)
-    if(ILUVATAR_FOUND)
-        set(WITH_ILUVATAR ON)
-        message(STATUS "Auto-detected Iluvatar environment.")
-    else()
-        message(STATUS "Iluvatar environment not detected.")
-    endif()
+    # Iluvatar
+    infiniccl_resolve_device_detection(
+        WITH_ILUVATAR "Iluvatar" infiniccl_detect_iluvatar ILUVATAR_FOUND)
 
-    infiniccl_detect_metax(METAX_FOUND)
-    if(METAX_FOUND)
-        set(WITH_METAX ON)
-        message(STATUS "Auto-detected MetaX environment.")
-    else()
-        set(WITH_METAX OFF)
-        message(STATUS "MetaX environment not detected.")
-    endif()
+    # MetaX
+    infiniccl_resolve_device_detection(
+        WITH_METAX "MetaX" infiniccl_detect_metax METAX_FOUND)
 
-    infiniccl_detect_moore(MOORE_FOUND)
-    if(MOORE_FOUND)
-        set(WITH_MOORE ON)
-        message(STATUS "Auto-detected Moore environment.")
-    else()
-        message(STATUS "Moore environment not detected.")
-    endif()
+    # MThreads (Moore)
+    infiniccl_resolve_device_detection(
+        WITH_MOORE "Moore" infiniccl_detect_moore MOORE_FOUND)
 
-    infiniccl_detect_cambricon(CAMBRICON_FOUND)
-    if(CAMBRICON_FOUND)
-        set(WITH_CAMBRICON ON)
-        message(STATUS "Cambricon environment detected.")
-    else()
-        set(WITH_CAMBRICON OFF)
-        message(STATUS "Cambricon environment not detected.")
-    endif()
+    # Cambricon
+    infiniccl_resolve_device_detection(
+        WITH_CAMBRICON "Cambricon" infiniccl_detect_cambricon CAMBRICON_FOUND)
 
-    if(WITH_HYGON)
-        set(HYGON_FOUND TRUE)
-    else()
-        infiniccl_detect_hygon(HYGON_FOUND)
-        if(HYGON_FOUND)
-            set(WITH_HYGON ON)
-        endif()
-    endif()
+    # HYGON
+    infiniccl_resolve_device_detection(
+        WITH_HYGON "Hygon" infiniccl_detect_hygon HYGON_FOUND)
 
-    if(WITH_HYGON)
-        message(STATUS "Hygon environment detected.")
-    else()
-        message(STATUS "Hygon environment not detected.")
-    endif()
+    # T-Head
+    infiniccl_resolve_device_detection(
+        WITH_THEAD "T-Head" infiniccl_detect_thead THEAD_FOUND)
 
-    if(WITH_THEAD)
-        set(THEAD_FOUND TRUE)
-    else()
-        infiniccl_detect_thead(THEAD_FOUND)
-    endif()
-
-    if(THEAD_FOUND)
-        set(WITH_THEAD ON)
-        message(STATUS "Auto-detected T-Head environment.")
-    else()
-        message(STATUS "T-Head environment not detected.")
-    endif()
-
+    # NVIDIA Final Resolution: resolve conflicts.
     if(THEAD_FOUND AND NVIDIA_FOUND AND NOT NVIDIA_REQUESTED)
         set(NVIDIA_FOUND FALSE)
         set(WITH_NVIDIA OFF CACHE BOOL "Enable NVIDIA GPU support" FORCE)
         message(STATUS "T-Head environment detected; ignoring NVIDIA auto-detection.")
-    endif()
-
-    if(NVIDIA_FOUND)
-        set(WITH_NVIDIA ON)
-        message(STATUS "Auto-detected NVIDIA environment.")
-    else()
-        message(STATUS "NVIDIA environment not detected.")
     endif()
 endif()
 
@@ -140,6 +98,7 @@ endif()
 if(AUTO_DETECT_BACKENDS)
     message(STATUS "Auto-detecting available communication backends...")
 
+    # Detect MPI Dependencies
     infiniccl_detect_mpi(MPI_IMPLEMENTATION)
     if(MPI_IMPLEMENTATION STREQUAL "OMPI")
         set(WITH_OMPI ON)
@@ -149,6 +108,7 @@ if(AUTO_DETECT_BACKENDS)
         message(STATUS "Auto-detected MPICH/Hydra environment.")
     endif()
 
+    # Detect NCCL Dependencies
     if(WITH_NVIDIA OR WITH_THEAD OR WITH_ILUVATAR OR WITH_HYGON)
         infiniccl_probe_nccl(NCCL_FOUND)
         if(NCCL_FOUND)
@@ -161,6 +121,7 @@ if(AUTO_DETECT_BACKENDS)
         message(STATUS "No suitable device environment, skipping NCCL detection.")
     endif()
 
+    # Detect MCCL Dependencies
     if(WITH_METAX OR WITH_MOORE)
         infiniccl_probe_mccl(MCCL_FOUND)
         if(MCCL_FOUND)
@@ -173,6 +134,7 @@ if(AUTO_DETECT_BACKENDS)
         message(STATUS "No suitable device environment, skipping MCCL detection.")
     endif()
 
+    # Detect CNCL Dependencies
     if(WITH_CAMBRICON)
         infiniccl_probe_cncl(CNCL_FOUND)
         if(CNCL_FOUND)
