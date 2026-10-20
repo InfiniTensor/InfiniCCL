@@ -35,6 +35,15 @@ class RecvImpl<BackendType::kOmpi, device_type> {
     }
 
     size_t total_bytes = count * type_size;
+
+#if defined(INFINICCL_WITH_RDMA)
+    if (inst->rdma_transport.SupportRdma(recv_buff, total_bytes, peer,
+                                         device_type, stream,
+                                         /*send=*/false)) {
+      return inst->rdma_transport.Recv(recv_buff, total_bytes, peer);
+    }
+#endif
+
     void *host_buf = std::malloc(total_bytes);
     if (!host_buf) {
       LOG("Failed to allocate host buffer for `Recv` staging.");
