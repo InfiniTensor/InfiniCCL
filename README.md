@@ -143,6 +143,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
+| `WITH_RDMA`   | Enable experimental RDMA backend | `OFF` |
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
 | `WITH_NCCL`   | Enable NCCL/RCCL backend | `OFF` |
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
@@ -361,6 +362,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | Backend | Support Level | Required CMake Option | Dependencies |
 |---------|---------------|----------------------|---------------|
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
+| **RDMA** | Experimental | `WITH_RDMA=ON` | Requires Linux and `libibverbs`. Two-rank synchronous Host buffer communication; experimental MetaX DMA-BUF DeviceDirect requires `WITH_METAX=ON`, MACA/mxkw and explicit opt-in. Messages are limited to 1 MiB and negotiated port limits.|
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA, Iluvatar, or T-Head NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, `WITH_HYGON=ON` or `WITH_THEAD=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|

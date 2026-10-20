@@ -43,6 +43,7 @@ target_sources(infiniccl PRIVATE
 
 # CPU (Always On as the base architecture)
 file(GLOB_RECURSE CPU_SRCS "devices/cpu/*.cc")
+list(FILTER CPU_SRCS EXCLUDE REGEX "rdma_memory\\.cc$")
 target_sources(infiniccl PRIVATE ${CPU_SRCS})
 
 # NVIDIA
@@ -129,6 +130,7 @@ if(WITH_METAX)
         "devices/metax/*.maca"
     )
     file(GLOB METAX_SOURCES ${METAX_PATTERNS})
+    list(FILTER METAX_SOURCES EXCLUDE REGEX "rdma_memory\\.cc$")
 
     set_source_files_properties(${METAX_SOURCES} PROPERTIES LANGUAGE CXX)
 
@@ -279,6 +281,64 @@ if(WITH_OMPI)
 
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
+    endif()
+endif()
+
+# RDMA
+if(WITH_RDMA)
+    list(APPEND BACKEND_LIST "rdma")
+    file(GLOB_RECURSE RDMA_SRCS
+        "backends/rdma/*.cc"
+        "backends/rdma/*.cpp"
+    )
+    target_sources(infiniccl PRIVATE ${RDMA_SRCS} devices/cpu/rdma_memory.cc)
+    target_include_directories(infiniccl PRIVATE
+        ${IBVERBS_INCLUDE_DIR}
+    )
+    target_link_libraries(infiniccl PRIVATE
+        ${IBVERBS_LIBRARY}
+        Threads::Threads
+    )
+    find_path(MLX5DV_INCLUDE_DIR NAMES infiniband/mlx5dv.h)
+    find_library(MLX5DV_LIBRARY NAMES mlx5)
+    if(MLX5DV_INCLUDE_DIR AND MLX5DV_LIBRARY)
+        include(CMakePushCheckState)
+        include(CheckCXXSourceCompiles)
+        cmake_push_check_state(RESET)
+        set(CMAKE_REQUIRED_INCLUDES ${MLX5DV_INCLUDE_DIR} ${IBVERBS_INCLUDE_DIR})
+        set(CMAKE_REQUIRED_LIBRARIES ${MLX5DV_LIBRARY} ${IBVERBS_LIBRARY})
+        check_cxx_source_compiles("
+            #include <infiniband/mlx5dv.h>
+            int main() {
+                ibv_qp_init_attr_ex attr{};
+                mlx5dv_qp_init_attr mlx5_attr{};
+                attr.comp_mask = IBV_QP_INIT_ATTR_PD;
+                mlx5_attr.comp_mask = MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+                mlx5_attr.create_flags = MLX5DV_QP_CREATE_DISABLE_SCATTER_TO_CQE;
+                auto *qp = mlx5dv_create_qp(nullptr, &attr, &mlx5_attr);
+                return mlx5dv_is_supported(nullptr) && qp ? 0 : 1;
+            }
+        " INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+        cmake_pop_check_state()
+    endif()
+    if(MLX5DV_INCLUDE_DIR AND MLX5DV_LIBRARY AND
+       INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+        target_include_directories(infiniccl PRIVATE ${MLX5DV_INCLUDE_DIR})
+        target_link_libraries(infiniccl PRIVATE ${MLX5DV_LIBRARY})
+        target_compile_definitions(infiniccl PRIVATE INFINICCL_WITH_MLX5DV)
+        message(STATUS "RDMA: per-QP mlx5 Scatter-to-CQE disabling enabled.")
+    else()
+        message(STATUS "RDMA: mlx5dv unavailable; Mellanox QPs will be rejected for safety.")
+    endif()
+    if(WITH_METAX)
+        find_path(METAX_RDMA_INCLUDE_DIR NAMES mxkw/mxkw.h
+            HINTS "${MACA_PATH}/include" REQUIRED)
+        find_library(METAX_RDMA_LIBRARY NAMES mxkw
+            HINTS "${MACA_PATH}/lib" "${MACA_PATH}/lib64" REQUIRED)
+        target_sources(infiniccl PRIVATE devices/metax/rdma_memory.cc)
+        target_include_directories(infiniccl PRIVATE ${METAX_RDMA_INCLUDE_DIR})
+        target_link_libraries(infiniccl PRIVATE ${METAX_RDMA_LIBRARY})
+        target_compile_definitions(infiniccl PRIVATE INFINICCL_WITH_METAX_RDMA)
     endif()
 endif()
 
