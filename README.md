@@ -161,8 +161,9 @@ These options are available in any CMake project and can be passed during config
 | `CMAKE_BUILD_TYPE` | Build type (`Release`, `Debug`, `RelWithDebInfo`, `MinSizeRel`) | (empty, but `build.sh` sets `Release`) |
 
 > **Notes**:
-> - `AUTO_DETECT_DEVICES` overrides device options like `WITH_NVIDIA` when detection succeeds.
-> - `AUTO_DETECT_BACKENDS` overrides backend options like `WITH_OMPI` when detection succeeds.
+> - `AUTO_DETECT_DEVICES` enables detected devices in addition to devices explicitly enabled with `WITH_*=ON`; explicit selections are preserved.
+> - `AUTO_DETECT_BACKENDS` enables detected backends in addition to backends explicitly enabled with `WITH_*=ON`; explicit selections are preserved.
+> - Disable the corresponding auto-detection option for a strictly manual configuration.
 
 </details>
 
