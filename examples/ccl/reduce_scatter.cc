@@ -88,6 +88,7 @@ void PrintResult(const std::vector<float>& output, int rank, int size,
   std::cout << "Sample:  " << output.front() << " (expected "
             << ExpectedValue(size, static_cast<size_t>(rank)) << ")"
             << std::endl;
+  return;
 }
 
 void PrintMetrics(double elapsed_ms, size_t send_bytes, int size) {

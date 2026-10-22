@@ -86,6 +86,8 @@ function(infiniccl_configure_hygon)
 
     set(CMAKE_CXX_COMPILER "${_INFINICCL_HYGON_HIPCC_COMPILER}"
         CACHE FILEPATH "Hygon DTK hipcc compiler" FORCE)
+    set(CMAKE_CXX_COMPILER "${_INFINICCL_HYGON_HIPCC_COMPILER}"
+        PARENT_SCOPE)
     include_directories(${_INFINICCL_HYGON_HIP_INCLUDE_DIR})
 
     set(HYGON_DTK_ROOT "${_dtk_root}" PARENT_SCOPE)
