@@ -137,6 +137,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_METAX`      | Enable MetaX GPU support  | `OFF` |
 | `WITH_MOORE`      | Enable Moore Threads GPU support  | `OFF` |
 | `WITH_CAMBRICON`  | Enable Cambricon MLU support  | `OFF` |
+| `WITH_ASCEND`     | Enable Ascend NPU support | `OFF` |
 | `WITH_HYGON`      | Enable HYGON DCU support  | `OFF` |
 | `WITH_THEAD`      | Enable T-Head PPU support  | `OFF` |
 | `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
@@ -146,6 +147,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_NCCL`   | Enable NCCL/RCCL backend | `OFF` |
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
 | `WITH_CNCL`   | Enable CNCL backend | `OFF` |
+| `WITH_HCCL`   | Enable HCCL backend | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
 | `AUTO_DETECT_BACKENDS` | Automatically detect available communication backends and enable corresponding support | `OFF` |
@@ -346,6 +348,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **Iluvatar**   | Full | Requires Iluvatar CoreX SDK. |
 | **MetaX**      | Full | Requires MACA SDK and `MACA_PATH` (default `/opt/maca`) to be set. |
 | **Moore Threads** | Full | Requires MUSA SDK and at least one of `MACA_ROOT` (default `/usr/local/musa`), `MACA_PATH`, and `MUSA_HOME` to be set. |
+| **Ascend**     | Full | Requires CANN and matching host driver libraries. |
 | **Cambricon**  | Full | Requires CNToolKit and `NEUWARE_HOME` to be set. |
 | **HYGON**      | Full | Requires HYGON DTK and HYHAL. |
 | **T-Head**     | Full | Requires T-Head SDK. |
@@ -362,6 +365,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA, Iluvatar, or T-Head NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, `WITH_HYGON=ON` or `WITH_THEAD=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
 | **CNCL** | Partial | `WITH_CNCL=ON` | Requires Cambricon CNCL. Available only when `WITH_CAMBRICON=ON`.|
+| **HCCL** | Partial | `WITH_HCCL=ON` | Requires Ascend CANN. Available only when `WITH_ASCEND=ON`.|
 
 </details>
 

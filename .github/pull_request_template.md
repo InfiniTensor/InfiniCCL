@@ -60,6 +60,8 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] Cambricon MLU
 - [ ] HYGON DCU
 - [ ] T-Head PPU
+- [ ] Ascend NPU
+
 
 ### Backend
 
@@ -68,6 +70,7 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] NCCL/RCCL
 - [ ] MCCL
 - [ ] CNCL
+- [ ] HCCL
 
 ## Performance Impact
 
@@ -112,6 +115,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] Cambricon MLU
 - [ ] HYGON DCU
 - [ ] T-Head PPU
+- [ ] Ascend NPU
 
 ### Test Involved Backend
 
@@ -120,6 +124,7 @@ See `CONTRIBUTING.md` § Pull Requests for the official testing requirements and
 - [ ] NCCL/RCCL
 - [ ] MCCL
 - [ ] CNCL
+- [ ] HCCL
 
 ---
 
