@@ -62,7 +62,6 @@ Please check all the platforms and/or backends this PR affects (i.e., code is to
 - [ ] T-Head PPU
 - [ ] Ascend NPU
 
-
 ### Backend
 
 - [ ] OpenMPI
