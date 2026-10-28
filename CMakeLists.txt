@@ -42,6 +42,7 @@ include(cmake/devices/Iluvatar.cmake)
 include(cmake/devices/MetaX.cmake)
 include(cmake/devices/Moore.cmake)
 include(cmake/devices/Cambricon.cmake)
+include(cmake/devices/Ascend.cmake)
 include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
 
@@ -50,6 +51,7 @@ include(cmake/backends/MPI.cmake)
 include(cmake/backends/NCCL.cmake)
 include(cmake/backends/MCCL.cmake)
 include(cmake/backends/CNCL.cmake)
+include(cmake/backends/HCCL.cmake)
 
 # =========================================================
 # --- AUTO-DETECTION: DEVICES ---
@@ -79,33 +81,8 @@ if(AUTO_DETECT_DEVICES)
         WITH_CAMBRICON "Cambricon" infiniccl_detect_cambricon CAMBRICON_FOUND)
 
     # Ascend
-    set(ASCEND_FOUND FALSE)
-
-    if(DEFINED ENV{ASCEND_HOME_PATH} OR DEFINED ENV{ASCEND_TOOLKIT_HOME} OR DEFINED ENV{ASCEND_HOME})
-        set(ASCEND_FOUND TRUE)
-    elseif(EXISTS "/dev/davinci0" OR EXISTS "/dev/davinci_manager")
-        set(ASCEND_FOUND TRUE)
-    else()
-        find_program(ASCEND_SMI_PATH npu-smi)
-        if(ASCEND_SMI_PATH)
-            execute_process(
-                COMMAND ${ASCEND_SMI_PATH} info
-                RESULT_VARIABLE ASCEND_SMI_RESULT
-                OUTPUT_QUIET
-                ERROR_QUIET
-            )
-            if(ASCEND_SMI_RESULT EQUAL 0)
-                set(ASCEND_FOUND TRUE)
-            endif()
-        endif()
-    endif()
-
-    if(ASCEND_FOUND)
-        set(WITH_ASCEND ON)
-        message(STATUS "Ascend environment detected.")
-    else()
-        message(STATUS "Ascend environment not detected.")
-    endif()
+    infiniccl_resolve_device_detection(
+        WITH_ASCEND "Ascend" infiniccl_detect_ascend ASCEND_FOUND)
 
     # HYGON
     infiniccl_resolve_device_detection(
@@ -175,19 +152,11 @@ if(AUTO_DETECT_BACKENDS)
             message(STATUS "CNCL library/headers not found in Cambricon paths.")
         endif()
     endif()
-    # Detect HCCL dependencies.
-    if(WITH_ASCEND)
-        set(_HCCL_HINTS
-            "${ASCEND_HOME}"
-            "$ENV{ASCEND_HOME_PATH}"
-            "$ENV{ASCEND_TOOLKIT_HOME}"
-            "$ENV{ASCEND_HOME}"
-            /usr/local/Ascend/ascend-toolkit/latest
-        )
-        find_path(AUTO_HCCL_INC NAMES hccl/hccl.h HINTS ${_HCCL_HINTS} PATH_SUFFIXES include QUIET)
-        find_library(AUTO_HCCL_LIB NAMES hccl HINTS ${_HCCL_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 QUIET)
 
-        if(AUTO_HCCL_INC AND AUTO_HCCL_LIB)
+    # Detect HCCL Dependencies
+    if(WITH_ASCEND)
+        infiniccl_probe_hccl(HCCL_FOUND)
+        if(HCCL_FOUND)
             set(WITH_HCCL ON)
             message(STATUS "Auto-detected HCCL backend.")
         else()
@@ -238,23 +207,7 @@ if(WITH_CAMBRICON)
 endif()
 
 if(WITH_ASCEND)
-    set(_ASCEND_HINTS)
-    if(ASCEND_HOME)
-        list(APPEND _ASCEND_HINTS "${ASCEND_HOME}")
-    endif()
-    foreach(_ascend_env ASCEND_HOME_PATH ASCEND_TOOLKIT_HOME ASCEND_HOME)
-        if(DEFINED ENV{${_ascend_env}} AND NOT "$ENV{${_ascend_env}}" STREQUAL "")
-            list(APPEND _ASCEND_HINTS "$ENV{${_ascend_env}}")
-        endif()
-    endforeach()
-    list(APPEND _ASCEND_HINTS
-        /usr/local/Ascend/ascend-toolkit/latest
-    )
-
-    find_path(ASCEND_INC NAMES acl/acl.h HINTS ${_ASCEND_HINTS} PATH_SUFFIXES include REQUIRED)
-    find_library(ASCENDCL_LIB NAMES ascendcl HINTS ${_ASCEND_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 REQUIRED)
-
-    include_directories(${ASCEND_INC})
+    infiniccl_configure_ascend(ASCEND_INC ASCENDCL_LIB)
 endif()
 
 if(WITH_HYGON)
@@ -281,14 +234,7 @@ if(WITH_CNCL)
 endif()
 
 if(WITH_HCCL)
-    if(NOT WITH_ASCEND)
-        message(FATAL_ERROR "HCCL backend requires Ascend device support. Please enable `WITH_ASCEND`.")
-    endif()
-
-    find_library(HCCL_LIB NAMES hccl HINTS ${_ASCEND_HINTS} PATH_SUFFIXES lib64 aarch64-linux/lib64 REQUIRED)
-    find_path(HCCL_INC NAMES hccl/hccl.h HINTS ${_ASCEND_HINTS} PATH_SUFFIXES include REQUIRED)
-
-    include_directories(${HCCL_INC})
+    infiniccl_configure_hccl(HCCL_INC HCCL_LIB)
 endif()
 
 # Python is required for code generation.

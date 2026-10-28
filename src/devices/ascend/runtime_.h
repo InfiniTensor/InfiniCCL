@@ -56,16 +56,15 @@ struct Runtime<Device::Type::kAscend>
 
   static constexpr auto GetDevice = aclrtGetDevice;
 
-  static constexpr auto SetDevice = aclrtSetDevice;
-
-  static aclError EnsureDeviceContext() {
-    int32_t device_id = 0;
-    const aclError status = aclrtGetDevice(&device_id);
-    if (status == ACL_SUCCESS) {
-      return ACL_SUCCESS;
-    }
-    return aclrtSetDevice(0);
+  static aclError Initialize() {
+    static const aclError status = aclInit(nullptr);
+    return status == ACL_ERROR_REPEAT_INITIALIZE ? ACL_SUCCESS : status;
   }
+
+  static constexpr auto SetDevice = [](int device_id) {
+    const aclError status = Initialize();
+    return status == ACL_SUCCESS ? aclrtSetDevice(device_id) : status;
+  };
 
   static constexpr auto DeviceSynchronize = aclrtSynchronizeDevice;
 

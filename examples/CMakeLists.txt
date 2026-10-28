@@ -54,6 +54,11 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE ${CAMBRICON_RUNTIME_LIB})
     endif()
     
+    if(WITH_ASCEND)
+        target_include_directories(${target_name} PRIVATE ${ASCEND_INC} ${ASCEND_OPDEV_INC})
+        target_link_libraries(${target_name} PRIVATE ${ASCENDCL_LIB} ${ASCEND_NNOPBASE_LIB})
+    endif()
+
     if(WITH_HYGON)
         target_include_directories(${target_name} PRIVATE ${HYGON_HIP_INCLUDE_DIR})
         target_compile_definitions(${target_name} PRIVATE ${HYGON_HIP_DEFINITIONS})
@@ -75,6 +80,10 @@ foreach(source_file ${EXAMPLE_SOURCES})
 
     if(WITH_MCCL)
         target_link_libraries(${target_name} PRIVATE "${MCCL_LIB}")
+    endif()
+
+    if(WITH_HCCL)
+        target_include_directories(${target_name} PRIVATE ${HCCL_INC})
     endif()
 
     # Explicitly allow examples to "peek" into the internal `src` and binary dirs.

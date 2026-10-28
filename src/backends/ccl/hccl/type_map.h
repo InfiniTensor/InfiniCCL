@@ -5,70 +5,47 @@
 
 #include "backends/ccl/common/api.h"
 #include "comm_impl.h"
+#include "constexpr_map.h"
 #include "data_type_impl.h"
 
 namespace infini::ccl {
 
+static constexpr ConstexprMap<DataType, HcclDataType, 12> kHcclDataTypeMap{{{
+    {DataType::kInt8, HCCL_DATA_TYPE_INT8},
+    {DataType::kInt16, HCCL_DATA_TYPE_INT16},
+    {DataType::kInt32, HCCL_DATA_TYPE_INT32},
+    {DataType::kInt64, HCCL_DATA_TYPE_INT64},
+    {DataType::kUInt8, HCCL_DATA_TYPE_UINT8},
+    {DataType::kUInt16, HCCL_DATA_TYPE_UINT16},
+    {DataType::kUInt32, HCCL_DATA_TYPE_UINT32},
+    {DataType::kUInt64, HCCL_DATA_TYPE_UINT64},
+    {DataType::kFloat16, HCCL_DATA_TYPE_FP16},
+    {DataType::kBFloat16, HCCL_DATA_TYPE_BFP16},
+    {DataType::kFloat32, HCCL_DATA_TYPE_FP32},
+    {DataType::kFloat64, HCCL_DATA_TYPE_FP64},
+}}};
+
+static constexpr ConstexprMap<ReductionOpType, HcclReduceOp, 4> kHcclOpMap{{{
+    {ReductionOpType::kSum, HCCL_REDUCE_SUM},
+    {ReductionOpType::kProd, HCCL_REDUCE_PROD},
+    {ReductionOpType::kMax, HCCL_REDUCE_MAX},
+    {ReductionOpType::kMin, HCCL_REDUCE_MIN},
+}}};
+
 inline bool DataTypeToHcclType(DataType dtype, HcclDataType* hccl_dtype) {
-  switch (dtype) {
-    case DataType::kInt8:
-      *hccl_dtype = HCCL_DATA_TYPE_INT8;
-      return true;
-    case DataType::kInt16:
-      *hccl_dtype = HCCL_DATA_TYPE_INT16;
-      return true;
-    case DataType::kInt32:
-      *hccl_dtype = HCCL_DATA_TYPE_INT32;
-      return true;
-    case DataType::kInt64:
-      *hccl_dtype = HCCL_DATA_TYPE_INT64;
-      return true;
-    case DataType::kUInt8:
-      *hccl_dtype = HCCL_DATA_TYPE_UINT8;
-      return true;
-    case DataType::kUInt16:
-      *hccl_dtype = HCCL_DATA_TYPE_UINT16;
-      return true;
-    case DataType::kUInt32:
-      *hccl_dtype = HCCL_DATA_TYPE_UINT32;
-      return true;
-    case DataType::kUInt64:
-      *hccl_dtype = HCCL_DATA_TYPE_UINT64;
-      return true;
-    case DataType::kFloat16:
-      *hccl_dtype = HCCL_DATA_TYPE_FP16;
-      return true;
-    case DataType::kBFloat16:
-      *hccl_dtype = HCCL_DATA_TYPE_BFP16;
-      return true;
-    case DataType::kFloat32:
-      *hccl_dtype = HCCL_DATA_TYPE_FP32;
-      return true;
-    case DataType::kFloat64:
-      *hccl_dtype = HCCL_DATA_TYPE_FP64;
-      return true;
-    default:
-      return false;
+  if (dtype < DataType::kInt8 || dtype >= DataType::kNumTypes) {
+    return false;
   }
+  *hccl_dtype = kHcclDataTypeMap.at(dtype);
+  return true;
 }
 
 inline bool RedOpToHcclOp(ReductionOpType red_op, HcclReduceOp* hccl_op) {
-  switch (red_op) {
-    case ReductionOpType::kSum:
-      *hccl_op = HCCL_REDUCE_SUM;
-      return true;
-    case ReductionOpType::kProd:
-      *hccl_op = HCCL_REDUCE_PROD;
-      return true;
-    case ReductionOpType::kMax:
-      *hccl_op = HCCL_REDUCE_MAX;
-      return true;
-    case ReductionOpType::kMin:
-      *hccl_op = HCCL_REDUCE_MIN;
-      return true;
-    default:
-      return false;
+  if (red_op < ReductionOpType::kSum || red_op > ReductionOpType::kMin) {
+    return false;
   }
+  *hccl_op = kHcclOpMap.at(red_op);
+  return true;
 }
 
 template <>
