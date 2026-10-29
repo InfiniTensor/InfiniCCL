@@ -49,7 +49,7 @@ struct HcclApi {
 
   static Stream GetDefaultStream() {
     thread_local DefaultStream default_stream;
-    
+
     int device_id = 0;
     INFINI_CHECK_ACL(aclrtGetDevice(&device_id));
 
@@ -67,7 +67,7 @@ struct HcclApi {
     if (use_default_stream) {
       stream = GetDefaultStream();
     }
-    
+
     Result result = operation(stream);
     // Preserve synchronous null-stream behavior; explicit streams stay async.
     if (use_default_stream && result == HCCL_SUCCESS) {
