@@ -238,6 +238,17 @@ if(WITH_CAMBRICON)
     )
 endif()
 
+# Ascend
+if(WITH_ASCEND)
+    list(APPEND DEVICE_LIST "ascend")
+
+    file(GLOB_RECURSE ASCEND_SRCS "devices/ascend/*.cc" "devices/ascend/*.cpp")
+
+    target_sources(infiniccl PRIVATE ${ASCEND_SRCS})
+    target_include_directories(infiniccl PRIVATE ${ASCEND_INC} ${ASCEND_OPDEV_INC})
+    target_link_libraries(infiniccl PRIVATE ${ASCENDCL_LIB} ${ASCEND_NNOPBASE_LIB})
+endif()
+
 # Hygon
 if(WITH_HYGON)
     list(APPEND DEVICE_LIST "hygon")
@@ -314,6 +325,16 @@ if(WITH_CNCL)
     target_sources(infiniccl PRIVATE ${CNCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${CNCL_INC})
     target_link_libraries(infiniccl PRIVATE ${CNCL_LIB})
+endif()
+
+# HCCL
+if(WITH_HCCL)
+    list(APPEND BACKEND_LIST "hccl")
+    file(GLOB_RECURSE HCCL_SRCS "backends/ccl/hccl/*.cc" "backends/ccl/hccl/*.cpp")
+    
+    target_sources(infiniccl PRIVATE ${HCCL_SRCS})
+    target_include_directories(infiniccl PRIVATE ${HCCL_INC})
+    target_link_libraries(infiniccl PRIVATE ${HCCL_LIB})
 endif()
 
 # =========================================================

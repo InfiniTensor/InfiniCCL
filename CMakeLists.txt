@@ -12,6 +12,7 @@ option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
+option(WITH_ASCEND      "Enable Ascend NPU support"     OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
 option(WITH_THEAD       "Enable T-Head PPU support"     OFF)
 
@@ -25,6 +26,7 @@ option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
 option(WITH_CNCL "Enable CNCL backend"    OFF)
+option(WITH_HCCL "Enable HCCL backend"    OFF)
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
@@ -40,6 +42,7 @@ include(cmake/devices/Iluvatar.cmake)
 include(cmake/devices/MetaX.cmake)
 include(cmake/devices/Moore.cmake)
 include(cmake/devices/Cambricon.cmake)
+include(cmake/devices/Ascend.cmake)
 include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
 
@@ -48,6 +51,7 @@ include(cmake/backends/MPI.cmake)
 include(cmake/backends/NCCL.cmake)
 include(cmake/backends/MCCL.cmake)
 include(cmake/backends/CNCL.cmake)
+include(cmake/backends/HCCL.cmake)
 
 # =========================================================
 # --- AUTO-DETECTION: DEVICES ---
@@ -75,6 +79,10 @@ if(AUTO_DETECT_DEVICES)
     # Cambricon
     infiniccl_resolve_device_detection(
         WITH_CAMBRICON "Cambricon" infiniccl_detect_cambricon CAMBRICON_FOUND)
+
+    # Ascend
+    infiniccl_resolve_device_detection(
+        WITH_ASCEND "Ascend" infiniccl_detect_ascend ASCEND_FOUND)
 
     # HYGON
     infiniccl_resolve_device_detection(
@@ -144,10 +152,21 @@ if(AUTO_DETECT_BACKENDS)
             message(STATUS "CNCL library/headers not found in Cambricon paths.")
         endif()
     endif()
+
+    # Detect HCCL Dependencies
+    if(WITH_ASCEND)
+        infiniccl_probe_hccl(HCCL_FOUND)
+        if(HCCL_FOUND)
+            set(WITH_HCCL ON)
+            message(STATUS "Auto-detected HCCL backend.")
+        else()
+            message(STATUS "HCCL library/headers not found in Ascend paths.")
+        endif()
+    endif()
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL AND NOT WITH_HCCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -187,6 +206,10 @@ if(WITH_CAMBRICON)
     infiniccl_configure_cambricon()
 endif()
 
+if(WITH_ASCEND)
+    infiniccl_configure_ascend(ASCEND_INC ASCENDCL_LIB)
+endif()
+
 if(WITH_HYGON)
     infiniccl_configure_hygon()
 endif()
@@ -208,6 +231,10 @@ endif()
 if(WITH_CNCL)
     infiniccl_configure_cncl(CNCL_INC CNCL_LIB)
     include_directories(${CNCL_INC})
+endif()
+
+if(WITH_HCCL)
+    infiniccl_configure_hccl(HCCL_INC HCCL_LIB)
 endif()
 
 # Python is required for code generation.
