@@ -8,7 +8,7 @@ on:
 
 jobs:
   clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -45,4 +45,3 @@ jobs:
           fi
 
           clang-format-16 --dry-run --Werror "${FILES[@]}"
-          
