@@ -365,7 +365,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA, Iluvatar, or T-Head NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, `WITH_HYGON=ON` or `WITH_THEAD=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
 | **CNCL** | Partial | `WITH_CNCL=ON` | Requires Cambricon CNCL. Available only when `WITH_CAMBRICON=ON`.|
-| **HCCL** | Partial | `WITH_HCCL=ON` | Requires Ascend CANN. Available only when `WITH_ASCEND=ON`.|
+| **HCCL** | Partial | `WITH_HCCL=ON` | Requires Ascend CANN, the ACLNN division header and `libopapi`. Available only when `WITH_ASCEND=ON`.|
 
 </details>
 
