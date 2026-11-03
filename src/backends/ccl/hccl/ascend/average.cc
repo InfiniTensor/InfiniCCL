@@ -66,6 +66,10 @@ class HcclAveragePlan {
  public:
   explicit HcclAveragePlan(const AverageKey& key) : key_(key) {}
 
+  HcclAveragePlan(const HcclAveragePlan&) = delete;
+
+  HcclAveragePlan& operator=(const HcclAveragePlan&) = delete;
+
   ~HcclAveragePlan() {
     aclrtContext previous = nullptr;
     INFINI_CHECK_ACL(aclrtGetCurrentContext(&previous));
@@ -170,6 +174,12 @@ namespace {
 
 class AverageCache {
  public:
+  AverageCache() = default;
+
+  AverageCache(const AverageCache&) = delete;
+
+  AverageCache& operator=(const AverageCache&) = delete;
+
   HcclAveragePlan* GetOrCreate(const AverageKey& key) {
     if (auto* cached = Find(key)) {
       return cached;

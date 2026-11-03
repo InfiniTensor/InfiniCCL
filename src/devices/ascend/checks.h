@@ -26,7 +26,7 @@ inline ReturnStatus CheckAscendImpl(int64_t result, const char* api,
                                     int line, const char* function) {
   if (result != 0) {
     std::cerr << api << ": `" << operation << "` failed with code " << result
-              << " at " << file << ":" << line << " in `" << function << "`.";
+              << " at " << file << ":" << line << " in `" << function << "`";
     if (const char* detail = aclGetRecentErrMsg()) {
       std::cerr << " " << detail;
     }
