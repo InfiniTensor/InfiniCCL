@@ -333,8 +333,8 @@ if(WITH_HCCL)
     file(GLOB_RECURSE HCCL_SRCS "backends/ccl/hccl/*.cc" "backends/ccl/hccl/*.cpp")
     
     target_sources(infiniccl PRIVATE ${HCCL_SRCS})
-    target_include_directories(infiniccl PRIVATE ${HCCL_INC})
-    target_link_libraries(infiniccl PRIVATE ${HCCL_LIB})
+    target_include_directories(infiniccl PRIVATE ${HCCL_INC} ${HCCL_ACLNN_INC})
+    target_link_libraries(infiniccl PRIVATE ${HCCL_LIB} ${HCCL_OPAPI_LIB})
 endif()
 
 # =========================================================
@@ -353,7 +353,7 @@ foreach(HEADER_PATH ${PUBLIC_HEADERS})
     endif()
 endforeach()
 
-set(INFINICCL_H_CONTENT "${INFINICCL_H_CONTENT}\n#endif // INFINI_CCL_H_\n")
+set(INFINICCL_H_CONTENT "${INFINICCL_H_CONTENT}\n#endif  // INFINI_CCL_H_\n")
 
 file(WRITE "${PUBLIC_HEADERS_DIR}/infiniccl.h" "${INFINICCL_H_CONTENT}")
 
