@@ -2,10 +2,14 @@
 #define INFINI_CCL_BACKENDS_CCL_HCCL_API_H_
 
 #include <hccl/hccl.h>
+#include <hccl/hccl_comm.h>
 
 #include <cstddef>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/hccl/ascend/average.h"
+#include "backends/ccl/hccl/checks.h"
+#include "backends/ccl/hccl/reduction_op.h"
 #include "devices/ascend/checks.h"
 #include "logging.h"
 #include "return_status_impl.h"
@@ -22,7 +26,7 @@ struct HcclApi {
   using UniqueId = HcclRootInfo;
   using Result = HcclResult;
   using DataType = HcclDataType;
-  using RedOp = HcclReduceOp;
+  using RedOp = HcclReductionOp;
   using Stream = typename Runtime<device>::Stream;
 
  private:
@@ -76,8 +80,43 @@ struct HcclApi {
     return result;
   }
 
+  template <typename Operation>
+  static Result WithReduction(void* recv_buff, size_t count, DataType dtype,
+                              RedOp op, Comm comm, Stream stream,
+                              Operation operation) {
+    uint32_t nranks = 1;
+    if (op.average) {
+      if (!HcclAverageSupported(dtype)) {
+        return HCCL_E_NOT_SUPPORT;
+      }
+      INFINI_CHECK_HCCL(HcclGetRankSize(comm, &nranks));
+      if (nranks == 0) {
+        return HCCL_E_PARA;
+      }
+    }
+
+    return WithStream(stream, [&](Stream resolved) {
+      HcclAveragePlan* average = nullptr;
+      if (op.average && count != 0 && nranks > 1) {
+        // Prepare before SUM so preparation errors cannot modify the result.
+        Result result = PrepareHcclAverage(recv_buff, count, dtype, nranks,
+                                           resolved, &average);
+        if (result != HCCL_SUCCESS) {
+          return result;
+        }
+      }
+      Result result = operation(op.native_op, resolved);
+      return result == HCCL_SUCCESS && average != nullptr
+                 ? RunHcclAverage(average)
+                 : result;
+    });
+  }
+
  public:
   static ReturnStatus Check(Result result) {
+    if (result == HCCL_E_NOT_SUPPORT) {
+      return ReturnStatus::kNotSupported;
+    }
     if (result != HCCL_SUCCESS) {
       LOG(HcclGetErrorString(result));
       return ReturnStatus::kSystemError;
@@ -104,10 +143,12 @@ struct HcclApi {
   static Result AllReduce(const void* send_buff, void* recv_buff, size_t count,
                           DataType data_type, RedOp op, Comm comm,
                           Stream stream) {
-    return WithStream(stream, [&](Stream resolved) {
-      return HcclAllReduce(const_cast<void*>(send_buff), recv_buff, count,
-                           data_type, op, comm, resolved);
-    });
+    return WithReduction(recv_buff, count, data_type, op, comm, stream,
+                         [&](HcclReduceOp native_op, Stream resolved) {
+                           return HcclAllReduce(const_cast<void*>(send_buff),
+                                                recv_buff, count, data_type,
+                                                native_op, comm, resolved);
+                         });
   }
 
   static Result AllGather(const void* send_buff, void* recv_buff,
@@ -122,10 +163,13 @@ struct HcclApi {
   static Result ReduceScatter(const void* send_buff, void* recv_buff,
                               size_t recv_count, DataType data_type, RedOp op,
                               Comm comm, Stream stream) {
-    return WithStream(stream, [&](Stream resolved) {
-      return HcclReduceScatter(const_cast<void*>(send_buff), recv_buff,
-                               recv_count, data_type, op, comm, resolved);
-    });
+    return WithReduction(recv_buff, recv_count, data_type, op, comm, stream,
+                         [&](HcclReduceOp native_op, Stream resolved) {
+                           return HcclReduceScatter(
+                               const_cast<void*>(send_buff), recv_buff,
+                               recv_count, data_type, native_op, comm,
+                               resolved);
+                         });
   }
 
   static Result Send(const void* send_buff, size_t count, DataType data_type,

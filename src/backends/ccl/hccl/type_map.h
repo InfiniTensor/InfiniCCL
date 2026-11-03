@@ -4,6 +4,7 @@
 #include <hccl/hccl.h>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/hccl/reduction_op.h"
 #include "comm_impl.h"
 #include "constexpr_map.h"
 #include "data_type_impl.h"
@@ -25,11 +26,12 @@ static constexpr ConstexprMap<DataType, HcclDataType, 12> kHcclDataTypeMap{{{
     {DataType::kFloat64, HCCL_DATA_TYPE_FP64},
 }}};
 
-static constexpr ConstexprMap<ReductionOpType, HcclReduceOp, 4> kHcclOpMap{{{
-    {ReductionOpType::kSum, HCCL_REDUCE_SUM},
-    {ReductionOpType::kProd, HCCL_REDUCE_PROD},
-    {ReductionOpType::kMax, HCCL_REDUCE_MAX},
-    {ReductionOpType::kMin, HCCL_REDUCE_MIN},
+static constexpr ConstexprMap<ReductionOpType, HcclReductionOp, 5> kHcclOpMap{{{
+    {ReductionOpType::kSum, {HCCL_REDUCE_SUM, false}},
+    {ReductionOpType::kProd, {HCCL_REDUCE_PROD, false}},
+    {ReductionOpType::kMax, {HCCL_REDUCE_MAX, false}},
+    {ReductionOpType::kMin, {HCCL_REDUCE_MIN, false}},
+    {ReductionOpType::kAvg, {HCCL_REDUCE_SUM, true}},
 }}};
 
 inline bool DataTypeToHcclType(DataType dtype, HcclDataType* hccl_dtype) {
@@ -40,8 +42,8 @@ inline bool DataTypeToHcclType(DataType dtype, HcclDataType* hccl_dtype) {
   return true;
 }
 
-inline bool RedOpToHcclOp(ReductionOpType red_op, HcclReduceOp* hccl_op) {
-  if (red_op < ReductionOpType::kSum || red_op > ReductionOpType::kMin) {
+inline bool RedOpToHcclOp(ReductionOpType red_op, HcclReductionOp* hccl_op) {
+  if (red_op < ReductionOpType::kSum || red_op >= ReductionOpType::kNumRedOps) {
     return false;
   }
   *hccl_op = kHcclOpMap.at(red_op);
