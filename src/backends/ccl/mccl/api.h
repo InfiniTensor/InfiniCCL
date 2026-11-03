@@ -63,9 +63,6 @@ struct McclApi {
     return mcclReduceScatter(send_buff, recv_buff, recv_count, data_type, op,
                              comm, stream);
   }
-  static Result GroupStart() { return mcclGroupStart(); }
-
-  static Result GroupEnd() { return mcclGroupEnd(); }
 
   static Result Send(const void *send_buff, size_t count, DataType data_type,
                      int peer, Comm comm, Stream stream) {

@@ -1,15 +1,15 @@
 /**
  * InfiniCCL Example: AllToAll (OpenMPI + CCL Hybrid)
  *
- * This example uses AllToAll through an OpenMPI communicator to distribute a
+ * This example uses Broadcast through an OpenMPI communicator to distribute a
  * native CCL unique ID, then performs AllToAll on GPU memory.
  */
 
 #include <unistd.h>
 
-#include <cstdint>
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -31,20 +31,23 @@ float ElementValue(int source, int destination, size_t index,
 
 bool ValidateResult(const std::vector<float> &result, size_t count_per_peer,
                     int size, int rank) {
+  std::vector<double> errors(result.size());
   for (int source = 0; source < size; ++source) {
     const size_t offset = static_cast<size_t>(source) * count_per_peer;
     for (size_t index = 0; index < count_per_peer; ++index) {
       const float expected =
           ElementValue(source, rank, index, count_per_peer, size);
-      if (result[offset + index] != expected) {
-        std::cerr << "[Rank " << rank << "] AllToAll mismatch at source "
-                  << source << ", index " << index << ": expected " << expected
-                  << ", got " << result[offset + index] << std::endl;
-        return false;
-      }
+      const float actual = result[offset + index];
+      // Keep exact comparison and reject non-finite values before using the
+      // shared validator's tolerance-based comparison.
+      errors[offset + index] =
+          std::isfinite(actual) && actual == expected ? 0.0 : 1.0;
     }
   }
-  return true;
+  // The validator prints diagnostics only for rank zero. Each rank reports its
+  // own validation here, with the real rank included in the operation label.
+  return Validator::ValidateResult(errors.data(), errors.size(), 0.0, 0, true,
+                                   "AllToAll rank " + std::to_string(rank));
 }
 
 void PrintMetrics(double elapsed_ms, size_t total_bytes, int size) {
@@ -64,7 +67,7 @@ void PrintMetrics(double elapsed_ms, size_t total_bytes, int size) {
 }
 
 bool RunAllToAllExample(int argc, char **argv, int warmup_iter,
-                        int profile_iter, size_t count_per_peer) {
+                        int profile_iter) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
@@ -92,34 +95,12 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iter,
   infinicclComm_t comm = nullptr;
   CHECK_INFINI(infinicclCommInitAll(&comm, size, nullptr));
 
-  // Exercise the MPI fallback before initializing the native communicator.
   infinicclUniqueId id{};
   if (rank == 0) {
     CHECK_INFINI(infinicclGetUniqueId(&id));
   }
-  const size_t id_bytes = sizeof(id);
-  const size_t all_id_bytes = id_bytes * static_cast<size_t>(size);
-  std::vector<uint8_t> h_id_send(all_id_bytes, 0);
-  if (rank == 0) {
-    for (int destination = 0; destination < size; ++destination) {
-      std::memcpy(
-          h_id_send.data() + static_cast<size_t>(destination) * id_bytes, &id,
-          id_bytes);
-    }
-  }
-
-  uint8_t *d_id_send = nullptr;
-  uint8_t *d_id_recv = nullptr;
-  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_id_send), all_id_bytes));
-  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_id_recv), all_id_bytes));
-  CHECK_RT(Rt, Rt::Memcpy(d_id_send, h_id_send.data(), all_id_bytes,
-                          Rt::MemcpyHostToDevice));
-  CHECK_INFINI(infinicclAllToAll(d_id_send, d_id_recv, id_bytes, infinicclUInt8,
-                                 comm, nullptr));
-  CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  CHECK_RT(Rt, Rt::Memcpy(&id, d_id_recv, id_bytes, Rt::MemcpyDeviceToHost));
-  CHECK_RT(Rt, Rt::Free(d_id_send));
-  CHECK_RT(Rt, Rt::Free(d_id_recv));
+  CHECK_INFINI(infinicclBroadcast(&id, &id, sizeof(id), infinicclChar, 0, comm,
+                                  nullptr));
 
   std::cout << "[Rank " << rank << "] Host: " << hostname
             << " | GPU: " << Device::StringFromType(kDevType) << " | Device "
@@ -128,7 +109,10 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iter,
   CHECK_INFINI(infinicclCommInitRank(&comm, size, id, rank));
 
   const size_t world_size = static_cast<size_t>(size);
-  if (count_per_peer > std::numeric_limits<size_t>::max() / world_size ||
+  const size_t max_exact_count = (size_t{1} << 24) / world_size / world_size;
+  const size_t count_per_peer = std::min(size_t{1} << 18, max_exact_count);
+  if (count_per_peer == 0 ||
+      count_per_peer > std::numeric_limits<size_t>::max() / world_size ||
       count_per_peer * world_size >
           std::numeric_limits<size_t>::max() / sizeof(float) ||
       count_per_peer > (size_t{1} << 24) / world_size / world_size) {
@@ -195,8 +179,6 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iter,
   if (rank == 0) {
     PrintMetrics(elapsed_ms, total_bytes, size);
   }
-  std::cout << "[Rank " << rank << "] AllToAll validation "
-            << (correct ? "passed." : "failed.") << std::endl;
 
   CHECK_RT(Rt, Rt::Free(d_send));
   CHECK_RT(Rt, Rt::Free(d_recv));
@@ -212,10 +194,7 @@ bool RunAllToAllExample(int argc, char **argv, int warmup_iter,
 int main(int argc, char **argv) {
   int warmup_iters = 2;
   int profile_iters = 20;
-  size_t count_per_peer = 1 << 18;
-
-  return RunAllToAllExample(argc, argv, warmup_iters, profile_iters,
-                            count_per_peer)
+  return RunAllToAllExample(argc, argv, warmup_iters, profile_iters)
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

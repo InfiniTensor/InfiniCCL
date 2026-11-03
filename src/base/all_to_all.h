@@ -19,14 +19,10 @@ class AllToAll : public Operation<AllToAll> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype,
                               void *comm_handle, void *stream) {
-    if (HasInvalidRequiredArgs(datatype, comm_handle)) {
-      return ReturnStatus::kInvalidArgument;
-    }
     if (count == 0) {
       return ReturnStatus::kSuccess;
     }
-    if (!send_buff || !recv_buff) {
-      LOG("Invalid buffer pointer for `AllToAll`.");
+    if (HasInvalidArgs(send_buff, recv_buff, datatype, comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
     auto *comm = static_cast<Communicator *>(comm_handle);
@@ -35,10 +31,15 @@ class AllToAll : public Operation<AllToAll> {
   }
 
  private:
-  static bool HasInvalidRequiredArgs(DataType datatype, void *comm_handle) {
+  static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
+                             DataType datatype, void *comm_handle) {
     if (!comm_handle) {
       // TODO(lzm): change to use `glog`.
       LOG("Invalid communicator handle for `AllToAll`.");
+      return true;
+    }
+    if (!send_buff || !recv_buff) {
+      LOG("Invalid buffer pointer for `AllToAll`.");
       return true;
     }
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
