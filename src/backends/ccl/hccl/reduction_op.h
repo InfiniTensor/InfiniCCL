@@ -5,9 +5,9 @@
 
 namespace infini::ccl {
 
-// Preserve AVG through the common CCL adapter; HCCL itself only sees SUM.
 struct HcclReductionOp {
   HcclReduceOp native_op;
+
   bool average;
 };
 
