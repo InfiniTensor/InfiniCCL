@@ -19,6 +19,10 @@ struct IsSupportedCombination<BackendType::kRdma, Device::Type::kCpu>
     : std::true_type {};
 
 template <>
+struct IsSupportedCombination<BackendType::kRdma, Device::Type::kNvidia>
+    : std::true_type {};
+
+template <>
 struct IsSupportedCombination<BackendType::kRdma, Device::Type::kMetax>
     : std::true_type {};
 

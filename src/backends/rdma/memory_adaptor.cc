@@ -10,6 +10,10 @@
 
 #include "devices/cpu/rdma_memory.h"
 
+#if defined(INFINICCL_WITH_NVIDIA_RDMA)
+#include "devices/nvidia/rdma_memory.h"
+#endif
+
 #if defined(INFINICCL_WITH_METAX_RDMA)
 #include "devices/metax/rdma_memory.h"
 #endif

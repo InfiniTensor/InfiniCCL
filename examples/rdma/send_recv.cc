@@ -24,8 +24,14 @@
 
 #include "infiniccl.h"
 
-#if defined(INFINICCL_WITH_METAX_RDMA)
+#if defined(INFINICCL_WITH_NVIDIA_RDMA)
+#include "devices/nvidia/runtime_.h"
+#elif defined(INFINICCL_WITH_METAX_RDMA)
 #include "devices/metax/runtime_.h"
+#endif
+
+#if defined(INFINICCL_WITH_NVIDIA_RDMA) || defined(INFINICCL_WITH_METAX_RDMA)
+#define INFINICCL_RDMA_GPU
 #endif
 
 namespace {
@@ -189,24 +195,55 @@ bool CheckInfini(infinicclResult_t result, const char *operation) {
   return false;
 }
 
-#if defined(INFINICCL_WITH_METAX_RDMA)
-using MetaxRuntime = infini::ccl::Runtime<infini::ccl::Device::Type::kMetax>;
+#if defined(INFINICCL_WITH_NVIDIA_RDMA)
+using GpuRuntime = infini::ccl::Runtime<infini::ccl::Device::Type::kNvidia>;
+using GpuError = cudaError_t;
+using GpuStream = cudaStream_t;
+using GpuUuid = cudaUUID_t;
+constexpr auto kGpuSuccess = cudaSuccess;
+constexpr auto GpuGetErrorString = cudaGetErrorString;
+constexpr auto GpuStreamCreate = cudaStreamCreate;
+constexpr auto GpuStreamDestroy = cudaStreamDestroy;
+constexpr const char *kGpuName = "NVIDIA";
 
-bool CheckMetax(mcError_t status, const char *operation) {
-  return CheckInfini(
-      static_cast<infinicclResult_t>(MetaxRuntime::Check(status)), operation);
+GpuError GpuGetUuid(GpuUuid *uuid, int device) {
+  cudaDeviceProp properties{};
+  const auto status = cudaGetDeviceProperties(&properties, device);
+  if (status == cudaSuccess) {
+    *uuid = properties.uuid;
+  }
+  return status;
+}
+#elif defined(INFINICCL_WITH_METAX_RDMA)
+using GpuRuntime = infini::ccl::Runtime<infini::ccl::Device::Type::kMetax>;
+using GpuError = mcError_t;
+using GpuStream = mcStream_t;
+using GpuUuid = mcUuid_t;
+constexpr auto kGpuSuccess = mcSuccess;
+constexpr auto GpuGetErrorString = mcGetErrorString;
+constexpr auto GpuGetUuid = mcDeviceGetUuid;
+constexpr auto GpuStreamCreate = mcStreamCreate;
+constexpr auto GpuStreamDestroy = mcStreamDestroy;
+constexpr const char *kGpuName = "MetaX";
+#endif
+
+#if defined(INFINICCL_RDMA_GPU)
+bool CheckGpu(GpuError status, const char *operation) {
+  return CheckInfini(static_cast<infinicclResult_t>(GpuRuntime::Check(status)),
+                     operation);
 }
 
-void PrintMetaxDevice(int rank) {
+void PrintGpuDevice(int rank) {
   int current_device = -1;
-  if (!CheckMetax(MetaxRuntime::GetDevice(&current_device), "mcGetDevice")) {
+  if (!CheckGpu(GpuRuntime::GetDevice(&current_device), "GetDevice")) {
     return;
   }
-  mcUuid_t uuid{};
-  const auto status = mcDeviceGetUuid(&uuid, current_device);
-  if (status != mcSuccess) {
-    std::cerr << "[Rank " << rank << "] MetaX GPU device=" << current_device
-              << ", UUID unavailable: " << mcGetErrorString(status)
+  GpuUuid uuid{};
+  const auto status = GpuGetUuid(&uuid, current_device);
+  if (status != kGpuSuccess) {
+    std::cerr << "[Rank " << rank << "] " << kGpuName
+              << " GPU device=" << current_device
+              << ", UUID unavailable: " << GpuGetErrorString(status)
               << std::endl;
     return;
   }
@@ -216,25 +253,11 @@ void PrintMetaxDevice(int rank) {
     std::snprintf(uuid_text + i * 2, 3, "%02x",
                   static_cast<unsigned int>(bytes[i]));
   }
-  std::cout << "[Rank " << rank << "] MetaX GPU device=" << current_device
-            << ", UUID(raw)=" << uuid_text << std::endl;
+  std::cout << "[Rank " << rank << "] " << kGpuName
+            << " GPU device=" << current_device << ", UUID(raw)=" << uuid_text
+            << std::endl;
 }
 
-__global__ void FillBuffer(int32_t *buffer, size_t count, int32_t first,
-                           bool sequential) {
-  const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < count) {
-    buffer[index] = first + (sequential ? static_cast<int32_t>(index) : 0);
-  }
-}
-
-__global__ void ConsumeBuffer(const int32_t *source, int32_t *result,
-                              size_t count) {
-  const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < count) {
-    result[index] = source[index];
-  }
-}
 #endif
 
 class ExampleBuffer {
@@ -242,16 +265,13 @@ class ExampleBuffer {
   explicit ExampleBuffer(std::vector<int32_t> *host) : host_(host) {}
 
   ~ExampleBuffer() {
-#if defined(INFINICCL_WITH_METAX_RDMA)
+#if defined(INFINICCL_RDMA_GPU)
     if (device_) {
-      (void)mcStreamSynchronize(stream_);
-      (void)MetaxRuntime::Free(device_);
-    }
-    if (consumed_) {
-      (void)MetaxRuntime::Free(consumed_);
+      (void)GpuRuntime::StreamSynchronize(stream_);
+      (void)GpuRuntime::Free(device_);
     }
     if (stream_) {
-      (void)mcStreamDestroy(stream_);
+      (void)GpuStreamDestroy(stream_);
     }
 #endif
   }
@@ -260,67 +280,46 @@ class ExampleBuffer {
     if (mode == "host") {
       return true;
     }
-#if defined(INFINICCL_WITH_METAX_RDMA)
-    kernels_ = mode == "device-kernel";
-    if (!CheckMetax(MetaxRuntime::Malloc(&device_, Bytes()), "mcMalloc") ||
-        !CheckMetax(mcStreamCreate(&stream_), "mcStreamCreate")) {
-      return false;
-    }
-    return !kernels_ ||
-           CheckMetax(MetaxRuntime::Malloc(&consumed_, Bytes()), "mcMalloc");
+#if defined(INFINICCL_RDMA_GPU)
+    return CheckGpu(GpuRuntime::Malloc(&device_, Bytes()), "Malloc") &&
+           CheckGpu(GpuStreamCreate(&stream_), "StreamCreate");
 #else
-    std::cerr << "Device buffers require a MetaX + RDMA build." << std::endl;
+    std::cerr << "Device buffers require a NVIDIA or MetaX + RDMA build."
+              << std::endl;
     return false;
 #endif
   }
 
-  bool Upload(bool sequential) {
-#if defined(INFINICCL_WITH_METAX_RDMA)
+  bool Upload() {
+#if defined(INFINICCL_RDMA_GPU)
     if (device_) {
-      if (kernels_) {
-        FillBuffer<<<(host_->size() + 255) / 256, 256, 0, stream_>>>(
-            static_cast<int32_t *>(device_), host_->size(), (*host_)[0],
-            sequential);
-        return CheckMetax(mcGetLastError(), "FillBuffer");
-      }
-      return CheckMetax(MetaxRuntime::Memcpy(device_, host_->data(), Bytes(),
-                                             MetaxRuntime::MemcpyHostToDevice),
-                        "mcMemcpy(H2D)");
+      return CheckGpu(GpuRuntime::Memcpy(device_, host_->data(), Bytes(),
+                                         GpuRuntime::MemcpyHostToDevice),
+                      "Memcpy(H2D)");
     }
-#else
-    (void)sequential;
 #endif
     return true;
   }
 
   bool Download() {
-#if defined(INFINICCL_WITH_METAX_RDMA)
+#if defined(INFINICCL_RDMA_GPU)
     if (device_) {
-      void *source = device_;
-      if (kernels_) {
-        ConsumeBuffer<<<(host_->size() + 255) / 256, 256, 0, stream_>>>(
-            static_cast<const int32_t *>(device_),
-            static_cast<int32_t *>(consumed_), host_->size());
-        if (!CheckMetax(mcGetLastError(), "ConsumeBuffer")) {
-          return false;
-        }
-        source = consumed_;
-      }
       if (!Synchronize()) {
         return false;
       }
-      return CheckMetax(MetaxRuntime::Memcpy(host_->data(), source, Bytes(),
-                                             MetaxRuntime::MemcpyDeviceToHost),
-                        "mcMemcpy(D2H validation)");
+      return CheckGpu(GpuRuntime::Memcpy(host_->data(), device_, Bytes(),
+                                         GpuRuntime::MemcpyDeviceToHost),
+                      "Memcpy(D2H validation)");
     }
 #endif
     return true;
   }
 
   bool Synchronize() {
-#if defined(INFINICCL_WITH_METAX_RDMA)
+#if defined(INFINICCL_RDMA_GPU)
     if (device_) {
-      return CheckMetax(mcStreamSynchronize(stream_), "mcStreamSynchronize");
+      return CheckGpu(GpuRuntime::StreamSynchronize(stream_),
+                      "StreamSynchronize");
     }
 #endif
     return true;
@@ -329,7 +328,7 @@ class ExampleBuffer {
   void *data() { return device_ ? device_ : host_->data(); }
 
   void *stream() {
-#if defined(INFINICCL_WITH_METAX_RDMA)
+#if defined(INFINICCL_RDMA_GPU)
     return reinterpret_cast<void *>(stream_);
 #else
     return nullptr;
@@ -343,12 +342,8 @@ class ExampleBuffer {
 
   void *device_ = nullptr;
 
-#if defined(INFINICCL_WITH_METAX_RDMA)
-  void *consumed_ = nullptr;
-
-  mcStream_t stream_ = nullptr;
-
-  bool kernels_ = false;
+#if defined(INFINICCL_RDMA_GPU)
+  GpuStream stream_ = nullptr;
 #endif
 };
 
@@ -412,14 +407,15 @@ struct Session {
 int Run(bool server, const char *bootstrap_address, const char *control_address,
         uint16_t control_port, size_t count, size_t iterations,
         const std::string &memory_mode, int device) {
-#if defined(INFINICCL_WITH_METAX_RDMA)
-  if (!CheckMetax(MetaxRuntime::SetDevice(device), "mcSetDevice")) {
+#if defined(INFINICCL_RDMA_GPU)
+  if (!CheckGpu(GpuRuntime::SetDevice(device), "SetDevice")) {
     return EXIT_FAILURE;
   }
 #else
   (void)device;
   if (memory_mode != "host") {
-    std::cerr << "Device buffers require a MetaX + RDMA build." << std::endl;
+    std::cerr << "Device buffers require a NVIDIA or MetaX + RDMA build."
+              << std::endl;
     return EXIT_FAILURE;
   }
 #endif
@@ -454,8 +450,8 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
   Session session;
 
   const int rank = server ? kSenderRank : kReceiverRank;
-#if defined(INFINICCL_WITH_METAX_RDMA)
-  PrintMetaxDevice(rank);
+#if defined(INFINICCL_RDMA_GPU)
+  PrintGpuDevice(rank);
 #endif
   std::vector<int32_t> send_buffer(count);
   std::vector<int32_t> recv_buffer(count, -1);
@@ -465,14 +461,14 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
     send_buffer[i] = static_cast<int32_t>(rank * 1000000 + i);
   }
   if (!send_memory.Initialize(memory_mode) ||
-      !recv_memory.Initialize(memory_mode) || !send_memory.Upload(true) ||
-      !send_memory.Synchronize() || !recv_memory.Upload(false) ||
+      !recv_memory.Initialize(memory_mode) || !send_memory.Upload() ||
+      !send_memory.Synchronize() || !recv_memory.Upload() ||
       !recv_memory.Download()) {
     return EXIT_FAILURE;
   }
-#if defined(INFINICCL_WITH_METAX_RDMA)
-  if (!CheckMetax(MetaxRuntime::StreamSynchronize(nullptr),
-                  "mcStreamSynchronize(default warm-up)")) {
+#if defined(INFINICCL_RDMA_GPU)
+  if (!CheckGpu(GpuRuntime::StreamSynchronize(nullptr),
+                "StreamSynchronize(default warm-up)")) {
     return EXIT_FAILURE;
   }
 #endif
@@ -513,8 +509,7 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
     for (size_t i = 0; i < count; ++i) {
       send_buffer[i] = static_cast<int32_t>(rank * 1000000 + iteration + i);
     }
-    if (!send_memory.Upload(true) || !recv_memory.Upload(false) ||
-        !recv_memory.Download()) {
+    if (!send_memory.Upload() || !recv_memory.Upload()) {
       return EXIT_FAILURE;
     }
 
@@ -587,8 +582,11 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
               << std::endl;
   } else {
     std::cout << "[Rank " << rank
-              << "] PASS: RDMA Send/Recv, local memory=" << memory_mode
-              << ". DeviceDirect visibility remains experimental." << std::endl;
+              << "] PASS: RDMA Send/Recv, local memory=" << memory_mode << "."
+#if defined(INFINICCL_WITH_METAX_RDMA)
+              << " DeviceDirect visibility remains experimental."
+#endif
+              << std::endl;
   }
   return EXIT_SUCCESS;
 }
@@ -641,10 +639,8 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
   const std::string memory_mode = argc >= 7 ? argv[6] : "host";
-  if (memory_mode != "host" && memory_mode != "device" &&
-      memory_mode != "device-kernel") {
-    std::cerr << "Memory mode must be host, device or device-kernel."
-              << std::endl;
+  if (memory_mode != "host" && memory_mode != "device") {
+    std::cerr << "Memory mode must be host or device." << std::endl;
     return EXIT_FAILURE;
   }
   int device = 0;
