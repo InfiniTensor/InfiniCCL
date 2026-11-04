@@ -73,6 +73,10 @@ struct McclApi {
                      int peer, Comm comm, Stream stream) {
     return mcclRecv(recv_buff, count, data_type, peer, comm, stream);
   }
+
+  static Result GroupStart() { return mcclGroupStart(); }
+
+  static Result GroupEnd() { return mcclGroupEnd(); }
 };
 
 }  // namespace infini::ccl
