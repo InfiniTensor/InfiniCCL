@@ -49,6 +49,30 @@ struct McclApi {
     return mcclAllReduce(send_buff, recv_buff, count, data_type, op, comm,
                          stream);
   }
+
+  static Result AllGather(const void *send_buff, void *recv_buff,
+                          size_t send_count, DataType data_type, Comm comm,
+                          Stream stream) {
+    return mcclAllGather(send_buff, recv_buff, send_count, data_type, comm,
+                         stream);
+  }
+
+  static Result ReduceScatter(const void *send_buff, void *recv_buff,
+                              size_t recv_count, DataType data_type, RedOp op,
+                              Comm comm, Stream stream) {
+    return mcclReduceScatter(send_buff, recv_buff, recv_count, data_type, op,
+                             comm, stream);
+  }
+
+  static Result Send(const void *send_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return mcclSend(send_buff, count, data_type, peer, comm, stream);
+  }
+
+  static Result Recv(void *recv_buff, size_t count, DataType data_type,
+                     int peer, Comm comm, Stream stream) {
+    return mcclRecv(recv_buff, count, data_type, peer, comm, stream);
+  }
 };
 
 }  // namespace infini::ccl
