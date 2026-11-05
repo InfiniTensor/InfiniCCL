@@ -73,6 +73,13 @@ struct McclApi {
                      int peer, Comm comm, Stream stream) {
     return mcclRecv(recv_buff, count, data_type, peer, comm, stream);
   }
+
+  static Result Reduce(const void *send_buff, void *recv_buff, size_t count,
+                       DataType data_type, RedOp op, int root, Comm comm,
+                       Stream stream) {
+    return mcclReduce(send_buff, recv_buff, count, data_type, op, root, comm,
+                      stream);
+  }
 };
 
 }  // namespace infini::ccl
