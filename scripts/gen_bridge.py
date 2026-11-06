@@ -34,6 +34,7 @@ BACKEND_IMPL_PATH_MAP = {
     "mccl": ["backends/ccl/mccl/impl"],
     "cncl": ["backends/ccl/cncl/impl"],
     "hccl": ["backends/ccl/hccl/impl"],
+    "rdma": ["backends/rdma/impl"],
 }
 
 BACKEND_COMMON_HEADERS = {

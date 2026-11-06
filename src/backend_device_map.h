@@ -13,6 +13,19 @@ struct IsSupportedCombination : std::false_type {};
 template <Device::Type D>
 struct IsSupportedCombination<BackendType::kOmpi, D> : std::true_type {};
 
+// Memory adapters validate the actual buffer and local device capabilities.
+template <>
+struct IsSupportedCombination<BackendType::kRdma, Device::Type::kCpu>
+    : std::true_type {};
+
+template <>
+struct IsSupportedCombination<BackendType::kRdma, Device::Type::kNvidia>
+    : std::true_type {};
+
+template <>
+struct IsSupportedCombination<BackendType::kRdma, Device::Type::kMetax>
+    : std::true_type {};
+
 template <>
 struct IsSupportedCombination<BackendType::kNccl, Device::Type::kNvidia>
     : std::true_type {};
