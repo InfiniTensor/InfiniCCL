@@ -8,7 +8,7 @@ namespace infini::ccl {
 template <Device::Type device_type>
 class InitImpl<BackendType::kRdma, device_type> {
  public:
-  static ReturnStatus Apply(int * /*argc*/, char *** /*argv*/) {
+  static ReturnStatus Apply(int* /*argc*/, char*** /*argv*/) {
     return ReturnStatus::kSuccess;
   }
 };

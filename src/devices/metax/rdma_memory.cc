@@ -10,6 +10,7 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <mutex>
 #include <type_traits>
 
 namespace infini::ccl {
@@ -82,6 +83,7 @@ bool ExperimentalDirectEnabled() {
 }
 
 void QueryFlushPolicy(int device, bool *flush) {
+  static std::once_flag warning_once;
   int ordering = 0;
   int options = 0;
   const auto ordering_status = mcDeviceGetAttribute(
@@ -93,12 +95,14 @@ void QueryFlushPolicy(int device, bool *flush) {
            (options & mcFlushGPUDirectRDMAWritesOptionHost);
   const bool native_ordering = ordering_status == mcSuccess &&
                                ordering >= mcFlushGPUDirectRDMAWritesToOwner;
-  std::cerr << "Experimental MetaX DeviceDirect: DMA visibility is not yet "
-               "validated; no Host staging is used. Receive flush: "
-            << (*flush            ? "enabled"
-                : native_ordering ? "native ordering reported"
-                                  : "not reported, visibility unverified")
-            << ".\n";
+  std::call_once(warning_once, [flush, native_ordering] {
+    std::cerr << "Experimental MetaX DeviceDirect: DMA visibility is not yet "
+                 "validated; no Host staging is used. Receive flush: "
+              << (*flush            ? "enabled"
+                  : native_ordering ? "native ordering reported"
+                                    : "not reported, visibility unverified")
+              << ".\n";
+  });
 }
 
 ReturnStatus ExportDeviceMemory(void *buffer, size_t bytes,

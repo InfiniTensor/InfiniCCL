@@ -7,10 +7,10 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -39,8 +39,16 @@ namespace {
 constexpr int kSenderRank = 0;
 constexpr int kReceiverRank = 1;
 constexpr int kRankCount = 2;
+constexpr int kControlTimeoutMs = 30000;
 constexpr uint16_t kDefaultRdmaPort = 7471;
-constexpr size_t kPreviewCount = 8;
+
+#if defined(INFINICCL_WITH_NVIDIA_RDMA)
+constexpr const char *kDeviceName = "nvidia";
+#elif defined(INFINICCL_WITH_METAX_RDMA)
+constexpr const char *kDeviceName = "metax";
+#else
+constexpr const char *kDeviceName = "cpu";
+#endif
 
 void CloseSocket(int socket_fd) {
   if (socket_fd >= 0) {
@@ -130,6 +138,18 @@ int ConnectControl(const char *address, uint16_t port) {
   return socket_fd;
 }
 
+int AcceptControl(int listener) {
+  pollfd descriptor{listener, POLLIN, 0};
+  int result;
+  do {
+    result = poll(&descriptor, 1, kControlTimeoutMs);
+  } while (result < 0 && errno == EINTR);
+  if (result <= 0 || !(descriptor.revents & POLLIN)) {
+    return -1;
+  }
+  return accept(listener, nullptr, nullptr);
+}
+
 bool ParsePort(const char *value, uint16_t *port) {
   char *end = nullptr;
   errno = 0;
@@ -154,21 +174,6 @@ bool ParseCount(const char *value, size_t *count) {
 
   *count = static_cast<size_t>(parsed);
   return true;
-}
-
-void PrintBuffer(const char *label, const std::vector<int32_t> &buffer) {
-  std::cout << label << " [";
-  const size_t preview_count = std::min(kPreviewCount, buffer.size());
-  for (size_t i = 0; i < preview_count; ++i) {
-    if (i != 0) {
-      std::cout << ", ";
-    }
-    std::cout << buffer[i];
-  }
-  if (buffer.size() > preview_count) {
-    std::cout << ", ...";
-  }
-  std::cout << "]" << std::endl;
 }
 
 bool CheckBuffer(const std::vector<int32_t> &buffer, int expected_rank,
@@ -253,12 +258,46 @@ void PrintGpuDevice(int rank) {
     std::snprintf(uuid_text + i * 2, 3, "%02x",
                   static_cast<unsigned int>(bytes[i]));
   }
-  std::cout << "[Rank " << rank << "] " << kGpuName
-            << " GPU device=" << current_device << ", UUID(raw)=" << uuid_text
-            << std::endl;
+  std::cout << "[Rank " << rank << "] GPU UUID(raw)=" << uuid_text << std::endl;
 }
 
 #endif
+
+void PrintDeviceInfo(int rank, int device, const std::string &memory_mode) {
+  char hostname[256]{};
+  (void)gethostname(hostname, sizeof(hostname));
+  std::cout << "[Rank " << rank << "] Host: " << hostname
+            << " | GPU: " << kDeviceName << " | Device " << device
+            << " | Memory: " << memory_mode << std::endl;
+#if defined(INFINICCL_RDMA_GPU)
+  PrintGpuDevice(rank);
+#endif
+}
+
+void PrintTestSummary(size_t count, size_t iterations,
+                      const std::string &memory_mode) {
+  const size_t total_bytes = count * sizeof(int32_t);
+  std::cout << "\n=== Performing RDMA Send/Recv ===" << std::endl;
+  std::cout << "Sender rank: " << kSenderRank << std::endl;
+  std::cout << "Receiver rank: " << kReceiverRank << std::endl;
+  std::cout << "Data size: " << count << " int32 elements (" << total_bytes
+            << " bytes)" << std::endl;
+  std::cout << "Iterations: " << iterations << std::endl;
+  std::cout << "Memory mode: " << memory_mode << std::endl;
+}
+
+void PrintResult(int rank, const std::vector<int32_t> &buffer, int peer_rank,
+                 size_t iteration) {
+  const int32_t expected =
+      static_cast<int32_t>(peer_rank * 1000000 + iteration);
+  std::cout << "\n=== Send/Recv Results ===" << std::endl;
+  std::cout << "Rank: " << rank << std::endl;
+  std::cout << "Peer rank: " << peer_rank << std::endl;
+  std::cout << "Iteration: " << iteration << std::endl;
+  std::cout << "Correct: \033[32mYES\033[0m" << std::endl;
+  std::cout << "Expect:  " << expected << std::endl;
+  std::cout << "Actual:  " << buffer[0] << std::endl;
+}
 
 class ExampleBuffer {
  public:
@@ -361,10 +400,12 @@ bool ExchangeUniqueId(bool server, const char *control_address,
 
     std::cout << "[Control] Waiting for rank 1 on " << control_address << ':'
               << control_port << "..." << std::endl;
-    connection = accept(listener, nullptr, nullptr);
+    connection = AcceptControl(listener);
     CloseSocket(listener);
     if (connection < 0) {
-      std::cerr << "[Control] Failed to accept rank 1." << std::endl;
+      std::cerr << "[Control] Failed to accept rank 1 within the control "
+                   "timeout."
+                << std::endl;
       return false;
     }
 
@@ -373,8 +414,8 @@ bool ExchangeUniqueId(bool server, const char *control_address,
     return success;
   }
 
-  const auto deadline =
-      std::chrono::steady_clock::now() + std::chrono::seconds(30);
+  const auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(kControlTimeoutMs);
   do {
     connection = ConnectControl(control_address, control_port);
     if (connection >= 0) {
@@ -450,9 +491,7 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
   Session session;
 
   const int rank = server ? kSenderRank : kReceiverRank;
-#if defined(INFINICCL_RDMA_GPU)
-  PrintGpuDevice(rank);
-#endif
+  PrintDeviceInfo(rank, device, memory_mode);
   std::vector<int32_t> send_buffer(count);
   std::vector<int32_t> recv_buffer(count, -1);
   ExampleBuffer send_memory(&send_buffer);
@@ -500,11 +539,10 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
             << std::endl;
   const infinicclComm_t comm = session.comm;
 
-  std::cout << "[Rank " << rank << "] Local memory mode: " << memory_mode << "."
-            << std::endl;
+  if (rank == kSenderRank) {
+    PrintTestSummary(count, iterations, memory_mode);
+  }
   for (size_t iteration = 0; iteration < iterations; ++iteration) {
-    std::cout << "[Rank " << rank << "] Iteration " << iteration << "."
-              << std::endl;
     std::fill(recv_buffer.begin(), recv_buffer.end(), -1);
     for (size_t i = 0; i < count; ++i) {
       send_buffer[i] = static_cast<int32_t>(rank * 1000000 + iteration + i);
@@ -514,7 +552,6 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
     }
 
     if (server) {
-      PrintBuffer("[Rank 0] Receive buffer before Recv", recv_buffer);
       if (!CheckInfini(infinicclRecv(recv_memory.data(), count, infinicclInt32,
                                      kReceiverRank, comm, recv_memory.stream()),
                        "infinicclRecv")) {
@@ -523,29 +560,22 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
       if (!recv_memory.Download()) {
         return EXIT_FAILURE;
       }
-      PrintBuffer("[Rank 0] Received from rank 1", recv_buffer);
       if (!CheckBuffer(recv_buffer, kReceiverRank, iteration)) {
         return EXIT_FAILURE;
       }
-      std::cout << "[Rank 0] Receive check: PASS." << std::endl;
 
-      PrintBuffer("[Rank 0] Sending to rank 1", send_buffer);
       if (!CheckInfini(infinicclSend(send_memory.data(), count, infinicclInt32,
                                      kReceiverRank, comm, send_memory.stream()),
                        "infinicclSend")) {
         return EXIT_FAILURE;
       }
-      std::cout << "[Rank 0] Send complete." << std::endl;
     } else {
-      PrintBuffer("[Rank 1] Sending to rank 0", send_buffer);
       if (!CheckInfini(infinicclSend(send_memory.data(), count, infinicclInt32,
                                      kSenderRank, comm, send_memory.stream()),
                        "infinicclSend")) {
         return EXIT_FAILURE;
       }
-      std::cout << "[Rank 1] Send complete." << std::endl;
 
-      PrintBuffer("[Rank 1] Receive buffer before Recv", recv_buffer);
       if (!CheckInfini(infinicclRecv(recv_memory.data(), count, infinicclInt32,
                                      kSenderRank, comm, recv_memory.stream()),
                        "infinicclRecv")) {
@@ -554,11 +584,9 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
       if (!recv_memory.Download()) {
         return EXIT_FAILURE;
       }
-      PrintBuffer("[Rank 1] Received from rank 0", recv_buffer);
       if (!CheckBuffer(recv_buffer, kSenderRank, iteration)) {
         return EXIT_FAILURE;
       }
-      std::cout << "[Rank 1] Receive check: PASS." << std::endl;
     }
   }
 
@@ -577,16 +605,9 @@ int Run(bool server, const char *bootstrap_address, const char *control_address,
   }
   session.comm = nullptr;
 
-  if (memory_mode == "host") {
-    std::cout << "[Rank " << rank << "] PASS: RDMA Host-buffer Send/Recv."
-              << std::endl;
-  } else {
-    std::cout << "[Rank " << rank
-              << "] PASS: RDMA Send/Recv, local memory=" << memory_mode << "."
-#if defined(INFINICCL_WITH_METAX_RDMA)
-              << " DeviceDirect visibility remains experimental."
-#endif
-              << std::endl;
+  PrintResult(rank, recv_buffer, 1 - rank, iterations - 1);
+  if (rank == kSenderRank) {
+    std::cout << "InfiniCCL finalized." << std::endl;
   }
   return EXIT_SUCCESS;
 }

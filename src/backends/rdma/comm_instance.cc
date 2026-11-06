@@ -430,7 +430,8 @@ ReturnStatus ValidatePeerMetadata(const RdmaResources &resources,
       remote.link_layer != local.link_layer ||
       remote.has_gid != local.has_gid ||
       (ntohl(remote.pkey) & 0x7fff) != (ntohl(local.pkey) & 0x7fff) ||
-      std::memcmp(remote.group_id, local.group_id, sizeof(remote.group_id)) != 0 ||
+      std::memcmp(remote.group_id, local.group_id, sizeof(remote.group_id)) !=
+          0 ||
       ntohl(remote.qp_num) == 0 || ntohl(remote.qp_num) > 0xffffff ||
       ntohl(remote.lid) > 65535 ||
       (resources.gid_index < 0 && ntohl(remote.lid) == 0) ||
@@ -468,7 +469,8 @@ ReturnStatus ReadyToReceive(const RdmaResources &resources,
   attr.ah_attr.port_num = resources.port;
   if (resources.gid_index >= 0) {
     attr.ah_attr.is_global = 1;
-    std::memcpy(attr.ah_attr.grh.dgid.raw, remote.gid, sizeof(attr.ah_attr.grh.dgid.raw));
+    std::memcpy(attr.ah_attr.grh.dgid.raw, remote.gid,
+                sizeof(attr.ah_attr.grh.dgid.raw));
     attr.ah_attr.grh.sgid_index = resources.gid_index;
     attr.ah_attr.grh.hop_limit = 64;
   }
@@ -528,7 +530,8 @@ ReturnStatus ExchangePeerMetadata(const RdmaUniqueId &id,
   }
   status = ValidatePeerMetadata(resources, local, *remote);
   if (status == ReturnStatus::kSuccess) {
-    resources.max_bytes = std::min<size_t>(resources.max_bytes, ntohl(remote->max_bytes));
+    resources.max_bytes =
+        std::min<size_t>(resources.max_bytes, ntohl(remote->max_bytes));
   }
   return status;
 }

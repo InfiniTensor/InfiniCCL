@@ -35,8 +35,9 @@ ReturnStatus ValidateDeviceBuffer(void *buffer, size_t bytes) {
   const auto pointer = reinterpret_cast<CUdeviceptr>(buffer);
   CUdeviceptr base = 0;
   size_t allocation_bytes = 0;
-  auto status = CheckDriver(cuMemGetAddressRange(&base, &allocation_bytes, pointer),
-                            "cuMemGetAddressRange");
+  auto status =
+      CheckDriver(cuMemGetAddressRange(&base, &allocation_bytes, pointer),
+                  "cuMemGetAddressRange");
   if (status != ReturnStatus::kSuccess) {
     return status;
   }
@@ -45,8 +46,10 @@ ReturnStatus ValidateDeviceBuffer(void *buffer, size_t bytes) {
     return ReturnStatus::kInvalidArgument;
   }
   unsigned int sync_memops = 1;
-  return CheckDriver(cuPointerSetAttribute(&sync_memops, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, pointer),
-                     "cuPointerSetAttribute(SYNC_MEMOPS)");
+  return CheckDriver(
+      cuPointerSetAttribute(&sync_memops, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS,
+                            pointer),
+      "cuPointerSetAttribute(SYNC_MEMOPS)");
 }
 
 ReturnStatus QueryFlushPolicy(int device, bool *flush) {
@@ -54,7 +57,8 @@ ReturnStatus QueryFlushPolicy(int device, bool *flush) {
   int ordering = 0;
   int options = 0;
   auto status =
-      CheckCuda(cudaDeviceGetAttribute(&supported, cudaDevAttrGPUDirectRDMASupported, device),
+      CheckCuda(cudaDeviceGetAttribute(
+                    &supported, cudaDevAttrGPUDirectRDMASupported, device),
                 "cudaDeviceGetAttribute(GPUDirectRDMASupported)");
   if (status != ReturnStatus::kSuccess) {
     return status;
@@ -63,8 +67,10 @@ ReturnStatus QueryFlushPolicy(int device, bool *flush) {
     std::cerr << "The CUDA device does not report GPUDirect RDMA support.\n";
     return ReturnStatus::kNotSupported;
   }
-  status = CheckCuda(cudaDeviceGetAttribute(&ordering, cudaDevAttrGPUDirectRDMAWritesOrdering, device),
-                     "cudaDeviceGetAttribute(GPUDirectRDMAWritesOrdering)");
+  status =
+      CheckCuda(cudaDeviceGetAttribute(
+                    &ordering, cudaDevAttrGPUDirectRDMAWritesOrdering, device),
+                "cudaDeviceGetAttribute(GPUDirectRDMAWritesOrdering)");
   if (status != ReturnStatus::kSuccess) {
     return status;
   }
@@ -72,8 +78,10 @@ ReturnStatus QueryFlushPolicy(int device, bool *flush) {
   if (!*flush) {
     return ReturnStatus::kSuccess;
   }
-  status = CheckCuda(cudaDeviceGetAttribute(&options, cudaDevAttrGPUDirectRDMAFlushWritesOptions, device),
-                     "cudaDeviceGetAttribute(GPUDirectRDMAFlushWritesOptions)");
+  status = CheckCuda(
+      cudaDeviceGetAttribute(
+          &options, cudaDevAttrGPUDirectRDMAFlushWritesOptions, device),
+      "cudaDeviceGetAttribute(GPUDirectRDMAFlushWritesOptions)");
   if (status != ReturnStatus::kSuccess) {
     return status;
   }
@@ -85,7 +93,8 @@ ReturnStatus QueryFlushPolicy(int device, bool *flush) {
   return ReturnStatus::kSuccess;
 }
 
-ReturnStatus RegisterDeviceMemory(ibv_pd *pd, void *buffer, size_t bytes, RdmaMemoryRegion *region) {
+ReturnStatus RegisterDeviceMemory(ibv_pd *pd, void *buffer, size_t bytes,
+                                  RdmaMemoryRegion *region) {
   if (!pd || !buffer || bytes == 0 || !region || region->mr ||
       region->fd >= 0) {
     return ReturnStatus::kInvalidArgument;
@@ -149,7 +158,8 @@ ReturnStatus NvidiaMemoryAdapter::Prepare(void *buffer, size_t bytes,
       return status;
     }
     if (attributes.device != device) {
-      std::cerr << "The RDMA buffer does not belong to the current CUDA device.\n";
+      std::cerr
+          << "The RDMA buffer does not belong to the current CUDA device.\n";
       return ReturnStatus::kInvalidArgument;
     }
     status = ValidateDeviceBuffer(buffer, bytes);
@@ -160,8 +170,9 @@ ReturnStatus NvidiaMemoryAdapter::Prepare(void *buffer, size_t bytes,
       return status;
     }
   }
-  return CheckCuda(cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(stream)),
-                   "cudaStreamSynchronize");
+  return CheckCuda(
+      cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(stream)),
+      "cudaStreamSynchronize");
 }
 
 }  // namespace
