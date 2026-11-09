@@ -1,8 +1,8 @@
 #ifndef INFINI_CCL_BASE_ALL_TO_ALL_H_
 #define INFINI_CCL_BASE_ALL_TO_ALL_H_
 
-#include "comm_impl.h"
 #include "communicator.h"
+#include "data_type_impl.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -19,6 +19,9 @@ class AllToAll : public Operation<AllToAll> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype,
                               void *comm_handle, void *stream) {
+    if (count == 0) {
+      return ReturnStatus::kSuccess;
+    }
     if (HasInvalidArgs(send_buff, recv_buff, datatype, comm_handle)) {
       return ReturnStatus::kInvalidArgument;
     }
