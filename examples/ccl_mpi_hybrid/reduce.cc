@@ -1,5 +1,5 @@
 /**
- * InfiniCCL Example: Reduce (OpenMPI + CCL Hybrid)
+ * InfiniCCL Example: `Reduce` (OpenMPI + CCL Hybrid)
  *
  * This example demonstrates the API for performing a collective
  * reduction across multiple accelerators and nodes, where only
@@ -66,7 +66,7 @@ bool RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
 
   CHECK_INFINI(infinicclCommInitRank(&comm, size, id, rank));
 
-  // Root of the Reduce
+  // Root of the `Reduce` operation.
   constexpr int kRoot = 0;
 
   const bool is_root = rank == kRoot;
@@ -75,7 +75,7 @@ bool RunReduceExample(int argc, char **argv, int warmup_iter, int profile_iter,
   std::vector<float> h_send(kNumElements);
   std::vector<float> h_recv(is_root ? kNumElements : 0, 0.0f);
 
-  // Initialize: each rank provides its (rank + 1) as data.
+  // Initialize: each rank provides its `rank + 1` as data.
   for (size_t i = 0; i < kNumElements; i++) {
     h_send[i] = static_cast<float>(rank + 1);
   }

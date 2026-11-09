@@ -1,5 +1,5 @@
 /**
- * InfiniCCL Example: Thread-per-GPU Single-Node Reduce
+ * InfiniCCL Example: Thread-per-GPU Single-Node `Reduce`
  *
  * This example creates one native CCL rank per GPU and performs a rooted
  * reduction without any OpenMPI dependencies.
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   if (num_gpus <= 0 || warmup_iters <= 0 || profile_iters <= 0 ||
       num_elements == 0 ||
       num_elements > std::numeric_limits<size_t>::max() / sizeof(float)) {
-    std::cerr << "Reduce arguments or buffer size are invalid." << std::endl;
+    std::cerr << "`Reduce` arguments or buffer size are invalid." << std::endl;
     return EXIT_FAILURE;
   }
 
