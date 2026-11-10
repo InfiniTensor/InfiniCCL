@@ -56,33 +56,9 @@ class CclGatherImpl {
       return ReturnStatus::kInvalidArgument;
     }
 
-    auto native_stream = reinterpret_cast<typename Api::Stream>(stream);
-    ReturnStatus status = Api::Check(Api::GroupStart());
-    if (status != ReturnStatus::kSuccess) {
-      return status;
-    }
-
-    // Every rank contributes one block; only `root` receives all blocks.
-    ReturnStatus first_error = Api::Check(Api::Send(
-        send_buff, count, native_type, root, instance->handle, native_stream));
-
-    if (comm->rank() == root) {
-      auto *recv_bytes = static_cast<std::byte *>(recv_buff);
-      for (int peer = 0; peer < comm->size(); ++peer) {
-        const size_t offset = static_cast<size_t>(peer) * rank_bytes;
-        status = Api::Check(Api::Recv(recv_bytes + offset, count, native_type,
-                                      peer, instance->handle, native_stream));
-        if (first_error == ReturnStatus::kSuccess &&
-            status != ReturnStatus::kSuccess) {
-          first_error = status;
-        }
-      }
-    }
-
-    // Close every successfully started group, including error paths.
-    const ReturnStatus group_end_status = Api::Check(Api::GroupEnd());
-    return first_error != ReturnStatus::kSuccess ? first_error
-                                                 : group_end_status;
+    return Api::Check(Api::Gather(
+        send_buff, recv_buff, count, native_type, root, instance->handle,
+        reinterpret_cast<typename Api::Stream>(stream)));
   }
 };
 
