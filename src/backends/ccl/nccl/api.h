@@ -49,6 +49,13 @@ struct NcclApi {
                          stream);
   }
 
+  static Result Reduce(const void* send_buff, void* recv_buff, size_t count,
+                       DataType data_type, RedOp op, int root, Comm comm,
+                       Stream stream) {
+    return ncclReduce(send_buff, recv_buff, count, data_type, op, root, comm,
+                      stream);
+  }
+
   static Result AllGather(const void* send_buff, void* recv_buff,
                           size_t send_count, DataType data_type, Comm comm,
                           Stream stream) {
