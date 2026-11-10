@@ -13,11 +13,6 @@
 
 namespace infini::ccl {
 
-template <BackendType>
-struct DeferredScatter {
-  using type = Scatter;
-};
-
 template <BackendType backend, Device::Type device>
 class CclScatterImpl {
  public:
@@ -28,22 +23,8 @@ class CclScatterImpl {
     using TypeMap = CclTypeMap<backend, device>;
     using CommInstance = CclCommInstance<Api>;
 
-    const bool has_native_comm = comm && comm->intra_comm() &&
-                                 comm->intra_comm_backend() == backend &&
-                                 comm->device_type() == device;
-    if (!has_native_comm) {
-      if (!comm || !comm->inter_comm() ||
-          comm->inter_comm_backend() != BackendType::kOmpi) {
-        return ReturnStatus::kInternalError;
-      }
-
-      using FallbackOperation = typename DeferredScatter<backend>::type;
-      if constexpr (BackendEnabled<FallbackOperation,
-                                   BackendType::kOmpi>::value) {
-        return ScatterImpl<BackendType::kOmpi, device>::Apply(
-            send_buff, recv_buff, count, data_type, root, comm, stream);
-      }
-
+    if (!comm || !comm->intra_comm() || comm->intra_comm_backend() != backend ||
+        comm->device_type() != device) {
       return ReturnStatus::kInternalError;
     }
 
@@ -75,36 +56,9 @@ class CclScatterImpl {
       return ReturnStatus::kInvalidArgument;
     }
 
-    auto native_stream = reinterpret_cast<typename Api::Stream>(stream);
-    ReturnStatus status = Api::Check(Api::GroupStart());
-    if (status != ReturnStatus::kSuccess) {
-      return status;
-    }
-
-    ReturnStatus first_error = ReturnStatus::kSuccess;
-    if (comm->rank() == root) {
-      const auto *send_bytes = static_cast<const std::byte *>(send_buff);
-      for (int peer = 0; peer < comm->size(); ++peer) {
-        const size_t offset = static_cast<size_t>(peer) * rank_bytes;
-        status = Api::Check(Api::Send(send_bytes + offset, count, native_type,
-                                      peer, instance->handle, native_stream));
-        if (first_error == ReturnStatus::kSuccess &&
-            status != ReturnStatus::kSuccess) {
-          first_error = status;
-        }
-      }
-    }
-
-    status = Api::Check(Api::Recv(recv_buff, count, native_type, root,
-                                  instance->handle, native_stream));
-    if (first_error == ReturnStatus::kSuccess &&
-        status != ReturnStatus::kSuccess) {
-      first_error = status;
-    }
-
-    const ReturnStatus group_end_status = Api::Check(Api::GroupEnd());
-    return first_error != ReturnStatus::kSuccess ? first_error
-                                                 : group_end_status;
+    return Api::Check(Api::Scatter(
+        send_buff, recv_buff, count, native_type, root, instance->handle,
+        reinterpret_cast<typename Api::Stream>(stream)));
   }
 };
 

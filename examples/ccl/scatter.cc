@@ -1,24 +1,19 @@
 /**
- * InfiniCCL Example: Thread-per-GPU Single-Node Scatter
+ * InfiniCCL Example: Thread-per-GPU Single-Node `Scatter`
  *
- * This example creates one native CCL rank per GPU and scatters one distinct
- * block from rank 0 to every rank using grouped point-to-point operations.
+ * This example creates one native CCL rank per GPU and performs a rooted
+ * scatter without any OpenMPI dependencies.
+ *
+ * Use `--launcher none` for this thread-per-GPU example.
  */
 
 #include <unistd.h>
 
 #include <algorithm>
-#include <array>
-#include <atomic>
-#include <charconv>
-#include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <string>
-#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -34,282 +29,165 @@
 
 using namespace infini::ccl;
 
-namespace {
-
 constexpr int kRoot = 0;
 
-struct ScenarioState {
-  std::atomic<bool> correct{true};
-  std::atomic<int> completed{0};
-  std::vector<float> samples;
-
-  explicit ScenarioState(int world_size)
-      : samples(static_cast<size_t>(world_size), 0.0f) {}
-};
-
+// Structure to pass execution data to each GPU worker thread.
 struct ThreadArgs {
   int rank;
   int size;
   infinicclUniqueId id;
   size_t num_elements;
-  int warmup_iterations;
-  int profile_iterations;
-  ScenarioState *state;
+  int warmup_iter;
+  int profile_iter;
+  int *correct;
 };
 
-template <typename T>
-bool ParsePositiveNumber(const char *text, T *value) {
-  if (!text || !value) {
-    return false;
-  }
-
-  T parsed{};
-  const char *end = text + std::strlen(text);
-  const auto result = std::from_chars(text, end, parsed);
-  if (result.ec != std::errc{} || result.ptr != end || parsed <= 0) {
-    return false;
-  }
-
-  *value = parsed;
-  return true;
-}
-
-void FillScatterInput(std::vector<float> *input, size_t num_elements,
-                      int world_size) {
-  for (int destination = 0; destination < world_size; ++destination) {
-    const size_t offset = static_cast<size_t>(destination) * num_elements;
-    std::fill_n(input->begin() + offset, num_elements,
-                static_cast<float>(destination + 1));
-  }
-}
-
-void PrintScatterMetrics(size_t num_elements, int world_size,
-                         double elapsed_ms) {
-  constexpr double kBytesPerMiB = 1024.0 * 1024.0;
-  constexpr double kBytesPerGB = 1.0e9;
-  const double rank_bytes = static_cast<double>(num_elements) * sizeof(float);
-  const double total_bytes = rank_bytes * static_cast<double>(world_size);
-  const auto original_flags = std::cout.flags();
-  const auto original_precision = std::cout.precision();
-
-  std::cout << "Data size per rank: " << num_elements << " floats ("
-            << std::fixed << std::setprecision(2) << rank_bytes / kBytesPerMiB
-            << " MiB)" << std::endl;
-  std::cout << "Total data at root: "
-            << num_elements * static_cast<size_t>(world_size) << " floats ("
-            << total_bytes / kBytesPerMiB << " MiB)" << std::endl;
-  std::cout << "Time:           " << std::setprecision(3) << elapsed_ms << " ms"
-            << std::endl;
-  if (elapsed_ms > 0.0 && std::isfinite(elapsed_ms)) {
-    const double algorithm_bandwidth =
-        total_bytes / kBytesPerGB / (elapsed_ms / 1000.0);
-    const double bus_bandwidth = algorithm_bandwidth *
-                                 static_cast<double>(world_size - 1) /
-                                 static_cast<double>(world_size);
-    std::cout << "Throughput:     " << std::setprecision(2) << bus_bandwidth
-              << " GB/s (Bus BW)" << std::endl;
-    std::cout << "Alg Bandwidth:  " << algorithm_bandwidth << " GB/s"
-              << std::endl;
-  } else {
-    std::cout << "Throughput:     N/A (Bus BW)" << std::endl;
-    std::cout << "Alg Bandwidth:  N/A" << std::endl;
-  }
-
-  std::cout.flags(original_flags);
-  std::cout.precision(original_precision);
-}
-
-void WaitForAll(ScenarioState *state, int world_size) {
-  state->completed.fetch_add(1, std::memory_order_acq_rel);
-  while (state->completed.load(std::memory_order_acquire) < world_size) {
-    std::this_thread::yield();
-  }
-}
-
-void PrintResult(bool correct, const std::vector<float> &samples,
-                 size_t num_elements, int world_size, double elapsed_ms) {
-  constexpr const char *kGreen = "\033[32m";
-  constexpr const char *kRed = "\033[31m";
-  constexpr const char *kReset = "\033[0m";
-
-  std::cout << "\n=== CCL Scatter Results ===" << std::endl;
-  std::cout << "Correct: "
-            << (correct ? (kGreen + std::string("YES") + kReset)
-                        : (kRed + std::string("NO") + kReset))
-            << std::endl;
-  std::cout << "Root rank: " << kRoot << std::endl;
-  std::cout << "Sample receive blocks: ";
-  for (int rank = 0; rank < std::min(world_size, 4); ++rank) {
-    std::cout << "[r" << rank << ": " << samples[static_cast<size_t>(rank)]
-              << "] ";
-  }
-  std::cout << std::endl;
-  PrintScatterMetrics(num_elements, world_size, elapsed_ms);
-}
-
+// Worker function executed by each CPU thread.
 void WorkerThread(ThreadArgs args) {
   constexpr Device::Type kDevType =
       ListGetBest<DevicePriority>(EnabledDevices{});
   using Rt = Runtime<kDevType>;
 
+  // Bind this CPU thread to its local GPU.
   CHECK_RT(Rt, Rt::SetDevice(args.rank));
-
-  std::array<char, 256> hostname{};
-  if (gethostname(hostname.data(), hostname.size()) != 0) {
-    std::cerr << "Failed to query the hostname for the Scatter worker."
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
-  hostname.back() = '\0';
-  std::cout << "[Rank " << args.rank << "] Host: " << hostname.data()
-            << " | GPU: " << Device::StringFromType(kDevType) << " | Device "
-            << args.rank << std::endl;
 
   infinicclComm_t comm = nullptr;
   CHECK_INFINI(infinicclCommInitRank(&comm, args.size, args.id, args.rank));
 
-  const size_t rank_bytes = args.num_elements * sizeof(float);
-  const size_t total_elements =
-      args.num_elements * static_cast<size_t>(args.size);
-  const size_t total_bytes = total_elements * sizeof(float);
-  std::vector<float> h_send;
-  if (args.rank == kRoot) {
-    h_send.resize(total_elements, 0.0f);
-    FillScatterInput(&h_send, args.num_elements, args.size);
-  }
+  // Prepare Data: only root sends, and each rank receives its own block.
+  const bool is_root = args.rank == kRoot;
+  const size_t recv_bytes = args.num_elements * sizeof(float);
+  const size_t send_bytes = recv_bytes * static_cast<size_t>(args.size);
+  std::vector<float> h_send(
+      is_root ? args.num_elements * static_cast<size_t>(args.size) : 0, 0.0f);
   std::vector<float> h_recv(args.num_elements, 0.0f);
+  if (is_root) {
+    for (int r = 0; r < args.size; ++r) {
+      for (size_t i = 0; i < args.num_elements; ++i) {
+        h_send[static_cast<size_t>(r) * args.num_elements + i] =
+            static_cast<float>(r + 1);
+      }
+    }
+  }
 
   float *d_send = nullptr;
   float *d_recv = nullptr;
-  if (args.rank == kRoot) {
-    CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_send), total_bytes));
-    CHECK_RT(Rt, Rt::Memcpy(d_send, h_send.data(), total_bytes,
+  if (is_root) {
+    CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_send), send_bytes));
+    CHECK_RT(Rt, Rt::Memcpy(d_send, h_send.data(), send_bytes,
                             Rt::MemcpyHostToDevice));
   }
-  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_recv), rank_bytes));
+  CHECK_RT(Rt, Rt::Malloc(reinterpret_cast<void **>(&d_recv), recv_bytes));
+  CHECK_RT(Rt, Rt::Memcpy(d_recv, h_recv.data(), recv_bytes,
+                          Rt::MemcpyHostToDevice));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
-  for (int i = 0; i < args.warmup_iterations; ++i) {
+  // Warm-up Iterations
+  for (int i = 0; i < args.warmup_iter; ++i) {
     CHECK_INFINI(infinicclScatter(d_send, d_recv, args.num_elements,
                                   infinicclFloat32, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
 
+  // Profiling Iterations
   Timer timer;
-  for (int i = 0; i < args.profile_iterations; ++i) {
+  for (int i = 0; i < args.profile_iter; ++i) {
     CHECK_INFINI(infinicclScatter(d_send, d_recv, args.num_elements,
                                   infinicclFloat32, kRoot, comm, nullptr));
   }
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
   const double elapsed_ms =
-      timer.ElapsedMs() / static_cast<double>(args.profile_iterations);
+      timer.ElapsedMs() / static_cast<double>(args.profile_iter);
 
-  CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, rank_bytes,
+  // Result Validation: every rank checks its complete receive block.
+  CHECK_RT(Rt, Rt::Memcpy(h_recv.data(), d_recv, recv_bytes,
                           Rt::MemcpyDeviceToHost));
   CHECK_RT(Rt, Rt::StreamSynchronize(nullptr));
-  const bool local_correct =
-      Validator::ValidateResult(h_recv.data(), args.num_elements,
-                                static_cast<float>(args.rank + 1), args.rank);
-  args.state->samples[static_cast<size_t>(args.rank)] = h_recv.front();
-  if (!local_correct) {
-    args.state->correct.store(false, std::memory_order_release);
+  *args.correct = Validator::ValidateResult(h_recv.data(), args.num_elements,
+                                            static_cast<float>(args.rank + 1),
+                                            args.rank, true, "Scatter");
+
+  // Metrics Reporting (Only Root)
+  if (is_root) {
+    // `Scatter` counts total bytes at root, with a `(size - 1) / size` bus
+    // factor.
+    const double alg_bw =
+        static_cast<double>(send_bytes) / 1.0e9 / (elapsed_ms / 1000.0);
+    const double bus_bw =
+        alg_bw * static_cast<double>(args.size - 1) / args.size;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Time:           " << elapsed_ms << " ms" << std::endl;
+    std::cout << std::setprecision(2) << "Throughput:     " << bus_bw
+              << " GB/s (Bus BW)" << std::endl;
+    std::cout << "Alg Bandwidth:  " << alg_bw << " GB/s" << std::endl;
   }
 
-  WaitForAll(args.state, args.size);
-  if (args.rank == kRoot) {
-    PrintResult(args.state->correct.load(std::memory_order_acquire),
-                args.state->samples, args.num_elements, args.size, elapsed_ms);
-  }
-
-  if (args.rank == kRoot) {
+  // Cleanup local rank resources.
+  if (is_root) {
     CHECK_RT(Rt, Rt::Free(d_send));
   }
   CHECK_RT(Rt, Rt::Free(d_recv));
   CHECK_INFINI(infinicclCommDestroy(comm));
 }
 
-void PrintUsage(const char *program) {
-  std::cout << "Usage: " << program << " [options]\n"
-            << "Options:\n"
-            << "  -g <num_gpus>      Number of GPUs (default: 8)\n"
-            << "  -w <warmup_iters>  Warmup iterations (default: 2)\n"
-            << "  -p <profile_iters> Profile iterations (default: 20)\n"
-            << "  -n <num_elements>  Elements sent to each rank "
-               "(default: 1048576)\n";
-}
-
-}  // namespace
-
 int main(int argc, char **argv) {
   int num_gpus = 8;
-  int warmup_iterations = 2;
-  int profile_iterations = 20;
+  int warmup_iters = 2;
+  int profile_iters = 20;
   size_t num_elements = 1 << 20;
 
-  int opt = 0;
+  int opt;
   while ((opt = getopt(argc, argv, "g:w:p:n:h")) != -1) {
-    bool parsed = false;
     switch (opt) {
       case 'g':
-        parsed = ParsePositiveNumber(optarg, &num_gpus);
+        num_gpus = std::stoi(optarg);
         break;
       case 'w':
-        parsed = ParsePositiveNumber(optarg, &warmup_iterations);
+        warmup_iters = std::stoi(optarg);
         break;
       case 'p':
-        parsed = ParsePositiveNumber(optarg, &profile_iterations);
+        profile_iters = std::stoi(optarg);
         break;
       case 'n':
-        parsed = ParsePositiveNumber(optarg, &num_elements);
+        num_elements = static_cast<size_t>(std::stoull(optarg));
         break;
       case 'h':
-        PrintUsage(argv[0]);
+        std::cout << "Usage: " << argv[0] << " [options]\n"
+                  << "Options:\n"
+                  << "  -g <num_gpus>        Number of GPUs (default: 8)\n"
+                  << "  -w <warmup_iters>    Warmup iterations (default: 2)\n"
+                  << "  -p <profile_iters>   Profile iterations (default: 20)\n"
+                  << "  -n <num_elements>    Number of elements (default: "
+                  << (1 << 20) << ")\n";
         return EXIT_SUCCESS;
       default:
-        PrintUsage(argv[0]);
+        std::cerr << "Invalid argument. Use -h for help." << std::endl;
         return EXIT_FAILURE;
     }
-
-    if (!parsed) {
-      std::cerr << "Invalid positive numeric option for Scatter." << std::endl;
-      return EXIT_FAILURE;
-    }
   }
 
-  if (optind != argc) {
-    std::cerr << "Unexpected positional argument for Scatter." << std::endl;
-    return EXIT_FAILURE;
-  }
-  if (static_cast<size_t>(num_gpus) >
-          std::numeric_limits<size_t>::max() / num_elements ||
-      num_elements * static_cast<size_t>(num_gpus) >
-          std::numeric_limits<size_t>::max() / sizeof(float)) {
-    std::cerr << "Scatter buffer size overflows `size_t`." << std::endl;
+  if (num_gpus <= 0 || warmup_iters <= 0 || profile_iters <= 0 ||
+      num_elements == 0 ||
+      num_elements > std::numeric_limits<size_t>::max() / sizeof(float) /
+                         static_cast<size_t>(num_gpus)) {
+    std::cerr << "`Scatter` arguments or buffer size are invalid." << std::endl;
     return EXIT_FAILURE;
   }
 
-  std::array<char, 256> hostname{};
-  if (gethostname(hostname.data(), hostname.size()) != 0) {
-    std::cerr << "Failed to query the hostname for Scatter." << std::endl;
-    return EXIT_FAILURE;
-  }
-  hostname.back() = '\0';
-  std::cout << "[Main Process] Host: " << hostname.data()
+  char hostname[256];
+  gethostname(hostname, sizeof(hostname));
+  std::cout << "[Main Process] Host: " << hostname
             << " | Target GPUs: " << num_gpus << std::endl;
-  std::cout << "[Main Process] Elements per rank: " << num_elements
-            << " floats | Warmup: " << warmup_iterations
-            << " | Profile: " << profile_iterations << std::endl;
 
-  infinicclUniqueId shared_id{};
+  infinicclUniqueId shared_id;
   CHECK_INFINI(infinicclGetUniqueId(&shared_id));
 
-  ScenarioState state(num_gpus);
+  std::vector<int> correct(num_gpus, 0);
   std::vector<std::thread> threads;
   threads.reserve(num_gpus);
   for (int rank = 0; rank < num_gpus; ++rank) {
-    ThreadArgs args{rank,         num_gpus,          shared_id,
-                    num_elements, warmup_iterations, profile_iterations,
-                    &state};
+    ThreadArgs args{rank,         num_gpus,      shared_id,     num_elements,
+                    warmup_iters, profile_iters, &correct[rank]};
     threads.emplace_back(WorkerThread, args);
   }
 
@@ -319,14 +197,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  const bool correct = state.correct.load(std::memory_order_acquire);
-  if (correct) {
-    std::cout << "[Main Process] CCL Scatter validation passed." << std::endl;
-  } else {
-    std::cerr << "[Main Process] CCL Scatter validation failed." << std::endl;
-  }
-  std::cout
-      << "[Main Process] All worker threads joined. InfiniCCL finalized safely."
-      << std::endl;
-  return correct ? EXIT_SUCCESS : EXIT_FAILURE;
+  const bool result = std::all_of(correct.begin(), correct.end(),
+                                  [](int value) { return value != 0; });
+  std::cout << "[Main Process] Scatter validation "
+            << (result ? "passed." : "failed.") << std::endl;
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
