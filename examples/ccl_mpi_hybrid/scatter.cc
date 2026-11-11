@@ -8,7 +8,6 @@
 
 #include <unistd.h>
 
-#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -150,16 +149,8 @@ bool RunScatterExample(int argc, char **argv, int warmup_iter, int profile_iter,
 
   // Metrics Reporting (Only from rank 0 for cleaner output)
   if (rank == kRoot) {
-    // `Scatter` counts total bytes at root, with a `(size - 1) / size` bus
-    // factor, matching the rooted data distribution.
-    const double alg_bw =
-        static_cast<double>(send_bytes) / 1.0e9 / (elapsed / 1000.0);
-    const double bus_bw = alg_bw * static_cast<double>(size - 1) / size;
-    std::cout << std::fixed << std::setprecision(3)
-              << "Time:           " << elapsed << " ms" << std::endl;
-    std::cout << std::setprecision(2) << "Throughput:     " << bus_bw
-              << " GB/s (Bus BW)" << std::endl;
-    std::cout << "Alg Bandwidth:  " << alg_bw << " GB/s" << std::endl;
+    Metrics metrics{elapsed, send_bytes, size};
+    metrics.Print();
   }
 
   // Cleanup

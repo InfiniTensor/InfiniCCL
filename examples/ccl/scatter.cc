@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <thread>
@@ -109,17 +108,8 @@ void WorkerThread(ThreadArgs args) {
 
   // Metrics Reporting (Only Root)
   if (is_root) {
-    // `Scatter` counts total bytes at root, with a `(size - 1) / size` bus
-    // factor.
-    const double alg_bw =
-        static_cast<double>(send_bytes) / 1.0e9 / (elapsed_ms / 1000.0);
-    const double bus_bw =
-        alg_bw * static_cast<double>(args.size - 1) / args.size;
-    std::cout << std::fixed << std::setprecision(3)
-              << "Time:           " << elapsed_ms << " ms" << std::endl;
-    std::cout << std::setprecision(2) << "Throughput:     " << bus_bw
-              << " GB/s (Bus BW)" << std::endl;
-    std::cout << "Alg Bandwidth:  " << alg_bw << " GB/s" << std::endl;
+    Metrics metrics{elapsed_ms, send_bytes, args.size};
+    metrics.Print();
   }
 
   // Cleanup local rank resources.
