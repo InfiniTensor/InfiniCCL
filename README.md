@@ -143,6 +143,7 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_CPU`        | CPU support (always enabled) | `ON` (internal, not user‑settable) |
 | **Backend (Communication) Options** |||
 | `WITH_OMPI`   | Enable OpenMPI backend | `ON` if no backend specified, otherwise `OFF` |
+| `WITH_RDMA`   | Enable the RDMA transport attribute of the MPI backends | `OFF` |
 | `WITH_MPICH`  | Enable MPICH backend | `OFF` |
 | `WITH_NCCL`   | Enable NCCL/RCCL backend | `OFF` |
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
@@ -361,6 +362,7 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | Backend | Support Level | Required CMake Option | Dependencies |
 |---------|---------------|----------------------|---------------|
 | **OpenMPI** | Full | `WITH_OMPI=ON` | The default backend. Requires the OpenMPI development package.|
+| **RDMA (transport attribute)** | Experimental | `WITH_RDMA=ON` + `WITH_OMPI=ON` | Requires Linux and `libibverbs`. Device-memory `Send`/`Recv` between two ranks goes over verbs RC when both peers support it (NVIDIA peer-memory: CUDA ≥ 11.3 and compatible `nvidia-peermem`; MetaX DMA-BUF: MACA/mxkw and explicit opt-in); every other message automatically falls back to the existing host staging path. The existing MPI examples exercise it without changes; communicator teardown prints per-path statistics. Messages are limited to 1 MiB and negotiated port limits.|
 | **MPICH** | Full | `WITH_MPICH=ON` | Requires the MPICH development package.|
 | **NCCL** | Partial | `WITH_NCCL=ON` | Requires NVIDIA, Iluvatar, or T-Head NCCL, or HYGON RCCL. Currently available when `WITH_NVIDIA=ON`, `WITH_ILUVATAR=ON`, `WITH_HYGON=ON` or `WITH_THEAD=ON`.|
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|

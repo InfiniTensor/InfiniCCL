@@ -22,6 +22,7 @@ set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 # --- BACKEND OPTIONS (Communication Protocols) ---
 # =========================================================
 option(WITH_OMPI "Enable OpenMPI backend" OFF)
+option(WITH_RDMA "Enable RDMA backend" OFF)
 option(WITH_MPICH "Enable MPICH backend" OFF)
 option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
@@ -116,6 +117,27 @@ if(AUTO_DETECT_BACKENDS)
         message(STATUS "Auto-detected MPICH/Hydra environment.")
     endif()
 
+    # Detect RDMA dependencies and an available RDMA device.
+    if(NOT WITH_RDMA)
+        find_program(RDMA_DEVINFO_PATH ibv_devinfo)
+        find_path(AUTO_IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h QUIET)
+        find_library(AUTO_IBVERBS_LIBRARY NAMES ibverbs QUIET)
+
+        if(RDMA_DEVINFO_PATH AND AUTO_IBVERBS_INCLUDE_DIR AND
+           AUTO_IBVERBS_LIBRARY)
+            execute_process(
+                COMMAND ${RDMA_DEVINFO_PATH}
+                RESULT_VARIABLE RDMA_DEVINFO_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(RDMA_DEVINFO_RESULT EQUAL 0)
+                set(WITH_RDMA ON)
+                message(STATUS "Auto-detected RDMA environment.")
+            endif()
+        endif()
+    endif()
+
     # Detect NCCL Dependencies
     if(WITH_NVIDIA OR WITH_THEAD OR WITH_ILUVATAR OR WITH_HYGON)
         infiniccl_probe_nccl(NCCL_FOUND)
@@ -166,7 +188,7 @@ if(AUTO_DETECT_BACKENDS)
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL AND NOT WITH_HCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL AND NOT WITH_HCCL AND NOT WITH_RDMA )
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -216,6 +238,12 @@ endif()
 
 if(WITH_OMPI OR WITH_MPICH)
     find_package(MPI REQUIRED)
+endif()
+
+if(WITH_RDMA)
+    find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h REQUIRED)
+    find_library(IBVERBS_LIBRARY NAMES ibverbs REQUIRED)
+    find_package(Threads REQUIRED)
 endif()
 
 if(WITH_NCCL)
