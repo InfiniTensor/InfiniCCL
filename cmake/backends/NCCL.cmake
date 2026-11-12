@@ -34,6 +34,11 @@ function(_infiniccl_find_nccl prefix required include_output library_output defi
         set(_definitions INFINI_CCL_USE_RCCL)
         list(APPEND _library_suffixes rccl/lib)
         message(STATUS "Hygon detected. Searching for NCCL-compatible RCCL in ${_hints}")
+    elseif(WITH_QY)
+        if(QY_SDK)
+            list(APPEND _hints "${QY_SDK}" "${QY_ROOT}")
+        endif()
+        message(STATUS "QY detected. Searching for NCCL in ${_hints}")
     endif()
     list(REMOVE_DUPLICATES _hints)
 
@@ -74,10 +79,10 @@ function(infiniccl_probe_nccl output)
 endfunction()
 
 function(infiniccl_configure_nccl include_output library_output definitions_output)
-    if(NOT WITH_NVIDIA AND NOT WITH_THEAD AND NOT WITH_ILUVATAR AND NOT WITH_HYGON)
+    if(NOT WITH_NVIDIA AND NOT WITH_THEAD AND NOT WITH_ILUVATAR AND NOT WITH_HYGON AND NOT WITH_QY)
         message(FATAL_ERROR
-            "NCCL backend requires NVIDIA, T-Head, Iluvatar, or Hygon GPU support. "
-            "Please enable `WITH_NVIDIA`, `WITH_THEAD`, `WITH_ILUVATAR`, or `WITH_HYGON`.")
+            "NCCL backend requires NVIDIA, T-Head, Iluvatar, Hygon, or QY GPU support. "
+            "Please enable `WITH_NVIDIA`, `WITH_THEAD`, `WITH_ILUVATAR`, `WITH_HYGON`, or `WITH_QY`.")
     endif()
 
     _infiniccl_find_nccl(_INFINICCL_NCCL TRUE _include _library _definitions)
