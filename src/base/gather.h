@@ -18,18 +18,13 @@ class Gather : public Operation<Gather> {
   static ReturnStatus Execute(const void *send_buff, void *recv_buff,
                               size_t count, DataType datatype, int root,
                               void *comm_handle, void *stream) {
-    if (!comm_handle) {
-      LOG("Invalid communicator handle for `Gather`.");
-      return ReturnStatus::kInvalidArgument;
-    }
-
-    auto *comm = static_cast<Communicator *>(comm_handle);
-    if (HasInvalidArgs(send_buff, recv_buff, datatype, root, comm)) {
-      return ReturnStatus::kInvalidArgument;
-    }
     if (count == 0) {
       return ReturnStatus::kSuccess;
     }
+    if (HasInvalidArgs(send_buff, recv_buff, datatype, root, comm_handle)) {
+      return ReturnStatus::kInvalidArgument;
+    }
+    auto *comm = static_cast<Communicator *>(comm_handle);
 
     return GatherImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, root, comm, stream);
@@ -37,7 +32,12 @@ class Gather : public Operation<Gather> {
 
  private:
   static bool HasInvalidArgs(const void *send_buff, void *recv_buff,
-                             DataType datatype, int root, Communicator *comm) {
+                             DataType datatype, int root, void *comm_handle) {
+    if (!comm_handle) {
+      LOG("Invalid communicator handle for `Gather`.");
+      return true;
+    }
+    auto *comm = static_cast<Communicator *>(comm_handle);
     if (datatype < DataType::kChar || datatype >= DataType::kNumTypes) {
       LOG("Invalid data type for `Gather`.");
       return true;

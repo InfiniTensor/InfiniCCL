@@ -50,6 +50,12 @@ struct McclApi {
                          stream);
   }
 
+  static Result Gather(const void *send_buff, void *recv_buff, size_t count,
+                       DataType data_type, int root, Comm comm, Stream stream) {
+    return mcclGather(send_buff, recv_buff, count, data_type, root, comm,
+                      stream);
+  }
+
   static Result AllGather(const void *send_buff, void *recv_buff,
                           size_t send_count, DataType data_type, Comm comm,
                           Stream stream) {
