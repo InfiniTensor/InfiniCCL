@@ -250,6 +250,23 @@ if(WITH_ASCEND)
 endif()
 
 # Hygon
+
+if(WITH_QY)
+    list(APPEND DEVICE_LIST "qy")
+
+    set(QY_PATTERNS
+        "devices/cuda/*.cc"
+        "devices/cuda/*.cpp"
+        "devices/qy/*.cc"
+        "devices/qy/*.cpp"
+    )
+    file(GLOB QY_SOURCES ${QY_PATTERNS})
+    target_sources(infiniccl PRIVATE ${QY_SOURCES})
+    target_include_directories(infiniccl PRIVATE "${QY_SDK}/include")
+    target_compile_definitions(infiniccl PRIVATE WITH_QY=1)
+    target_link_libraries(infiniccl PRIVATE ${QY_CURT_LIB})
+endif()
+
 if(WITH_HYGON)
     list(APPEND DEVICE_LIST "hygon")
 

@@ -45,8 +45,19 @@ struct NcclApi {
   static Result Scatter(const void* send_buff, void* recv_buff, size_t count,
                         DataType data_type, int root, Comm comm,
                         Stream stream) {
+#if INFINI_CCL_NCCL_HAS_GATHER_SCATTER
     return ncclScatter(send_buff, recv_buff, count, data_type, root, comm,
                        stream);
+#else
+    (void)send_buff;
+    (void)recv_buff;
+    (void)count;
+    (void)data_type;
+    (void)root;
+    (void)comm;
+    (void)stream;
+    return ncclInvalidUsage;
+#endif
   }
 
   static Result AllReduce(const void* send_buff, void* recv_buff, size_t count,
@@ -65,8 +76,19 @@ struct NcclApi {
 
   static Result Gather(const void* send_buff, void* recv_buff, size_t count,
                        DataType data_type, int root, Comm comm, Stream stream) {
+#if INFINI_CCL_NCCL_HAS_GATHER_SCATTER
     return ncclGather(send_buff, recv_buff, count, data_type, root, comm,
                       stream);
+#else
+    (void)send_buff;
+    (void)recv_buff;
+    (void)count;
+    (void)data_type;
+    (void)root;
+    (void)comm;
+    (void)stream;
+    return ncclInvalidUsage;
+#endif
   }
 
   static Result AllGather(const void* send_buff, void* recv_buff,

@@ -15,6 +15,7 @@ option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 option(WITH_ASCEND      "Enable Ascend NPU support"     OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
 option(WITH_THEAD       "Enable T-Head PPU support"     OFF)
+option(WITH_QY          "Enable Denglin QY GPU support" OFF)
 
 set(WITH_CPU ON CACHE INTERNAL "CPU backend is always enabled")
 
@@ -45,6 +46,7 @@ include(cmake/devices/Cambricon.cmake)
 include(cmake/devices/Ascend.cmake)
 include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
+include(cmake/devices/Qy.cmake)
 
 # Backend modules provide backend probes and required dependency resolution.
 include(cmake/backends/MPI.cmake)
@@ -91,6 +93,8 @@ if(AUTO_DETECT_DEVICES)
     # T-Head
     infiniccl_resolve_device_detection(
         WITH_THEAD "T-Head" infiniccl_detect_thead THEAD_FOUND)
+    infiniccl_maybe_enable_device(
+        WITH_QY "QY" infiniccl_detect_qy QY_FOUND)
 
     # NVIDIA Final Resolution: resolve conflicts.
     if(THEAD_FOUND AND NVIDIA_FOUND AND NOT NVIDIA_REQUESTED)
@@ -117,7 +121,7 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect NCCL Dependencies
-    if(WITH_NVIDIA OR WITH_THEAD OR WITH_ILUVATAR OR WITH_HYGON)
+    if(WITH_NVIDIA OR WITH_THEAD OR WITH_ILUVATAR OR WITH_HYGON OR WITH_QY)
         infiniccl_probe_nccl(NCCL_FOUND)
         if(NCCL_FOUND)
             set(WITH_NCCL ON)
@@ -212,6 +216,10 @@ endif()
 
 if(WITH_HYGON)
     infiniccl_configure_hygon()
+endif()
+
+if(WITH_QY)
+    infiniccl_configure_qy()
 endif()
 
 if(WITH_OMPI OR WITH_MPICH)
