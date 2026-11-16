@@ -13,6 +13,11 @@ struct IsSupportedCombination : std::false_type {};
 template <Device::Type D>
 struct IsSupportedCombination<BackendType::kOmpi, D> : std::true_type {};
 
+// Mars device communication uses HCCL; OpenMPI has no Mars data type caster.
+template <>
+struct IsSupportedCombination<BackendType::kOmpi, Device::Type::kMars>
+    : std::false_type {};
+
 template <>
 struct IsSupportedCombination<BackendType::kNccl, Device::Type::kNvidia>
     : std::true_type {};
@@ -43,6 +48,10 @@ struct IsSupportedCombination<BackendType::kCncl, Device::Type::kCambricon>
 
 template <>
 struct IsSupportedCombination<BackendType::kHccl, Device::Type::kAscend>
+    : std::true_type {};
+
+template <>
+struct IsSupportedCombination<BackendType::kHccl, Device::Type::kMars>
     : std::true_type {};
 
 };  // namespace infini::ccl

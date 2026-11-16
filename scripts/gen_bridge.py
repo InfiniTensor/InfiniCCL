@@ -40,7 +40,6 @@ BACKEND_COMMON_HEADERS = {
     "nccl": ["backends/ccl/nccl/type_map.h"],
     "mccl": ["backends/ccl/mccl/type_map.h"],
     "cncl": ["backends/ccl/cncl/type_map.h"],
-    "hccl": ["backends/ccl/hccl/type_map.h"],
 }
 
 CCL_PROVIDER_BACKENDS = {
@@ -48,6 +47,12 @@ CCL_PROVIDER_BACKENDS = {
     "mccl": "backends/ccl/mccl",
     "cncl": "backends/ccl/cncl",
     "hccl": "backends/ccl/hccl",
+}
+
+# Some backends use device-specific type mappings instead of a common header.
+BACKEND_DEVICE_HEADERS = {
+    ("hccl", "ascend"): "backends/ccl/hccl/type_map.h",
+    ("hccl", "mars"): "backends/ccl/hccl/mars/type_map.h",
 }
 
 # =================================================================
@@ -150,6 +155,10 @@ def generate(project_root, output_dir, devices, backends):
                 provider_path = f"{provider_root}/{provider_dir}/api.h"
                 if os.path.exists(os.path.join(src_dir, provider_path)):
                     manifest_lines.append(f'#include "{provider_path}"')
+
+                type_map_path = BACKEND_DEVICE_HEADERS.get((bb, provider_dir))
+                if type_map_path and os.path.exists(os.path.join(src_dir, type_map_path)):
+                    manifest_lines.append(f'#include "{type_map_path}"')
 
         for rel_path in BACKEND_COMMON_HEADERS.get(bb, []):
             if os.path.exists(os.path.join(src_dir, rel_path)):

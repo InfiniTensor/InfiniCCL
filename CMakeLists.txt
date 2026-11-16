@@ -11,6 +11,7 @@ option(WITH_NVIDIA      "Enable NVIDIA GPU support"     OFF)
 option(WITH_ILUVATAR    "Enable ILUVATAR GPU support"   OFF)
 option(WITH_METAX       "Enable MetaX GPU support"      OFF)
 option(WITH_MOORE       "Enable Moore GPU support"      OFF)
+option(WITH_MARS        "Enable Mars GPU support"       OFF)
 option(WITH_CAMBRICON   "Enable Cambricon MLU support"  OFF)
 option(WITH_ASCEND      "Enable Ascend NPU support"     OFF)
 option(WITH_HYGON       "Enable Hygon DCU support"      OFF)
@@ -41,6 +42,7 @@ include(cmake/devices/Nvidia.cmake)
 include(cmake/devices/Iluvatar.cmake)
 include(cmake/devices/MetaX.cmake)
 include(cmake/devices/Moore.cmake)
+include(cmake/devices/Mars.cmake)
 include(cmake/devices/Cambricon.cmake)
 include(cmake/devices/Ascend.cmake)
 include(cmake/devices/Hygon.cmake)
@@ -67,6 +69,10 @@ if(AUTO_DETECT_DEVICES)
     # Iluvatar
     infiniccl_resolve_device_detection(
         WITH_ILUVATAR "Iluvatar" infiniccl_detect_iluvatar ILUVATAR_FOUND)
+
+    # Mars
+    infiniccl_resolve_device_detection(
+        WITH_MARS "Mars" infiniccl_detect_mars MARS_FOUND)
 
     # MetaX
     infiniccl_resolve_device_detection(
@@ -154,13 +160,13 @@ if(AUTO_DETECT_BACKENDS)
     endif()
 
     # Detect HCCL Dependencies
-    if(WITH_ASCEND)
+    if(WITH_ASCEND OR WITH_MARS)
         infiniccl_probe_hccl(HCCL_FOUND)
         if(HCCL_FOUND)
             set(WITH_HCCL ON)
             message(STATUS "Auto-detected HCCL backend.")
         else()
-            message(STATUS "HCCL library/headers not found in Ascend paths.")
+            message(STATUS "HCCL library/headers not found in the selected SDK paths.")
         endif()
     endif()
 endif()
@@ -196,6 +202,10 @@ endif()
 
 if(WITH_METAX)
     infiniccl_configure_metax()
+endif()
+
+if(WITH_MARS)
+    infiniccl_configure_mars()
 endif()
 
 if(WITH_MOORE)

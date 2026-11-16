@@ -138,6 +138,12 @@ if(WITH_METAX)
     target_compile_options(infiniccl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-x maca>)
 endif()
 
+# Mars
+if(WITH_MARS)
+    list(APPEND DEVICE_LIST "mars")
+    target_link_libraries(infiniccl PRIVATE ${HPCC_RUNTIME_LIB})
+endif()
+
 # Mthreads (Moore)
 if(WITH_MOORE)
     list(APPEND DEVICE_LIST "moore")
@@ -331,6 +337,9 @@ endif()
 if(WITH_HCCL)
     list(APPEND BACKEND_LIST "hccl")
     file(GLOB_RECURSE HCCL_SRCS "backends/ccl/hccl/*.cc" "backends/ccl/hccl/*.cpp")
+    if(NOT WITH_ASCEND)
+        list(FILTER HCCL_SRCS EXCLUDE REGEX "/ascend/")
+    endif()
     
     target_sources(infiniccl PRIVATE ${HCCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${HCCL_INC} ${HCCL_ACLNN_INC})

@@ -18,25 +18,42 @@ function(_infiniccl_find_hccl_average prefix required hints include_output libra
 endfunction()
 
 function(_infiniccl_find_hccl prefix required include_output library_output aclnn_include_output opapi_library_output)
-    infiniccl_collect_ascend_hints(_hints)
+    if(WITH_MARS AND WITH_ASCEND)
+        message(FATAL_ERROR "Mars and Ascend HCCL providers require separate builds.")
+    elseif(WITH_MARS)
+        infiniccl_collect_mars_hints(_hints)
+        set(_header hccl.h)
+        set(_include_suffixes include)
+        set(_library_suffixes lib lib64)
+        string(APPEND prefix "_MARS")
+    elseif(WITH_ASCEND)
+        infiniccl_collect_ascend_hints(_hints)
+        set(_header hccl/hccl.h)
+        set(_include_suffixes include aarch64-linux/include x86_64-linux/include)
+        set(_library_suffixes lib64 aarch64-linux/lib64 x86_64-linux/lib64)
+    else()
+        message(FATAL_ERROR "HCCL backend requires WITH_ASCEND=ON or WITH_MARS=ON.")
+    endif()
     set(_include_var "${prefix}_INC")
     set(_library_var "${prefix}_LIB")
     set(_aclnn_include "")
     set(_opapi_library "")
 
     if(required)
-        find_path(${_include_var} NAMES hccl/hccl.h
-            HINTS ${_hints} PATH_SUFFIXES include aarch64-linux/include x86_64-linux/include REQUIRED)
+        find_path(${_include_var} NAMES ${_header}
+            HINTS ${_hints} PATH_SUFFIXES ${_include_suffixes} REQUIRED)
         find_library(${_library_var} NAMES hccl
-            HINTS ${_hints} PATH_SUFFIXES lib64 aarch64-linux/lib64 x86_64-linux/lib64 REQUIRED)
+            HINTS ${_hints} PATH_SUFFIXES ${_library_suffixes} REQUIRED)
         # AVG dependencies are required for configuration, not basic HCCL probing.
-        _infiniccl_find_hccl_average(${prefix} TRUE "${_hints}"
-            _aclnn_include _opapi_library)
+        if(WITH_ASCEND)
+            _infiniccl_find_hccl_average(${prefix} TRUE "${_hints}"
+                _aclnn_include _opapi_library)
+        endif()
     else()
-        find_path(${_include_var} NAMES hccl/hccl.h
-            HINTS ${_hints} PATH_SUFFIXES include aarch64-linux/include x86_64-linux/include)
+        find_path(${_include_var} NAMES ${_header}
+            HINTS ${_hints} PATH_SUFFIXES ${_include_suffixes})
         find_library(${_library_var} NAMES hccl
-            HINTS ${_hints} PATH_SUFFIXES lib64 aarch64-linux/lib64 x86_64-linux/lib64)
+            HINTS ${_hints} PATH_SUFFIXES ${_library_suffixes})
     endif()
 
     set(${include_output} "${${_include_var}}" PARENT_SCOPE)
@@ -56,10 +73,6 @@ function(infiniccl_probe_hccl output)
 endfunction()
 
 function(infiniccl_configure_hccl include_output library_output)
-    if(NOT WITH_ASCEND)
-        message(FATAL_ERROR "HCCL backend requires Ascend device support. Please enable `WITH_ASCEND`.")
-    endif()
-
     _infiniccl_find_hccl(_INFINICCL_HCCL TRUE
         _include _library _aclnn_include _opapi_library)
 

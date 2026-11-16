@@ -44,6 +44,10 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_compile_options(${target_name} PRIVATE "-x" "maca")
     endif()
 
+    if(WITH_MARS)
+        target_link_libraries(${target_name} PRIVATE ${HPCC_RUNTIME_LIB})
+    endif()
+
     if(WITH_MOORE)
         target_link_libraries(${target_name} PRIVATE ${MUSART_LIB})
         target_compile_options(${target_name} PRIVATE "-x" "musa")
