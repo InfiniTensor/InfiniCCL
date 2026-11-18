@@ -35,8 +35,9 @@ class RdmaTransport {
 
   // Creates the verbs resources and exchanges QP metadata with the peer over
   // `comm`. The transport stays inert (`SupportRdma` always returns false)
-  // when the rank count is not two or no RDMA device is usable, so callers
-  // keep falling back to host staging without extra branching.
+  // when the runtime mode is not `auto`, the rank count is not two, or no RDMA
+  // device is usable, callers keep falling back to host staging without
+  // extra branching.
   void Initialize(int rank, int nranks, MPI_Comm comm);
 
   // End-to-end path decision for one message. The send side runs the local

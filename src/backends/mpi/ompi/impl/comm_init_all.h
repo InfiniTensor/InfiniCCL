@@ -33,11 +33,9 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
     comm->set_world_info(rank, size);
     comm->set_local_size(n_dev);
 
-#if defined(INFINICCL_WITH_RDMA)
     // The RDMA transport is an attribute of this backend: it initializes
     // collectively and degrades to host staging when any rank does not support RDMA.
     inst->rdma_transport.Initialize(rank, size, inst->handle);
-#endif
 
     comm->set_inter_comm(std::move(inst));
 

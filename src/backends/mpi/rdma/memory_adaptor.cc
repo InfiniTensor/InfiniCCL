@@ -9,18 +9,9 @@
 #include <iostream>
 #include <utility>
 
-#include "devices/cpu/rdma_memory.h"
-
-#if defined(INFINICCL_WITH_METAX_RDMA)
-#include "devices/metax/rdma_memory.h"
-#endif
-
-#if defined(INFINICCL_WITH_NVIDIA_RDMA)
-#include "devices/nvidia/rdma_memory.h"
-#endif
-
 #include "dispatcher.h"
 #include "logging.h"
+#include "rdma_manifest.h"
 
 namespace infini::ccl {
 
@@ -195,11 +186,14 @@ ReturnStatus CreateRdmaMemoryAdapter(
   if (device < Device::Type::kCpu || device >= Device::Type::kCount) {
     return ReturnStatus::kNotSupported;
   }
-  return DispatchFunc<AllDeviceTypes>(
+  return DispatchFunc<RdmaDispatchDevices>(
       device,
       [&](auto tag) {
         constexpr Device::Type kDevice = decltype(tag)::value;
-        return MemoryAdapterFactory<kDevice>::Create(adapter);
+        if constexpr (ContainsValue<EnabledRdmaAdapters, kDevice>) {
+          return MemoryAdapterFactory<kDevice>::Create(adapter);
+        }
+        return ReturnStatus::kNotSupported;
       },
       "CreateRdmaMemoryAdapter");
 }

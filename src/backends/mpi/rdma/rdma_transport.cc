@@ -5,9 +5,7 @@
 #include <sys/random.h>
 #include <unistd.h>
 
-#if defined(INFINICCL_WITH_MLX5DV)
 #include <infiniband/mlx5dv.h>
-#endif
 
 #include <algorithm>
 #include <cassert>
@@ -16,6 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <thread>
 
@@ -29,6 +28,9 @@ namespace {
 constexpr size_t kGroupIdBytes = 16;
 
 constexpr uint32_t kMellanoxVendorId = 0x02c9;
+
+// A verbs scatter-gather entry carries its byte length as a 32-bit value.
+constexpr size_t kMaxSgeBytes = std::numeric_limits<uint32_t>::max();
 
 // Control frames ride on a dedicated MPI tag so they never clash with the
 // staged payload messages of the MPI backends (tag 0).
@@ -60,13 +62,33 @@ static_assert(sizeof(PeerMetadata) == 8 * sizeof(uint32_t) + 16 + kGroupIdBytes,
               "`PeerMetadata` must not contain padding.");
 
 enum class StagedReason : size_t {
-  kNoLink = 0,
+  kDisabled = 0,
+  kNoLink,
   kNoAdapter,
   kBuffer,
   kSizeLimit,
   kPeerRejected,
   kCount
 };
+
+enum class RdmaRuntimeMode {
+  kInvalid,
+  kStaging,
+  kAuto,
+};
+
+// Experimental env for example tests.
+// `Staging` represents host-staging and `auto` means attempting RDMA first.
+RdmaRuntimeMode ReadRuntimeMode() {
+  const char *const value = std::getenv("INFINICCL_RDMA_MODE");
+  if (!value || std::strcmp(value, "staging") == 0) {
+    return RdmaRuntimeMode::kStaging;
+  }
+  if (std::strcmp(value, "auto") == 0) {
+    return RdmaRuntimeMode::kAuto;
+  }
+  return RdmaRuntimeMode::kInvalid;
+}
 
 enum class ControlKind : uint8_t {
   kStaged,
@@ -169,7 +191,6 @@ ReturnStatus SelectDevice(ibv_context **context, ibv_port_attr *port_attr,
   return ReturnStatus::kSuccess;
 }
 
-#if defined(INFINICCL_WITH_MLX5DV)
 ReturnStatus CreateMlx5QueuePair(const ibv_qp_init_attr &base, ibv_pd *pd,
                                  ibv_context *context, ibv_qp **qp) {
   ibv_qp_init_attr_ex attr{};
@@ -191,15 +212,12 @@ ReturnStatus CreateMlx5QueuePair(const ibv_qp_init_attr &base, ibv_pd *pd,
   }
   return ReturnStatus::kSuccess;
 }
-#endif
 
 ReturnStatus CreateCompatibleQueuePair(const ibv_qp_init_attr &attr, ibv_pd *pd,
                                        ibv_context *context, ibv_qp **qp) {
-#if defined(INFINICCL_WITH_MLX5DV)
   if (mlx5dv_is_supported(context->device)) {
     return CreateMlx5QueuePair(attr, pd, context, qp);
   }
-#endif
   ibv_device_attr device_attr{};
   const int query = ibv_query_device(context, &device_attr);
   if (query != 0) {
@@ -330,6 +348,8 @@ struct RdmaTransport::Impl {
   bool active = false;
 
   bool destroyed = false;
+
+  bool mode_disabled = false;
 
   uint64_t rdma_ops = 0;
 
@@ -529,7 +549,12 @@ bool PrepareLocalResources(RdmaTransport::Impl &impl) {
       qp_status != ReturnStatus::kSuccess) {
     return false;
   }
-  impl.max_bytes = std::min<size_t>(impl.port_attr.max_msg_sz, 1 << 20);
+  const size_t max_message_bytes =
+      static_cast<size_t>(impl.port_attr.max_msg_sz);
+  if (max_message_bytes == 0 || max_message_bytes > kMaxSgeBytes) {
+    return false;
+  }
+  impl.max_bytes = max_message_bytes;
   return true;
 }
 
@@ -677,7 +702,9 @@ void RdmaTransport::Impl::DestroyLocked() {
   }
   if (rdma_ops > 0 || staged_ops > 0) {
     std::cout << "[Rank " << rank << "] RDMA transport: rdma=" << rdma_ops
-              << " staged=" << staged_ops << " (no_link="
+              << " staged=" << staged_ops << " (disabled="
+              << fallbacks[static_cast<size_t>(StagedReason::kDisabled)]
+              << ", no_link="
               << fallbacks[static_cast<size_t>(StagedReason::kNoLink)]
               << ", no_adapter="
               << fallbacks[static_cast<size_t>(StagedReason::kNoAdapter)]
@@ -721,6 +748,31 @@ void RdmaTransport::Initialize(int rank, int nranks, MPI_Comm comm) {
   impl.rank = rank;
   impl.comm = comm;
   impl.destroyed = false;
+  impl.mode_disabled = false;
+
+  int local_auto = 0;
+  const RdmaRuntimeMode mode = ReadRuntimeMode();
+  if (mode == RdmaRuntimeMode::kAuto) {
+    local_auto = 1;
+  } else if (mode == RdmaRuntimeMode::kInvalid) {
+    std::cerr << "Invalid `INFINICCL_RDMA_MODE`; expected `auto` or "
+                 "`staging`.\n";
+  }
+  int all_auto = 0;
+  if (MPI_Allreduce(&local_auto, &all_auto, 1, MPI_INT, MPI_MIN, comm) !=
+      MPI_SUCCESS) {
+    impl.mode_disabled = true;
+    LOG("Failed to agree on the RDMA runtime mode.");
+    return;
+  }
+  if (all_auto != 1) {
+    impl.mode_disabled = true;
+    std::cerr << "[Rank " << rank
+              << "] RDMA transport uses MPI host staging "
+                 "(`INFINICCL_RDMA_MODE=staging`).\n";
+    return;
+  }
+
   if (nranks != 2) {
     // Temporarily supports two ranks.
     return;
@@ -764,7 +816,12 @@ bool RdmaTransport::SupportRdma(void *buffer, size_t bytes, int peer,
   std::lock_guard<std::mutex> lock(impl_->mutex);
   impl_->adapter.reset();
   impl_->pending_mr = nullptr;
-  if (!impl_->active || peer != 1 - impl_->rank) {
+  if (!impl_->active) {
+    impl_->RecordFallback(impl_->mode_disabled ? StagedReason::kDisabled
+                                               : StagedReason::kNoLink);
+    return false;
+  }
+  if (peer != 1 - impl_->rank) {
     impl_->RecordFallback(StagedReason::kNoLink);
     return false;
   }

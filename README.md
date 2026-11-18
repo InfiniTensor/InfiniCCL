@@ -148,7 +148,6 @@ cmake .. -DWITH_NVIDIA=ON -DWITH_OMPI=ON
 | `WITH_MCCL`   | Enable MCCL backend | `OFF` |
 | `WITH_CNCL`   | Enable CNCL backend | `OFF` |
 | `WITH_HCCL`   | Enable HCCL backend | `OFF` |
-| `WITH_RDMA`   | Enable the RDMA transport attribute of the MPI backends; requires `libibverbs` and one of the MPI backends (`WITH_OMPI` or `WITH_MPICH`), otherwise the option is ignored | `OFF` |
 | **Miscellaneous** |||
 | `AUTO_DETECT_DEVICES` | Automatically detect available devices and enable corresponding support | `ON` |
 | `AUTO_DETECT_BACKENDS` | Automatically detect available communication backends and enable corresponding support | `OFF` |
@@ -367,9 +366,14 @@ export LD_LIBRARY_PATH=${INFINI_INSTALL}/lib:$LD_LIBRARY_PATH
 | **MCCL** | Partial | `WITH_MCCL=ON` | Requires MetaX or Moore MCCL. Currently available when `WITH_METAX=ON` or `WITH_MOORE=ON`.|
 | **CNCL** | Partial | `WITH_CNCL=ON` | Requires Cambricon CNCL. Available only when `WITH_CAMBRICON=ON`.|
 | **HCCL** | Partial | `WITH_HCCL=ON` | Requires Ascend CANN, the ACLNN division header and `libopapi`. Available only when `WITH_ASCEND=ON`.|
-| **RDMA (transport attribute)** | Experimental | `WITH_RDMA=ON` + (`WITH_OMPI=ON` or `WITH_MPICH=ON`) | Requires Linux and `libibverbs`. Device-memory `Send`/`Recv` between two ranks goes over verbs RC when both peers support it (NVIDIA peer-memory: CUDA ≥ 11.3 and compatible `nvidia-peermem`; MetaX DMA-BUF: MACA/mxkw and explicit opt-in); every other message automatically falls back to the existing host staging path. The existing MPI examples exercise it without changes; communicator teardown prints per-path statistics. Messages are limited to 1 MiB and negotiated port limits.|
+ | **RDMA (transport attribute)** | Experimental | `WITH_OMPI=ON` or `WITH_MPICH=ON`, plus `INFINICCL_RDMA_MODE=auto` | Requires Linux, `libibverbs`, and `libmlx5` with Scatter-to-CQE control. The runtime mode defaults to `staging`; `auto` enables device-memory `Send`/`Recv` over verbs RC when both peers support it (NVIDIA peer-memory: CUDA ≥ 11.3 and compatible `nvidia-peermem`; MetaX DMA-BUF: MACA/mxkw and explicit opt-in). Every unsupported message automatically falls back to the existing host staging path. The existing MPI examples exercise it without changes; communicator teardown prints per-path statistics. Messages are limited to the NIC message-size limit negotiated between peers.|
 
 </details>
+
+`INFINICCL_RDMA_MODE` controls only the InfiniCCL verbs data path. Set it to
+`auto` to enable RDMA selection or `staging` to use the MPI host-staging path;
+`staging` is the current default. This variable does not control RDMA usage
+inside OpenMPI or UCX.
 
 ## License
 InfiniCCL is distributed under the [LICENSE](LICENSE) file in the root of the repository.
