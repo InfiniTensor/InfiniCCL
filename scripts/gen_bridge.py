@@ -34,6 +34,7 @@ BACKEND_IMPL_PATH_MAP = {
     "mccl": ["backends/ccl/mccl/impl"],
     "cncl": ["backends/ccl/cncl/impl"],
     "hccl": ["backends/ccl/hccl/impl"],
+    "bkcl": ["backends/ccl/bkcl/impl"],
 }
 
 BACKEND_COMMON_HEADERS = {
@@ -41,6 +42,7 @@ BACKEND_COMMON_HEADERS = {
     "mccl": ["backends/ccl/mccl/type_map.h"],
     "cncl": ["backends/ccl/cncl/type_map.h"],
     "hccl": ["backends/ccl/hccl/type_map.h"],
+    "bkcl": ["backends/ccl/bkcl/type_map.h"],
 }
 
 CCL_PROVIDER_BACKENDS = {
@@ -48,6 +50,7 @@ CCL_PROVIDER_BACKENDS = {
     "mccl": "backends/ccl/mccl",
     "cncl": "backends/ccl/cncl",
     "hccl": "backends/ccl/hccl",
+    "bkcl": "backends/ccl/bkcl",
 }
 
 # =================================================================
