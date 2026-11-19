@@ -4,6 +4,7 @@
 #include <cstddef>
 
 #include "backends/ccl/common/api.h"
+#include "backends/ccl/nccl/capabilities.h"
 #include "backends/ccl/nccl/compat.h"
 #include "logging.h"
 #include "return_status_impl.h"
@@ -18,6 +19,9 @@ template <Device::Type device>
 struct NcclApi {
   static constexpr BackendType kBackendType = BackendType::kNccl;
   static constexpr Device::Type kDeviceType = device;
+
+  static constexpr bool kHasNativeAllToAll =
+      nccl::capabilities::kHasNativeAllToAll<device>;
 
   using Comm = ncclComm_t;
   using UniqueId = ncclUniqueId;
@@ -74,6 +78,21 @@ struct NcclApi {
                           Stream stream) {
     return ncclAllGather(send_buff, recv_buff, send_count, data_type, comm,
                          stream);
+  }
+
+  static ReturnStatus AllToAll(const void* send_buff, void* recv_buff,
+                               size_t count, DataType data_type, Comm comm,
+                               Stream stream) {
+    if constexpr (nccl::capabilities::kHasAllToAll<device>) {
+      return Check(
+          ncclAlltoAll(send_buff, recv_buff, count, data_type, comm, stream));
+    } else if constexpr (nccl::capabilities::kHasAllToAllAlternate<device>) {
+      return Check(
+          ncclAllToAll(send_buff, recv_buff, count, data_type, comm, stream));
+    } else {
+      LOG("Native NCCL `AllToAll` is unavailable.");
+      return ReturnStatus::kNotSupported;
+    }
   }
 
   static Result ReduceScatter(const void* send_buff, void* recv_buff,

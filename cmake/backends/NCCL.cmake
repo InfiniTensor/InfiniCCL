@@ -81,6 +81,20 @@ function(infiniccl_configure_nccl include_output library_output definitions_outp
     endif()
 
     _infiniccl_find_nccl(_INFINICCL_NCCL TRUE _include _library _definitions)
+
+    set(_api_operations
+        "AllToAll|ncclAlltoAll(nullptr, nullptr, 0, ncclFloat32, nullptr, nullptr)|ncclAllToAll(nullptr, nullptr, 0, ncclFloat32, nullptr, nullptr)"
+    )
+    infiniccl_configure_ccl_capabilities(
+        PROVIDER nccl
+        HEADER "backends/ccl/nccl/compat.h"
+        OPS ${_api_operations}
+        INCLUDES "${PROJECT_SOURCE_DIR}/src" "${_include}"
+                 ${CUDAToolkit_INCLUDE_DIRS} ${HYGON_HIP_INCLUDE_DIR}
+        LIBRARIES "${_library}"
+        DEFINITIONS ${_definitions} ${HYGON_HIP_DEFINITIONS}
+    )
+
     set(${include_output} "${_include}" PARENT_SCOPE)
     set(${library_output} "${_library}" PARENT_SCOPE)
     set(${definitions_output} "${_definitions}" PARENT_SCOPE)
