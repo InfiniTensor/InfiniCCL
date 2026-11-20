@@ -12,6 +12,12 @@ foreach(source_file ${EXAMPLE_SOURCES})
         set(target_name ${file_we})
     endif()
 
+    # The BKCL p2p example drives the kunlun runtime directly and cannot
+    # compile against backends that lack stream primitives (e.g. CPU).
+    if(${file_we} STREQUAL "pp_p2p" AND NOT WITH_KUNLUN)
+        continue()
+    endif()
+
     add_executable(${target_name} ${source_file})
 
     set_target_properties(${target_name} PROPERTIES
@@ -65,6 +71,11 @@ foreach(source_file ${EXAMPLE_SOURCES})
         target_link_libraries(${target_name} PRIVATE ${HYGON_HIP_RUNTIME_LIB})
     endif()
 
+    if(WITH_KUNLUN)
+        target_include_directories(${target_name} PRIVATE ${KUNLUN_INC})
+        target_link_libraries(${target_name} PRIVATE ${KUNLUN_XPURT_LIB})
+    endif()
+
     if(WITH_OMPI OR WITH_MPICH)
         target_link_libraries(${target_name} PRIVATE MPI::MPI_CXX)
     endif()
@@ -84,6 +95,10 @@ foreach(source_file ${EXAMPLE_SOURCES})
 
     if(WITH_HCCL)
         target_include_directories(${target_name} PRIVATE ${HCCL_INC})
+    endif()
+
+    if(WITH_BKCL)
+        target_include_directories(${target_name} PRIVATE ${BKCL_INC})
     endif()
 
     # Explicitly allow examples to "peek" into the internal `src` and binary dirs.

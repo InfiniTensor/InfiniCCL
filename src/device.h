@@ -28,29 +28,29 @@ class Device {
 
   Device() = default;
 
-  Device(const Type &type, const int &index = 0) : type_{type}, index_{index} {}
+  Device(const Type& type, const int& index = 0) : type_{type}, index_{index} {}
 
-  static const Type TypeFromString(const std::string &name) {
+  static const Type TypeFromString(const std::string& name) {
     return kDescToDevice.at(name);
   }
 
-  static const std::string_view StringFromType(const Type &type) {
+  static const std::string_view StringFromType(const Type& type) {
     return kDeviceToDesc.at(type);
   }
 
-  const Type &type() const { return type_; }
+  const Type& type() const { return type_; }
 
-  const int &index() const { return index_; }
+  const int& index() const { return index_; }
 
   std::string ToString() const {
     return std::string{StringFromType(type_)} + ":" + std::to_string(index_);
   }
 
-  bool operator==(const Device &other) const {
+  bool operator==(const Device& other) const {
     return type_ == other.type_ && index_ == other.index_;
   }
 
-  bool operator!=(const Device &other) const { return !(*this == other); }
+  bool operator!=(const Device& other) const { return !(*this == other); }
 
  private:
   Type type_{Type::kCpu};
@@ -174,10 +174,15 @@ struct DevicePriority<Device::Type::kThead> {
   static constexpr int value = 5;
 };
 
+template <>
+struct DevicePriority<Device::Type::kKunlun> {
+  static constexpr int value = 5;
+};
+
 enum class MemorySpace : std::uint8_t { kHost = 0, kDevice = 1, kUnknown };
 
 template <Device::Type kDev>
-MemorySpace GetMemorySpace(const void *ptr);
+MemorySpace GetMemorySpace(const void* ptr);
 
 }  // namespace infini::ccl
 

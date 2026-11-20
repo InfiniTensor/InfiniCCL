@@ -249,6 +249,17 @@ if(WITH_ASCEND)
     target_link_libraries(infiniccl PRIVATE ${ASCENDCL_LIB} ${ASCEND_NNOPBASE_LIB})
 endif()
 
+# Kunlun
+if(WITH_KUNLUN)
+    list(APPEND DEVICE_LIST "kunlun")
+
+    file(GLOB_RECURSE KUNLUN_SRCS "devices/kunlun/*.cc" "devices/kunlun/*.cpp")
+
+    target_sources(infiniccl PRIVATE ${KUNLUN_SRCS})
+    target_include_directories(infiniccl PRIVATE ${KUNLUN_INC})
+    target_link_libraries(infiniccl PRIVATE ${KUNLUN_XPURT_LIB})
+endif()
+
 # Hygon
 if(WITH_HYGON)
     list(APPEND DEVICE_LIST "hygon")
@@ -335,6 +346,16 @@ if(WITH_HCCL)
     target_sources(infiniccl PRIVATE ${HCCL_SRCS})
     target_include_directories(infiniccl PRIVATE ${HCCL_INC} ${HCCL_ACLNN_INC})
     target_link_libraries(infiniccl PRIVATE ${HCCL_LIB} ${HCCL_OPAPI_LIB})
+endif()
+
+# BKCL
+if(WITH_BKCL)
+    list(APPEND BACKEND_LIST "bkcl")
+    file(GLOB_RECURSE BKCL_SRCS "backends/ccl/bkcl/*.cc" "backends/ccl/bkcl/*.cpp")
+
+    target_sources(infiniccl PRIVATE ${BKCL_SRCS})
+    target_include_directories(infiniccl PRIVATE ${BKCL_INC})
+    target_link_libraries(infiniccl PRIVATE ${BKCL_LIB})
 endif()
 
 # =========================================================

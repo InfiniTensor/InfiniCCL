@@ -15,13 +15,14 @@ enum class BackendType : int8_t {
   kRccl = 4,
   kCncl = 5,
   kHccl = 6,
+  kBkcl = 7,
   kCount
 };
 
 using AllBackendTypes =
     List<BackendType::kOmpi, BackendType::kGloo, BackendType::kNccl,
          BackendType::kMccl, BackendType::kRccl, BackendType::kCncl,
-         BackendType::kHccl>;
+         BackendType::kHccl, BackendType::kBkcl>;
 
 template <typename Key, BackendType>
 struct BackendEnabled : std::false_type {};
@@ -70,6 +71,11 @@ struct BackendPriority<BackendType::kCncl> {
 
 template <>
 struct BackendPriority<BackendType::kHccl> {
+  static constexpr int value = 10;
+};
+
+template <>
+struct BackendPriority<BackendType::kBkcl> {
   static constexpr int value = 10;
 };
 
