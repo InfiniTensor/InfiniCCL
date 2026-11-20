@@ -58,6 +58,20 @@ function(infiniccl_configure_mccl include_output library_output)
         set(_provider METAX)
     endif()
     _infiniccl_find_mccl(_INFINICCL_MCCL ${_provider} TRUE _include _library)
+
+    set(_api_operations
+        "AllToAll|mcclAllToAll(nullptr, nullptr, 0, mcclFloat32, nullptr, nullptr)|mcclAlltoAll(nullptr, nullptr, 0, mcclFloat32, nullptr, nullptr)"
+        "Scatter|mcclScatter(nullptr, nullptr, 0, mcclFloat32, 0, nullptr, nullptr)"
+        "Gather|mcclGather(nullptr, nullptr, 0, mcclFloat32, 0, nullptr, nullptr)"
+    )
+    infiniccl_configure_ccl_capabilities(
+        PROVIDER mccl
+        HEADER "mccl.h"
+        OPS ${_api_operations}
+        INCLUDES "${_include}"
+        LIBRARIES "${_library}"
+    )
+
     set(${include_output} "${_include}" PARENT_SCOPE)
     set(${library_output} "${_library}" PARENT_SCOPE)
 endfunction()

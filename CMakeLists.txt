@@ -47,6 +47,7 @@ include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
 
 # Backend modules provide backend probes and required dependency resolution.
+include(cmake/CCLCapabilities.cmake)
 include(cmake/backends/MPI.cmake)
 include(cmake/backends/NCCL.cmake)
 include(cmake/backends/MCCL.cmake)

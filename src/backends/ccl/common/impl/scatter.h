@@ -15,14 +15,25 @@ namespace infini::ccl {
 
 template <BackendType backend, Device::Type device>
 class CclScatterImpl {
- public:
-  static ReturnStatus Apply(const void *send_buff, void *recv_buff,
-                            size_t count, DataType data_type, int root,
-                            Communicator *comm, void *stream) {
-    using Api = CclApi<backend, device>;
-    using TypeMap = CclTypeMap<backend, device>;
-    using CommInstance = CclCommInstance<Api>;
+ private:
+  using Api = CclApi<backend, device>;
+  using TypeMap = CclTypeMap<backend, device>;
+  using CommInstance = CclCommInstance<Api>;
 
+  struct Arguments {
+    typename Api::Comm handle{};
+    typename Api::DataType data_type{};
+    typename Api::Stream stream{};
+    int nranks = 0;
+    int rank = 0;
+    int root = 0;
+    size_t rank_bytes = 0;
+  };
+
+  static ReturnStatus Prepare(const void *send_buff, void *recv_buff,
+                              size_t count, DataType data_type, int root,
+                              Communicator *comm, void *stream,
+                              Arguments *args) {
     if (!comm || !comm->intra_comm() || comm->intra_comm_backend() != backend ||
         comm->device_type() != device) {
       return ReturnStatus::kInternalError;
@@ -30,7 +41,7 @@ class CclScatterImpl {
 
     if (comm->size() <= 0 || comm->rank() < 0 || comm->rank() >= comm->size() ||
         root < 0 || root >= comm->size()) {
-      LOG("Invalid rank, root, or world size for native CCL `Scatter`.");
+      LOG("Invalid rank, root, or world size for CCL `Scatter`.");
       return ReturnStatus::kInternalError;
     }
 
@@ -46,19 +57,79 @@ class CclScatterImpl {
 
     const size_t type_size = kDataTypeToSize.at(data_type);
     if (count > std::numeric_limits<size_t>::max() / type_size) {
-      LOG("Per-rank byte size overflows `size_t` for native CCL `Scatter`.");
+      LOG("Per-rank byte size overflows `size_t` for CCL `Scatter`.");
       return ReturnStatus::kInvalidArgument;
     }
     const size_t rank_bytes = count * type_size;
     const size_t world_size = static_cast<size_t>(comm->size());
     if (rank_bytes > std::numeric_limits<size_t>::max() / world_size) {
-      LOG("Total byte size overflows `size_t` for native CCL `Scatter`.");
+      LOG("Total byte size overflows `size_t` for CCL `Scatter`.");
       return ReturnStatus::kInvalidArgument;
     }
 
-    return Api::Check(Api::Scatter(
-        send_buff, recv_buff, count, native_type, root, instance->handle,
-        reinterpret_cast<typename Api::Stream>(stream)));
+    args->handle = instance->handle;
+    args->data_type = native_type;
+    args->stream = reinterpret_cast<typename Api::Stream>(stream);
+    args->nranks = comm->size();
+    args->rank = comm->rank();
+    args->root = root;
+    args->rank_bytes = rank_bytes;
+    return ReturnStatus::kSuccess;
+  }
+
+  static ReturnStatus ApplyGrouped(const void *send_buff, void *recv_buff,
+                                   size_t count, const Arguments &args) {
+    ReturnStatus status = Api::Check(Api::GroupStart());
+    if (status != ReturnStatus::kSuccess) {
+      return status;
+    }
+
+    ReturnStatus first_error = ReturnStatus::kSuccess;
+    const auto *send_bytes = static_cast<const char *>(send_buff);
+
+    if (args.rank == args.root) {
+      for (int peer = 0; peer < args.nranks; ++peer) {
+        const size_t offset = static_cast<size_t>(peer) * args.rank_bytes;
+        status =
+            Api::Check(Api::Send(send_bytes + offset, count, args.data_type,
+                                 peer, args.handle, args.stream));
+        if (status != ReturnStatus::kSuccess &&
+            first_error == ReturnStatus::kSuccess) {
+          first_error = status;
+        }
+      }
+    }
+
+    status = Api::Check(Api::Recv(recv_buff, count, args.data_type, args.root,
+                                  args.handle, args.stream));
+    if (status != ReturnStatus::kSuccess &&
+        first_error == ReturnStatus::kSuccess) {
+      first_error = status;
+    }
+
+    // Always close a successfully opened group, even after an enqueue error.
+    const ReturnStatus group_end_status = Api::Check(Api::GroupEnd());
+    return first_error != ReturnStatus::kSuccess ? first_error
+                                                 : group_end_status;
+  }
+
+ public:
+  static ReturnStatus Apply(const void *send_buff, void *recv_buff,
+                            size_t count, DataType data_type, int root,
+                            Communicator *comm, void *stream) {
+    Arguments args;
+    const ReturnStatus status = Prepare(send_buff, recv_buff, count, data_type,
+                                        root, comm, stream, &args);
+    if (status != ReturnStatus::kSuccess) {
+      return status;
+    }
+
+    if constexpr (Api::kHasNativeScatter) {
+      return Api::Scatter(send_buff, recv_buff, count, args.data_type,
+                          args.root, args.handle, args.stream);
+    } else {
+      return ApplyGrouped(send_buff, recv_buff, count, args);
+    }
   }
 };
 
