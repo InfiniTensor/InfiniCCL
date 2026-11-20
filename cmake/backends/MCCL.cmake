@@ -61,6 +61,8 @@ function(infiniccl_configure_mccl include_output library_output)
 
     set(_api_operations
         "AllToAll|mcclAllToAll(nullptr, nullptr, 0, mcclFloat32, nullptr, nullptr)|mcclAlltoAll(nullptr, nullptr, 0, mcclFloat32, nullptr, nullptr)"
+        "Scatter|mcclScatter(nullptr, nullptr, 0, mcclFloat32, 0, nullptr, nullptr)"
+        "Gather|mcclGather(nullptr, nullptr, 0, mcclFloat32, 0, nullptr, nullptr)"
     )
     infiniccl_configure_ccl_capabilities(
         PROVIDER mccl

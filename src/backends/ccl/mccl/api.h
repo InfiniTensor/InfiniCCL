@@ -23,6 +23,10 @@ struct McclApi {
 
   static constexpr bool kHasNativeAllToAll =
       mccl::capabilities::kHasNativeAllToAll<device>;
+  static constexpr bool kHasNativeScatter =
+      mccl::capabilities::kHasNativeScatter<device>;
+  static constexpr bool kHasNativeGather =
+      mccl::capabilities::kHasNativeGather<device>;
 
   using Comm = mcclComm_t;
   using UniqueId = mcclUniqueId;
@@ -47,11 +51,16 @@ struct McclApi {
 
   static Result CommDestroy(Comm comm) { return mcclCommDestroy(comm); }
 
-  static Result Scatter(const void *send_buff, void *recv_buff, size_t count,
-                        DataType data_type, int root, Comm comm,
-                        Stream stream) {
-    return mcclScatter(send_buff, recv_buff, count, data_type, root, comm,
-                       stream);
+  static ReturnStatus Scatter(const void *send_buff, void *recv_buff,
+                              size_t count, DataType data_type, int root,
+                              Comm comm, Stream stream) {
+    if constexpr (mccl::capabilities::kHasScatter<device>) {
+      return Check(mcclScatter(send_buff, recv_buff, count, data_type, root,
+                               comm, stream));
+    } else {
+      LOG("Native MCCL `Scatter` is unavailable.");
+      return ReturnStatus::kNotSupported;
+    }
   }
 
   static Result AllReduce(const void *send_buff, void *recv_buff, size_t count,
@@ -61,10 +70,16 @@ struct McclApi {
                          stream);
   }
 
-  static Result Gather(const void *send_buff, void *recv_buff, size_t count,
-                       DataType data_type, int root, Comm comm, Stream stream) {
-    return mcclGather(send_buff, recv_buff, count, data_type, root, comm,
-                      stream);
+  static ReturnStatus Gather(const void *send_buff, void *recv_buff,
+                             size_t count, DataType data_type, int root,
+                             Comm comm, Stream stream) {
+    if constexpr (mccl::capabilities::kHasGather<device>) {
+      return Check(mcclGather(send_buff, recv_buff, count, data_type, root,
+                              comm, stream));
+    } else {
+      LOG("Native MCCL `Gather` is unavailable.");
+      return ReturnStatus::kNotSupported;
+    }
   }
 
   static Result AllGather(const void *send_buff, void *recv_buff,

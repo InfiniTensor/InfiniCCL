@@ -84,6 +84,8 @@ function(infiniccl_configure_nccl include_output library_output definitions_outp
 
     set(_api_operations
         "AllToAll|ncclAlltoAll(nullptr, nullptr, 0, ncclFloat32, nullptr, nullptr)|ncclAllToAll(nullptr, nullptr, 0, ncclFloat32, nullptr, nullptr)"
+        "Scatter|ncclScatter(nullptr, nullptr, 0, ncclFloat32, 0, nullptr, nullptr)"
+        "Gather|ncclGather(nullptr, nullptr, 0, ncclFloat32, 0, nullptr, nullptr)"
     )
     infiniccl_configure_ccl_capabilities(
         PROVIDER nccl

@@ -22,6 +22,10 @@ struct NcclApi {
 
   static constexpr bool kHasNativeAllToAll =
       nccl::capabilities::kHasNativeAllToAll<device>;
+  static constexpr bool kHasNativeScatter =
+      nccl::capabilities::kHasNativeScatter<device>;
+  static constexpr bool kHasNativeGather =
+      nccl::capabilities::kHasNativeGather<device>;
 
   using Comm = ncclComm_t;
   using UniqueId = ncclUniqueId;
@@ -46,11 +50,16 @@ struct NcclApi {
 
   static Result CommDestroy(Comm comm) { return ncclCommDestroy(comm); }
 
-  static Result Scatter(const void* send_buff, void* recv_buff, size_t count,
-                        DataType data_type, int root, Comm comm,
-                        Stream stream) {
-    return ncclScatter(send_buff, recv_buff, count, data_type, root, comm,
-                       stream);
+  static ReturnStatus Scatter(const void* send_buff, void* recv_buff,
+                              size_t count, DataType data_type, int root,
+                              Comm comm, Stream stream) {
+    if constexpr (nccl::capabilities::kHasScatter<device>) {
+      return Check(ncclScatter(send_buff, recv_buff, count, data_type, root,
+                               comm, stream));
+    } else {
+      LOG("Native NCCL `Scatter` is unavailable.");
+      return ReturnStatus::kNotSupported;
+    }
   }
 
   static Result AllReduce(const void* send_buff, void* recv_buff, size_t count,
@@ -67,10 +76,16 @@ struct NcclApi {
                       stream);
   }
 
-  static Result Gather(const void* send_buff, void* recv_buff, size_t count,
-                       DataType data_type, int root, Comm comm, Stream stream) {
-    return ncclGather(send_buff, recv_buff, count, data_type, root, comm,
-                      stream);
+  static ReturnStatus Gather(const void* send_buff, void* recv_buff,
+                             size_t count, DataType data_type, int root,
+                             Comm comm, Stream stream) {
+    if constexpr (nccl::capabilities::kHasGather<device>) {
+      return Check(ncclGather(send_buff, recv_buff, count, data_type, root,
+                              comm, stream));
+    } else {
+      LOG("Native NCCL `Gather` is unavailable.");
+      return ReturnStatus::kNotSupported;
+    }
   }
 
   static Result AllGather(const void* send_buff, void* recv_buff,
