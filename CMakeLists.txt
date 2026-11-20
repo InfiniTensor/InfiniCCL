@@ -217,6 +217,11 @@ endif()
 
 if(WITH_OMPI OR WITH_MPICH)
     find_package(MPI REQUIRED)
+    find_path(IBVERBS_INCLUDE_DIR NAMES infiniband/verbs.h REQUIRED)
+    find_library(IBVERBS_LIBRARY NAMES ibverbs REQUIRED)
+    find_path(MLX5DV_INCLUDE_DIR NAMES infiniband/mlx5dv.h REQUIRED)
+    find_library(MLX5DV_LIBRARY NAMES mlx5 REQUIRED)
+    find_package(Threads REQUIRED)
 endif()
 
 if(WITH_NCCL)

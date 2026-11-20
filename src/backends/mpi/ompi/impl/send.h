@@ -36,6 +36,14 @@ class SendImpl<BackendType::kOmpi, device_type> {
     }
 
     size_t total_bytes = count * type_size;
+
+    auto *send_buffer = const_cast<void *>(send_buff);
+    if (inst->rdma_transport.SupportRdma(send_buffer, total_bytes, peer,
+                                         device_type, stream,
+                                         /*send=*/true)) {
+      return inst->rdma_transport.Send(send_buffer, total_bytes, peer, stream);
+    }
+
     void *host_buf = std::malloc(total_bytes);
     if (!host_buf) {
       LOG("Failed to allocate host buffer for `Send` staging.");

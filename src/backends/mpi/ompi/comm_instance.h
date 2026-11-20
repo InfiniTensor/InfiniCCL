@@ -3,6 +3,8 @@
 
 #include <mpi.h>
 
+#include "backends/mpi/rdma/rdma_transport.h"
+
 #include "checks.h"
 #include "communicator.h"
 
@@ -11,10 +13,13 @@ namespace infini::ccl {
 struct OmpiInstance : public BackendCommInstance {
   MPI_Comm handle = MPI_COMM_NULL;
 
+  RdmaTransport rdma_transport;
+
   OmpiInstance() { type = BackendType::kOmpi; }
   ~OmpiInstance() override { Destroy(); }
 
   void Destroy() {
+    rdma_transport.Destroy();
     if (handle != MPI_COMM_WORLD && handle != MPI_COMM_NULL) {
       INFINI_CHECK_MPI(MPI_Comm_free(&handle));
       handle = MPI_COMM_NULL;

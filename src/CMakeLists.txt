@@ -43,6 +43,7 @@ target_sources(infiniccl PRIVATE
 
 # CPU (Always On as the base architecture)
 file(GLOB_RECURSE CPU_SRCS "devices/cpu/*.cc")
+list(FILTER CPU_SRCS EXCLUDE REGEX "rdma_memory\\.cc$")
 target_sources(infiniccl PRIVATE ${CPU_SRCS})
 
 # NVIDIA
@@ -58,6 +59,7 @@ if(WITH_NVIDIA)
         "devices/nvidia/*.cu"
     )
     file(GLOB NVIDIA_SOURCES ${NVIDIA_PATTERNS})
+    list(FILTER NVIDIA_SOURCES EXCLUDE REGEX "rdma_memory\\.cc$")
 
     target_sources(infiniccl PRIVATE ${NVIDIA_SOURCES})
     target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
@@ -129,6 +131,7 @@ if(WITH_METAX)
         "devices/metax/*.maca"
     )
     file(GLOB METAX_SOURCES ${METAX_PATTERNS})
+    list(FILTER METAX_SOURCES EXCLUDE REGEX "rdma_memory\\.cc$")
 
     set_source_files_properties(${METAX_SOURCES} PROPERTIES LANGUAGE CXX)
 
@@ -282,6 +285,67 @@ if(WITH_OMPI)
     endif()
 endif()
 
+# RDMA (transport attribute of the MPI backends)
+if(WITH_OMPI OR WITH_MPICH)
+    target_sources(infiniccl PRIVATE
+        backends/mpi/rdma/rdma_transport.cc
+        backends/mpi/rdma/memory_adaptor.cc
+        devices/cpu/rdma_memory.cc
+    )
+    target_include_directories(infiniccl PRIVATE
+        ${IBVERBS_INCLUDE_DIR}
+        ${MLX5DV_INCLUDE_DIR}
+    )
+    target_link_libraries(infiniccl PRIVATE
+        ${IBVERBS_LIBRARY}
+        ${MLX5DV_LIBRARY}
+        Threads::Threads
+    )
+    if(TARGET MPI::MPI_CXX)
+        target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
+    endif()
+
+    include(CMakePushCheckState)
+    include(CheckCXXSourceCompiles)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_INCLUDES ${MLX5DV_INCLUDE_DIR} ${IBVERBS_INCLUDE_DIR})
+    set(CMAKE_REQUIRED_LIBRARIES ${MLX5DV_LIBRARY} ${IBVERBS_LIBRARY})
+    check_cxx_source_compiles("
+        #include <infiniband/mlx5dv.h>
+        int main() {
+            ibv_qp_init_attr_ex attr{};
+            mlx5dv_qp_init_attr mlx5_attr{};
+            attr.comp_mask = IBV_QP_INIT_ATTR_PD;
+            mlx5_attr.comp_mask = MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+            mlx5_attr.create_flags = MLX5DV_QP_CREATE_DISABLE_SCATTER_TO_CQE;
+            auto *qp = mlx5dv_create_qp(nullptr, &attr, &mlx5_attr);
+            return mlx5dv_is_supported(nullptr) && qp ? 0 : 1;
+        }
+    " INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+    cmake_pop_check_state()
+    if(NOT INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+        message(FATAL_ERROR
+            "MPI RDMA requires mlx5dv Scatter-to-CQE control support.")
+    endif()
+
+    if(WITH_NVIDIA)
+        if(CUDAToolkit_VERSION VERSION_LESS 11.3)
+            message(FATAL_ERROR
+                "NVIDIA RDMA requires CUDA 11.3 or newer for visibility capability checks.")
+        endif()
+        target_sources(infiniccl PRIVATE devices/nvidia/rdma_memory.cc)
+    endif()
+    if(WITH_METAX)
+        find_path(METAX_RDMA_INCLUDE_DIR NAMES mxkw/mxkw.h
+            HINTS "${MACA_PATH}/include" REQUIRED)
+        find_library(METAX_RDMA_LIBRARY NAMES mxkw
+            HINTS "${MACA_PATH}/lib" "${MACA_PATH}/lib64" REQUIRED)
+        target_sources(infiniccl PRIVATE devices/metax/rdma_memory.cc)
+        target_include_directories(infiniccl PRIVATE ${METAX_RDMA_INCLUDE_DIR})
+        target_link_libraries(infiniccl PRIVATE ${METAX_RDMA_LIBRARY})
+    endif()
+endif()
+
 if(WITH_MPICH)
     list(APPEND BACKEND_LIST "mpich")
     # Note: MPICH shares the same internal implementation as OMPI, so we reuse the `ompi/impl` sources for both.
@@ -360,11 +424,13 @@ file(WRITE "${PUBLIC_HEADERS_DIR}/infiniccl.h" "${INFINICCL_H_CONTENT}")
 # --- Generate the bridge files ---
 set(GENERATED_BRIDGE "${CMAKE_CURRENT_BINARY_DIR}/comm_bridge.cc")
 set(GENERATED_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/backend_manifest.h")
+set(GENERATED_RDMA_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/rdma_manifest.h")
 set(DEV_STR "${DEVICE_LIST}")
 set(BACK_STR "${BACKEND_LIST}")
 
 add_custom_command(
     OUTPUT "${GENERATED_BRIDGE}" "${GENERATED_MANIFEST}"
+           "${GENERATED_RDMA_MANIFEST}"
     COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/scripts/gen_bridge.py"
             "${PROJECT_SOURCE_DIR}"
             "${CMAKE_CURRENT_BINARY_DIR}"
@@ -376,10 +442,13 @@ add_custom_command(
             ${BASE_IMPL_SRCS}
             ${BRIDGE_DEP_HEADERS}
     VERBATIM
-    COMMENT "Generating InfiniCCL bridge and manifest files for Devices: [${DEV_STR}] Backends: [${BACK_STR}]..."
+    COMMENT "Generating InfiniCCL bridge and manifests for Devices: [${DEV_STR}] Backends: [${BACK_STR}]..."
 )
 
-target_sources(infiniccl PRIVATE "${GENERATED_BRIDGE}")
+target_sources(infiniccl PRIVATE
+    "${GENERATED_BRIDGE}"
+    "${GENERATED_RDMA_MANIFEST}"
+)
 target_include_directories(infiniccl PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 # =========================================================

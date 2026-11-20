@@ -50,6 +50,8 @@ CCL_PROVIDER_BACKENDS = {
     "hccl": "backends/ccl/hccl",
 }
 
+MPI_RDMA_BACKENDS = {"ompi", "mpich"}
+
 # =================================================================
 # LOGIC
 # =================================================================
@@ -179,7 +181,48 @@ def generate(project_root, output_dir, devices, backends):
     with open(os.path.join(output_dir, "backend_manifest.h"), "w") as f:
         f.write("\n".join(manifest_lines))
 
-    # 2. Generate `comm_bridge.cc`.
+    # 2. Generate `rdma_manifest.h`.
+    rdma_lines = [
+        AUTOGEN_HEADER,
+        "#ifndef INFINI_CCL_RDMA_MANIFEST_H_",
+        "#define INFINI_CCL_RDMA_MANIFEST_H_",
+        "",
+        '#include "traits.h"',
+    ]
+
+    rdma_devices = []
+
+    rdma_enabled = any(bb in MPI_RDMA_BACKENDS for bb in backends)
+    if rdma_enabled:
+        rdma_lines.append("\n// --- RDMA MEMORY ADAPTERS ---")
+
+        for dev in devices:
+            if not dev:
+                continue
+
+            rel_path = f"devices/{dev}/rdma_memory.h"
+            if os.path.exists(os.path.join(src_dir, rel_path)):
+                rdma_lines.append(f'#include "{rel_path}"')
+                rdma_devices.append(f"Device::Type::k{dev.capitalize()}")
+
+    def device_list(values):
+        return ", ".join(values) if values else ""
+
+    rdma_lines.extend(
+        [
+            "\nnamespace infini::ccl {\n",
+            f"using EnabledRdmaAdapters = List<{device_list(rdma_devices)}>;",
+            "using RdmaDispatchDevices = "
+            f"List<{device_list(found_devices)}>;",
+            "\n} // namespace infini::ccl",
+            "\n#endif // INFINI_CCL_RDMA_MANIFEST_H_\n",
+        ]
+    )
+
+    with open(os.path.join(output_dir, "rdma_manifest.h"), "w") as f:
+        f.write("\n".join(rdma_lines))
+
+    # 3. Generate `comm_bridge.cc`.
     bridge_lines = [
         AUTOGEN_HEADER,
         '#include "backend_manifest.h"',
