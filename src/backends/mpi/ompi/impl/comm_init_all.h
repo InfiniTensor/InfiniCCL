@@ -3,6 +3,7 @@
 
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
+#include "backends/mpi/ompi/device_support.h"
 #include "base/comm_init_all.h"
 #include "communicator.h"
 #include "logging.h"
@@ -14,8 +15,7 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
  public:
   static ReturnStatus Apply(Communicator *comm, int n_dev,
                             const int *dev_list) {
-    constexpr Device::Type kDev =
-        ListGetBest<DevicePriority>(ActiveDevices<CommInitAll>{});
+    constexpr Device::Type kDev = device_type;
     using Rt = Runtime<kDev>;
 
     if (comm && comm->inter_comm()) {
@@ -32,7 +32,6 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
 
     comm->set_world_info(rank, size);
     comm->set_local_size(n_dev);
-    comm->set_inter_comm(std::move(inst));
 
     int local_rank = 0;
     char *local_rank_str = getenv("OMPI_COMM_WORLD_LOCAL_RANK");
@@ -48,6 +47,16 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
     }
 
     CHECK_STATUS(Rt, Rt::SetDevice(comm->device_id()));
+
+    inst->device_support = ResolveMpiDeviceSupport<kDev>();
+    if (rank == 0) {
+      LOG(inst->device_support == MpiDeviceSupport::kDeviceAware
+              ? "MPI device-aware transport: enabled (device-direct)."
+              : "MPI device-aware transport: disabled (host-staged).",
+          Logger::LogLevel::kInfo);
+    }
+
+    comm->set_inter_comm(std::move(inst));
 
     return ReturnStatus::kSuccess;
   }

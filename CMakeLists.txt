@@ -218,6 +218,11 @@ if(WITH_OMPI OR WITH_MPICH)
     find_package(MPI REQUIRED)
 endif()
 
+set(INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS "")
+if(WITH_OMPI)
+    infiniccl_configure_mpi_device_aware(INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS)
+endif()
+
 if(WITH_NCCL)
     infiniccl_configure_nccl(NCCL_INC NCCL_LIB NCCL_COMPILE_DEFINITIONS)
     include_directories(${NCCL_INC})
