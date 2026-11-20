@@ -5,11 +5,14 @@
 
 #include "checks.h"
 #include "communicator.h"
+#include "device_support.h"
 
 namespace infini::ccl {
 
 struct OmpiInstance : public BackendCommInstance {
   MPI_Comm handle = MPI_COMM_NULL;
+
+  MpiDeviceSupport device_support = MpiDeviceSupport::kHostStaged;
 
   OmpiInstance() { type = BackendType::kOmpi; }
   ~OmpiInstance() override { Destroy(); }
