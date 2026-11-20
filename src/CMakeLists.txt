@@ -280,6 +280,11 @@ if(WITH_OMPI)
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
     endif()
+
+    if(INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS)
+        target_compile_definitions(infiniccl PRIVATE
+            ${INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS})
+    endif()
 endif()
 
 if(WITH_MPICH)

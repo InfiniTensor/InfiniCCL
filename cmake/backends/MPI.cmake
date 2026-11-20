@@ -27,3 +27,38 @@ function(infiniccl_detect_mpi output)
 
     set(${output} "${_implementation}" PARENT_SCOPE)
 endfunction()
+
+function(infiniccl_configure_mpi_device_aware output)
+    if(NOT WITH_OMPI)
+        set(${output} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    include(CheckCXXSourceCompiles)
+    include(CMakePushCheckState)
+    cmake_push_check_state(RESET)
+
+    set(CMAKE_REQUIRED_INCLUDES ${MPI_CXX_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_LIBRARIES ${MPI_CXX_LIBRARIES})
+    if(MPI_CXX_COMPILE_FLAGS)
+        set(CMAKE_REQUIRED_FLAGS ${MPI_CXX_COMPILE_FLAGS})
+    endif()
+    if(MPI_CXX_LINK_FLAGS)
+        set(CMAKE_REQUIRED_LINK_OPTIONS ${MPI_CXX_LINK_FLAGS})
+    endif()
+
+    check_cxx_source_compiles("
+        #include <mpi.h>
+        #include <mpi-ext.h>
+        int main() {
+            return MPIX_Query_cuda_support();
+        }
+    " INFINICCL_MPI_HAS_OMPI_CUDA_QUERY)
+    cmake_pop_check_state()
+
+    if(INFINICCL_MPI_HAS_OMPI_CUDA_QUERY)
+        set(${output} "INFINICCL_MPI_HAS_OMPI_CUDA_QUERY=1" PARENT_SCOPE)
+    else()
+        set(${output} "" PARENT_SCOPE)
+    endif()
+endfunction()

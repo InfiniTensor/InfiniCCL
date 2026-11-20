@@ -1,9 +1,9 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_SEND_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_SEND_H_
 
-#include <cstdlib>
 #include <limits>
 
+#include "backends/mpi/ompi/buffer_plan.h"
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
 #include "base/send.h"
@@ -19,9 +19,7 @@ class SendImpl<BackendType::kOmpi, device_type> {
   static ReturnStatus Apply(const void *send_buff, size_t count,
                             DataType data_type, int peer, Communicator *comm,
                             void *stream) {
-    constexpr Device::Type kDev =
-        ListGetBest<DevicePriority>(ActiveDevices<Send>{});
-    using Rt = Runtime<kDev>;
+    constexpr Device::Type kDev = device_type;
 
     auto *inst = static_cast<OmpiInstance *>(comm->inter_comm());
     if (!inst || inst->handle == MPI_COMM_NULL) {
@@ -35,18 +33,16 @@ class SendImpl<BackendType::kOmpi, device_type> {
       return ReturnStatus::kInvalidArgument;
     }
 
-    size_t total_bytes = count * type_size;
-    void *host_buf = std::malloc(total_bytes);
-    if (!host_buf) {
-      LOG("Failed to allocate host buffer for `Send` staging.");
-      return ReturnStatus::kSystemError;
+    const size_t total_bytes = count * type_size;
+    MpiBufferPlan<kDev> plan;
+    ReturnStatus status =
+        plan.Prepare(send_buff, nullptr, total_bytes, 0,
+                     MpiDeviceAwareUsable(inst->device_support), stream);
+    if (status != ReturnStatus::kSuccess) {
+      return status;
     }
 
-    CHECK_STATUS(Rt, Rt::Memcpy(host_buf, send_buff, total_bytes,
-                                Rt::MemcpyDeviceToHost));
-    CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
-
-    auto *bytes = static_cast<char *>(host_buf);
+    const auto *bytes = static_cast<const unsigned char *>(plan.send_buff());
     size_t offset = 0;
     constexpr size_t kMaxMpiCount =
         static_cast<size_t>(std::numeric_limits<int>::max());
@@ -56,12 +52,12 @@ class SendImpl<BackendType::kOmpi, device_type> {
       if (chunk > kMaxMpiCount) {
         chunk = kMaxMpiCount;
       }
+
       INFINI_CHECK_MPI(MPI_Send(bytes + offset, static_cast<int>(chunk),
                                 MPI_BYTE, peer, kTag, inst->handle));
       offset += chunk;
     }
 
-    std::free(host_buf);
     return ReturnStatus::kSuccess;
   }
 };

@@ -4,7 +4,6 @@
 #include <cuda_runtime.h>
 
 #include "device.h"
-#include "devices/cuda/checks.h"
 
 namespace infini::ccl {
 
@@ -18,7 +17,11 @@ MemorySpace GetMemorySpace<Device::Type::kNvidia>(const void* ptr) {
   }
 
   cudaPointerAttributes attr;
-  INFINI_CHECK_CUDA(cudaPointerGetAttributes(&attr, ptr));
+  cudaError_t status = cudaPointerGetAttributes(&attr, ptr);
+  if (status != cudaSuccess) {
+    cudaGetLastError();
+    return MemorySpace::kHost;
+  }
 
   if (attr.type == cudaMemoryTypeDevice || attr.type == cudaMemoryTypeManaged) {
     return MemorySpace::kDevice;
