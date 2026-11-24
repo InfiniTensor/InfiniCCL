@@ -37,7 +37,8 @@ class SendImpl<BackendType::kOmpi, device_type> {
     MpiBufferPlan<kDev> plan;
     ReturnStatus status =
         plan.Prepare(send_buff, nullptr, total_bytes, 0,
-                     MpiDeviceAwareUsable(inst->device_support), stream);
+                     MpiDeviceAwareUsable(inst->device_support), stream,
+                     MpiBufferPlan<kDev>::Mode::kPair);
     if (status != ReturnStatus::kSuccess) {
       return status;
     }

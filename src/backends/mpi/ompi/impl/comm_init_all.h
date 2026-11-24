@@ -1,6 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_INIT_ALL_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_COMM_INIT_ALL_H_
 
+#include <sstream>
+
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
 #include "backends/mpi/ompi/device_support.h"
@@ -49,12 +51,13 @@ class CommInitAllImpl<BackendType::kOmpi, device_type> {
     CHECK_STATUS(Rt, Rt::SetDevice(comm->device_id()));
 
     inst->device_support = ResolveMpiDeviceSupport<kDev>();
-    if (rank == 0) {
-      LOG(inst->device_support == MpiDeviceSupport::kDeviceAware
-              ? "MPI device-aware transport: enabled (device-direct)."
-              : "MPI device-aware transport: disabled (host-staged).",
-          Logger::LogLevel::kInfo);
-    }
+    std::ostringstream message;
+    message << "Rank " << rank << " device " << Device::StringFromType(kDev)
+            << ": MPI device-aware transport: "
+            << (inst->device_support == MpiDeviceSupport::kDeviceAware
+                    ? "enabled (device-direct)."
+                    : "disabled (host-staged).");
+    LOG(message.str().c_str(), Logger::LogLevel::kInfo);
 
     comm->set_inter_comm(std::move(inst));
 

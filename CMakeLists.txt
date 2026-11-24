@@ -219,9 +219,10 @@ if(WITH_OMPI OR WITH_MPICH)
     find_package(MPI REQUIRED)
 endif()
 
-set(INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS "")
-if(WITH_OMPI)
-    infiniccl_configure_mpi_device_aware(INFINICCL_MPI_DEVICE_AWARE_DEFINITIONS)
+set(INFINICCL_MPI_DEVICE_AWARE_QUERY_SUPPORTED OFF)
+if(WITH_OMPI OR WITH_MPICH)
+    infiniccl_configure_mpi_device_aware(
+        INFINICCL_MPI_DEVICE_AWARE_QUERY_SUPPORTED)
 endif()
 
 if(WITH_NCCL)

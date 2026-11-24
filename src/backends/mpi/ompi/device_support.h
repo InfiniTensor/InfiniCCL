@@ -5,11 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#if defined(INFINICCL_MPI_HAS_OMPI_CUDA_QUERY)
-#include <mpi-ext.h>
-#include <mpi.h>
-#endif
-
+#include "backends/mpi/ompi/device_support_config.h"
 #include "device.h"
 
 namespace infini::ccl {
@@ -34,15 +30,9 @@ struct MpiDeviceTraits {
 
 template <>
 struct MpiDeviceTraits<Device::Type::kNvidia> {
-#if defined(INFINICCL_MPI_HAS_OMPI_CUDA_QUERY)
-  static constexpr bool kDeviceAwareCapable = true;
+  static constexpr bool kDeviceAwareCapable = mpi_config::kHasOmpiCudaQuery;
 
-  static bool Query() { return MPIX_Query_cuda_support() != 0; }
-#else
-  static constexpr bool kDeviceAwareCapable = false;
-
-  static bool Query() { return false; }
-#endif
+  static bool Query() { return mpi_config::QueryOmpiCudaSupport(); }
 };
 
 template <>

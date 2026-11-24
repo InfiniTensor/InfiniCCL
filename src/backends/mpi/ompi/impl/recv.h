@@ -36,7 +36,8 @@ class RecvImpl<BackendType::kOmpi, device_type> {
     MpiBufferPlan<kDev> plan;
     ReturnStatus status =
         plan.Prepare(nullptr, recv_buff, 0, total_bytes,
-                     MpiDeviceAwareUsable(inst->device_support), stream);
+                     MpiDeviceAwareUsable(inst->device_support), stream,
+                     MpiBufferPlan<kDev>::Mode::kPair);
     if (status != ReturnStatus::kSuccess) {
       return status;
     }

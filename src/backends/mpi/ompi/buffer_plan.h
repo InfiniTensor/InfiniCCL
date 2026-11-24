@@ -26,6 +26,8 @@ bool IsDeviceBuffer(const void *ptr) {
 template <Device::Type kDev>
 class MpiBufferPlan {
  public:
+  using Rt = Runtime<kDev>;
+
   enum class Mode {
     kPair,
     kAlias,
@@ -33,8 +35,7 @@ class MpiBufferPlan {
 
   ReturnStatus Prepare(const void *send_buff, void *recv_buff,
                        std::size_t send_bytes, std::size_t recv_bytes,
-                       bool allow_direct, void *stream,
-                       Mode mode = Mode::kPair) {
+                       bool allow_direct, void *stream, Mode mode) {
     const bool send_active = send_bytes != 0;
     const bool recv_active = recv_bytes != 0;
     if (!send_active && !recv_active) {
@@ -65,10 +66,8 @@ class MpiBufferPlan {
       return ReturnStatus::kSuccess;
     }
 
-    CHECK_STATUS(
-        Runtime<kDev>,
-        Runtime<kDev>::Memcpy(user_recv_buff_, host_recv_buff_.get(),
-                              recv_bytes_, Runtime<kDev>::MemcpyHostToDevice));
+    CHECK_STATUS(Rt, Rt::Memcpy(user_recv_buff_, host_recv_buff_.get(),
+                                recv_bytes_, Rt::MemcpyHostToDevice));
     return ReturnStatus::kSuccess;
   }
 
@@ -88,9 +87,8 @@ class MpiBufferPlan {
               (!recv_active || recv_device);
     if (direct_) {
       if (send_device) {
-        CHECK_STATUS(Runtime<kDev>,
-                     Runtime<kDev>::StreamSynchronize(
-                         static_cast<typename Runtime<kDev>::Stream>(stream)));
+        CHECK_STATUS(Rt, Rt::StreamSynchronize(
+                             static_cast<typename Rt::Stream>(stream)));
       }
 
       mpi_send_buff_ = send_buff;
@@ -99,18 +97,15 @@ class MpiBufferPlan {
     }
 
     if (send_device) {
-      CHECK_STATUS(Runtime<kDev>,
-                   Runtime<kDev>::StreamSynchronize(
-                       static_cast<typename Runtime<kDev>::Stream>(stream)));
+      CHECK_STATUS(
+          Rt, Rt::StreamSynchronize(static_cast<typename Rt::Stream>(stream)));
       host_send_buff_ = detail::AllocateHostBuffer(send_bytes);
       if (!host_send_buff_) {
         return ReturnStatus::kSystemError;
       }
 
-      CHECK_STATUS(
-          Runtime<kDev>,
-          Runtime<kDev>::Memcpy(host_send_buff_.get(), send_buff, send_bytes,
-                                Runtime<kDev>::MemcpyDeviceToHost));
+      CHECK_STATUS(Rt, Rt::Memcpy(host_send_buff_.get(), send_buff, send_bytes,
+                                  Rt::MemcpyDeviceToHost));
       mpi_send_buff_ = host_send_buff_.get();
     } else {
       mpi_send_buff_ = send_buff;
@@ -134,17 +129,15 @@ class MpiBufferPlan {
                             bool recv_device) {
     direct_ = allow_direct && recv_device && !send_active;
     if (direct_) {
-      CHECK_STATUS(Runtime<kDev>,
-                   Runtime<kDev>::StreamSynchronize(
-                       static_cast<typename Runtime<kDev>::Stream>(stream)));
+      CHECK_STATUS(
+          Rt, Rt::StreamSynchronize(static_cast<typename Rt::Stream>(stream)));
       mpi_recv_buff_ = recv_buff;
       return ReturnStatus::kSuccess;
     }
 
     if (recv_device) {
-      CHECK_STATUS(Runtime<kDev>,
-                   Runtime<kDev>::StreamSynchronize(
-                       static_cast<typename Runtime<kDev>::Stream>(stream)));
+      CHECK_STATUS(
+          Rt, Rt::StreamSynchronize(static_cast<typename Rt::Stream>(stream)));
       host_recv_buff_ = detail::AllocateHostBuffer(recv_bytes);
       if (!host_recv_buff_) {
         return ReturnStatus::kSystemError;
