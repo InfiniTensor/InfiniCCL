@@ -3,6 +3,7 @@
 
 #include "communicator.h"
 #include "data_type_impl.h"
+#include "dispatch_policy.h"
 #include "logging.h"
 #include "operation.h"
 #include "return_status_impl.h"
@@ -31,6 +32,13 @@ class Broadcast : public Operation<Broadcast> {
       return ReturnStatus::kSuccess;
     }
 
+    ReturnStatus redirect_status = ReturnStatus::kSuccess;
+    if (RedirectToCarrier<backend_type>(comm_handle, &redirect_status,
+                                        send_buff, recv_buff, count, datatype,
+                                        root, comm_handle, stream)) {
+      return redirect_status;
+    }
+
     return BroadcastImpl<backend_type, device_type>::Apply(
         send_buff, recv_buff, count, datatype, root, comm, stream);
   }
@@ -57,6 +65,13 @@ class Broadcast : public Operation<Broadcast> {
     }
     return false;
   }
+};
+
+// The communicator decides which backend serves a `Broadcast`: hybrid
+// stacks bootstrap over an MPI-only communicator before a CCL one exists.
+template <>
+struct DispatchPolicy<Broadcast> {
+  static constexpr Policy value = Policy::kCarrierAware;
 };
 
 }  // namespace infini::ccl
