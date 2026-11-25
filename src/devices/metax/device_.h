@@ -5,7 +5,6 @@
 #include <mcr/mc_runtime.h>
 // clang-format on
 
-#include "checks.h"
 #include "device.h"
 
 namespace infini::ccl {
@@ -20,7 +19,11 @@ MemorySpace GetMemorySpace<Device::Type::kMetax>(const void* ptr) {
   }
 
   mcPointerAttribute_t attr;
-  INFINI_CHECK_MACA(mcPointerGetAttributes(&attr, ptr));
+  mcError_t status = mcPointerGetAttributes(&attr, ptr);
+  if (status != mcSuccess) {
+    mcGetLastError();
+    return MemorySpace::kHost;
+  }
 
   if (attr.type == mcMemoryTypeDevice || attr.type == mcMemoryTypeManaged ||
       attr.type == mcMemoryTypeArray) {

@@ -280,6 +280,7 @@ if(WITH_OMPI)
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
     endif()
+
 endif()
 
 if(WITH_MPICH)
