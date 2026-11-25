@@ -27,6 +27,7 @@ option(WITH_NCCL "Enable NCCL backend"    OFF)
 option(WITH_MCCL "Enable MCCL backend"    OFF)
 option(WITH_CNCL "Enable CNCL backend"    OFF)
 option(WITH_HCCL "Enable HCCL backend"    OFF)
+option(WITH_BKCL "Enable BKCL backend"    OFF)
 
 # =========================================================
 # --- MISC. BUILD OPTIONS ---
@@ -45,6 +46,7 @@ include(cmake/devices/Cambricon.cmake)
 include(cmake/devices/Ascend.cmake)
 include(cmake/devices/Hygon.cmake)
 include(cmake/devices/THead.cmake)
+include(cmake/devices/Kunlun.cmake)
 
 # Backend modules provide backend probes and required dependency resolution.
 include(cmake/CCLCapabilities.cmake)
@@ -53,6 +55,7 @@ include(cmake/backends/NCCL.cmake)
 include(cmake/backends/MCCL.cmake)
 include(cmake/backends/CNCL.cmake)
 include(cmake/backends/HCCL.cmake)
+include(cmake/backends/BKCL.cmake)
 
 # =========================================================
 # --- AUTO-DETECTION: DEVICES ---
@@ -92,6 +95,10 @@ if(AUTO_DETECT_DEVICES)
     # T-Head
     infiniccl_resolve_device_detection(
         WITH_THEAD "T-Head" infiniccl_detect_thead THEAD_FOUND)
+
+    # Kunlun
+    infiniccl_resolve_device_detection(
+        WITH_KUNLUN "Kunlun" infiniccl_detect_kunlun KUNLUN_FOUND)
 
     # NVIDIA Final Resolution: resolve conflicts.
     if(THEAD_FOUND AND NVIDIA_FOUND AND NOT NVIDIA_REQUESTED)
@@ -164,10 +171,21 @@ if(AUTO_DETECT_BACKENDS)
             message(STATUS "HCCL library/headers not found in Ascend paths.")
         endif()
     endif()
+
+    # Detect BKCL Dependencies
+    if(WITH_KUNLUN)
+        infiniccl_probe_bkcl(BKCL_FOUND)
+        if(BKCL_FOUND)
+            set(WITH_BKCL ON)
+            message(STATUS "Auto-detected BKCL backend.")
+        else()
+            message(STATUS "BKCL library/headers not found in Kunlun paths.")
+        endif()
+    endif()
 endif()
 
 # Fallback: If no backends are enabled or auto-detected, fall back to OpenMPI as the default bootstrap profile.
-if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL AND NOT WITH_HCCL)
+if(NOT WITH_OMPI AND NOT WITH_MPICH AND NOT WITH_NCCL AND NOT WITH_MCCL AND NOT WITH_CNCL AND NOT WITH_HCCL AND NOT WITH_BKCL)
     set(WITH_OMPI ON)
     message(STATUS "No backend specified or detected. Defaulting to `WITH_OMPI=ON`")
 endif()
@@ -236,6 +254,14 @@ endif()
 
 if(WITH_HCCL)
     infiniccl_configure_hccl(HCCL_INC HCCL_LIB)
+endif()
+
+if(WITH_KUNLUN)
+    infiniccl_configure_kunlun(KUNLUN_INC KUNLUN_XPURT_LIB)
+endif()
+
+if(WITH_BKCL)
+    infiniccl_configure_bkcl(BKCL_INC BKCL_LIB)
 endif()
 
 # Python is required for code generation.
