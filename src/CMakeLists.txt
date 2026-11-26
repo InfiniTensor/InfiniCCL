@@ -43,6 +43,7 @@ target_sources(infiniccl PRIVATE
 
 # CPU (Always On as the base architecture)
 file(GLOB_RECURSE CPU_SRCS "devices/cpu/*.cc")
+list(FILTER CPU_SRCS EXCLUDE REGEX "ibv_memory\\.cc$")
 target_sources(infiniccl PRIVATE ${CPU_SRCS})
 
 # NVIDIA
@@ -58,6 +59,7 @@ if(WITH_NVIDIA)
         "devices/nvidia/*.cu"
     )
     file(GLOB NVIDIA_SOURCES ${NVIDIA_PATTERNS})
+    list(FILTER NVIDIA_SOURCES EXCLUDE REGEX "ibv_memory\\.cc$")
 
     target_sources(infiniccl PRIVATE ${NVIDIA_SOURCES})
     target_link_libraries(infiniccl PRIVATE CUDA::cudart CUDA::cuda_driver)
@@ -129,6 +131,7 @@ if(WITH_METAX)
         "devices/metax/*.maca"
     )
     file(GLOB METAX_SOURCES ${METAX_PATTERNS})
+    list(FILTER METAX_SOURCES EXCLUDE REGEX "ibv_memory\\.cc$")
 
     set_source_files_properties(${METAX_SOURCES} PROPERTIES LANGUAGE CXX)
 
@@ -279,6 +282,71 @@ if(WITH_OMPI)
 
     if(TARGET MPI::MPI_CXX)
         target_link_libraries(infiniccl PRIVATE MPI::MPI_CXX)
+    endif()
+endif()
+
+# IBV
+if(WITH_IBV)
+    list(APPEND BACKEND_LIST "ibv")
+    file(GLOB_RECURSE IBV_SRCS
+        "backends/ibv/*.cc"
+        "backends/ibv/*.cpp"
+    )
+    target_sources(infiniccl PRIVATE ${IBV_SRCS} devices/cpu/ibv_memory.cc)
+    target_include_directories(infiniccl PRIVATE
+        ${IBVERBS_INCLUDE_DIR}
+    )
+    target_link_libraries(infiniccl PRIVATE
+        ${IBVERBS_LIBRARY}
+        Threads::Threads
+    )
+    find_path(MLX5DV_INCLUDE_DIR NAMES infiniband/mlx5dv.h)
+    find_library(MLX5DV_LIBRARY NAMES mlx5)
+    if(MLX5DV_INCLUDE_DIR AND MLX5DV_LIBRARY)
+        include(CMakePushCheckState)
+        include(CheckCXXSourceCompiles)
+        cmake_push_check_state(RESET)
+        set(CMAKE_REQUIRED_INCLUDES ${MLX5DV_INCLUDE_DIR} ${IBVERBS_INCLUDE_DIR})
+        set(CMAKE_REQUIRED_LIBRARIES ${MLX5DV_LIBRARY} ${IBVERBS_LIBRARY})
+        check_cxx_source_compiles("
+            #include <infiniband/mlx5dv.h>
+            int main() {
+                ibv_qp_init_attr_ex attr{};
+                mlx5dv_qp_init_attr mlx5_attr{};
+                attr.comp_mask = IBV_QP_INIT_ATTR_PD;
+                mlx5_attr.comp_mask = MLX5DV_QP_INIT_ATTR_MASK_QP_CREATE_FLAGS;
+                mlx5_attr.create_flags = MLX5DV_QP_CREATE_DISABLE_SCATTER_TO_CQE;
+                auto *qp = mlx5dv_create_qp(nullptr, &attr, &mlx5_attr);
+                return mlx5dv_is_supported(nullptr) && qp ? 0 : 1;
+            }
+        " INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+        cmake_pop_check_state()
+    endif()
+    if(MLX5DV_INCLUDE_DIR AND MLX5DV_LIBRARY AND
+       INFINICCL_HAS_MLX5DV_SCATTER_CONTROL)
+        target_include_directories(infiniccl PRIVATE ${MLX5DV_INCLUDE_DIR})
+        target_link_libraries(infiniccl PRIVATE ${MLX5DV_LIBRARY})
+        target_compile_definitions(infiniccl PRIVATE INFINICCL_WITH_MLX5DV)
+        message(STATUS "IBV: per-QP mlx5 Scatter-to-CQE disabling enabled.")
+    else()
+        message(STATUS "IBV: mlx5dv unavailable; Mellanox QPs will be rejected for safety.")
+    endif()
+    if(WITH_NVIDIA)
+        if(CUDAToolkit_VERSION VERSION_LESS 11.3)
+            message(FATAL_ERROR "NVIDIA IBV backend requires CUDA 11.3 or newer for visibility capability checks.")
+        endif()
+        target_sources(infiniccl PRIVATE devices/nvidia/ibv_memory.cc)
+        target_compile_definitions(infiniccl PRIVATE INFINICCL_WITH_NVIDIA_IBV)
+    endif()
+    if(WITH_METAX)
+        find_path(METAX_IBV_INCLUDE_DIR NAMES mxkw/mxkw.h
+            HINTS "${MACA_PATH}/include" REQUIRED)
+        find_library(METAX_IBV_LIBRARY NAMES mxkw
+            HINTS "${MACA_PATH}/lib" "${MACA_PATH}/lib64" REQUIRED)
+        target_sources(infiniccl PRIVATE devices/metax/ibv_memory.cc)
+        target_include_directories(infiniccl PRIVATE ${METAX_IBV_INCLUDE_DIR})
+        target_link_libraries(infiniccl PRIVATE ${METAX_IBV_LIBRARY})
+        target_compile_definitions(infiniccl PRIVATE INFINICCL_WITH_METAX_IBV)
     endif()
 endif()
 

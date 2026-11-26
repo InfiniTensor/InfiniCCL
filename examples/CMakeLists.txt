@@ -21,6 +21,16 @@ foreach(source_file ${EXAMPLE_SOURCES})
 
     target_link_libraries(${target_name} PRIVATE infiniccl)
 
+    if(target_name STREQUAL "ibv_send_recv" AND WITH_IBV)
+        if(WITH_NVIDIA AND WITH_METAX)
+            message(FATAL_ERROR "The IBV example requires one accelerator runtime per build.")
+        elseif(WITH_NVIDIA)
+            target_compile_definitions(${target_name} PRIVATE INFINICCL_WITH_NVIDIA_IBV)
+        elseif(WITH_METAX)
+            target_compile_definitions(${target_name} PRIVATE INFINICCL_WITH_METAX_IBV)
+        endif()
+    endif()
+
     # Add runtime and backend dependencies for direct runtime/backend usage.
     if(WITH_NVIDIA)
         target_link_libraries(${target_name} PRIVATE CUDA::cudart)
