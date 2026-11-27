@@ -1,6 +1,9 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_GATHER_H_
 
+#include <algorithm>
+#include <limits>
+
 #include "backends/mpi/ompi/checks.h"
 #include "backends/mpi/ompi/comm_instance.h"
 #include "backends/mpi/ompi/type_map.h"
@@ -30,9 +33,21 @@ class AllGatherImpl<BackendType::kOmpi, device_type> {
 
     MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
     size_t type_size = kDataTypeToSize.at(data_type);
-    size_t send_bytes = count * type_size;
-    size_t recv_count = count * static_cast<size_t>(comm->size());
-    size_t recv_bytes = recv_count * type_size;
+    if (comm->size() <= 0 ||
+        count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("Invalid AllGather size or send byte size overflow.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    const size_t world_size = static_cast<size_t>(comm->size());
+    const size_t send_bytes = count * type_size;
+    if (send_bytes > std::numeric_limits<size_t>::max() / world_size) {
+      LOG("AllGather receive byte size overflow.");
+      return ReturnStatus::kInvalidArgument;
+    }
+    constexpr size_t kMaxMpiCount =
+        static_cast<size_t>(std::numeric_limits<int>::max());
+    const size_t chunk_capacity = std::min(count, kMaxMpiCount);
+    const size_t recv_bytes = chunk_capacity * type_size * world_size;
 
     // Handle GPU Memory (Staging Pattern)
     // Note: we simply use host-staging for now.
@@ -50,11 +65,32 @@ class AllGatherImpl<BackendType::kOmpi, device_type> {
 
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
-    INFINI_CHECK_MPI(MPI_Allgather(host_sendbuf, count, mpi_type, host_recvbuf,
-                                   count, mpi_type, inst->handle));
+    size_t offset = 0;
+    while (offset < count) {
+      const size_t chunk = std::min(count - offset, kMaxMpiCount);
+      const size_t chunk_bytes = chunk * type_size;
+      INFINI_CHECK_MPI(MPI_Allgather(
+          static_cast<const char *>(host_sendbuf) + offset * type_size,
+          static_cast<int>(chunk), mpi_type, host_recvbuf,
+          static_cast<int>(chunk), mpi_type, inst->handle));
 
-    CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
-                                Rt::MemcpyHostToDevice));
+      if (count <= kMaxMpiCount) {
+        CHECK_STATUS(Rt, Rt::Memcpy(recv_buff, host_recvbuf, recv_bytes,
+                                    Rt::MemcpyHostToDevice));
+      } else {
+        // Each round gathers rank-local chunks. Restore the full rank-major
+        // layout rather than concatenating the rounds.
+        for (size_t rank = 0; rank < world_size; ++rank) {
+          CHECK_STATUS(Rt,
+                       Rt::Memcpy(static_cast<char *>(recv_buff) +
+                                      rank * send_bytes + offset * type_size,
+                                  static_cast<const char *>(host_recvbuf) +
+                                      rank * chunk_bytes,
+                                  chunk_bytes, Rt::MemcpyHostToDevice));
+        }
+      }
+      offset += chunk;
+    }
 
     free(host_sendbuf);
     free(host_recvbuf);

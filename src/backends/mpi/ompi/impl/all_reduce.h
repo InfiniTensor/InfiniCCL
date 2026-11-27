@@ -1,6 +1,8 @@
 #ifndef INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_REDUCE_H_
 #define INFINI_CCL_BACKENDS_MPI_OMPI_IMPL_ALL_REDUCE_H_
 
+#include <algorithm>
+#include <limits>
 #include <type_traits>
 
 #include "backends/mpi/ompi/checks.h"
@@ -35,6 +37,10 @@ class AllReduceImpl<BackendType::kOmpi, device_type> {
     MPI_Datatype mpi_type = DataTypeToOmpiType(data_type);
     MPI_Op mpi_op = RedOpToOmpiOp(op);
     size_t type_size = kDataTypeToSize.at(data_type);
+    if (count > std::numeric_limits<size_t>::max() / type_size) {
+      LOG("AllReduce byte size overflow.");
+      return ReturnStatus::kInvalidArgument;
+    }
     size_t total_bytes = count * type_size;
 
     // Handle GPU Memory (Staging Pattern)
@@ -53,8 +59,17 @@ class AllReduceImpl<BackendType::kOmpi, device_type> {
 
     CHECK_STATUS(Rt, Rt::StreamSynchronize(static_cast<Rt::Stream>(stream)));
 
-    INFINI_CHECK_MPI(MPI_Allreduce(host_sendbuf, host_recvbuf, count, mpi_type,
-                                   mpi_op, inst->handle));
+    constexpr size_t kMaxMpiCount =
+        static_cast<size_t>(std::numeric_limits<int>::max());
+    size_t offset = 0;
+    while (offset < count) {
+      const size_t chunk = std::min(count - offset, kMaxMpiCount);
+      INFINI_CHECK_MPI(MPI_Allreduce(
+          static_cast<const char *>(host_sendbuf) + offset * type_size,
+          static_cast<char *>(host_recvbuf) + offset * type_size,
+          static_cast<int>(chunk), mpi_type, mpi_op, inst->handle));
+      offset += chunk;
+    }
 
     if (op == ReductionOpType::kAvg) {
       int size = comm->size();
